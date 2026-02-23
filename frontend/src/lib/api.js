@@ -49,9 +49,10 @@ export async function createSession(data) {
   });
 }
 
-export async function listSessions({ context, limit, offset } = {}) {
+export async function listSessions({ context, series_id, limit, offset } = {}) {
   const params = new URLSearchParams();
   if (context) params.set('context', context);
+  if (series_id) params.set('series_id', series_id);
   if (limit != null) params.set('limit', String(limit));
   if (offset != null) params.set('offset', String(offset));
   const qs = params.toString();
@@ -210,6 +211,62 @@ export async function startRoom(code) {
 export async function stopRoom(code) {
   return request(`/rooms/${code}/stop`, {
     method: 'POST',
+  });
+}
+
+// --- Series ---
+
+export async function createSeries(data) {
+  return request('/series', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function listSeries() {
+  return request('/series');
+}
+
+export async function getSeries(id) {
+  return request(`/series/${id}`);
+}
+
+export async function updateSeries(id, data) {
+  return request(`/series/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function deleteSeries(id) {
+  return request(`/series/${id}`, {
+    method: 'DELETE',
+  });
+}
+
+export async function getSeriesMemory(id) {
+  return request(`/series/${id}/memory`);
+}
+
+export async function refreshSeriesMemory(id) {
+  return request(`/series/${id}/memory/refresh`, {
+    method: 'POST',
+  });
+}
+
+export async function listSeriesSessions(id) {
+  return request(`/series/${id}/sessions`);
+}
+
+export async function addSessionToSeries(seriesId, sessionId) {
+  return request(`/series/${seriesId}/sessions/${sessionId}`, {
+    method: 'POST',
+  });
+}
+
+export async function removeSessionFromSeries(seriesId, sessionId) {
+  return request(`/series/${seriesId}/sessions/${sessionId}`, {
+    method: 'DELETE',
   });
 }
 

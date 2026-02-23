@@ -5,12 +5,23 @@ from config import settings
 _db: aiosqlite.Connection | None = None
 
 SCHEMA = """
+CREATE TABLE IF NOT EXISTS series (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    description TEXT DEFAULT '',
+    memory_document TEXT DEFAULT '',
+    session_count INTEGER DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
 CREATE TABLE IF NOT EXISTS sessions (
     id TEXT PRIMARY KEY,
     title TEXT,
     context TEXT NOT NULL,
     context_metadata JSON DEFAULT '{}',
     room_id TEXT REFERENCES rooms(id),
+    series_id TEXT REFERENCES series(id),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     duration_seconds INTEGER,
     status TEXT DEFAULT 'created',
@@ -133,6 +144,14 @@ async def get_db() -> aiosqlite.Connection:
         await _db.execute("PRAGMA foreign_keys=ON")
         await _db.executescript(SCHEMA)
         await _db.commit()
+        # Migration: add series_id to sessions if not present
+        try:
+            await _db.execute(
+                "ALTER TABLE sessions ADD COLUMN series_id TEXT REFERENCES series(id)"
+            )
+            await _db.commit()
+        except Exception:
+            pass  # Column already exists
     return _db
 
 

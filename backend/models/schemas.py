@@ -46,6 +46,7 @@ class SessionCreate(BaseModel):
     context: SessionContext
     context_metadata: dict = Field(default_factory=dict)
     host_name: str | None = None
+    series_id: str | None = None
 
 
 class SessionUpdate(BaseModel):
@@ -69,6 +70,8 @@ class SessionResponse(BaseModel):
     audio_path: str | None
     host_name: str | None
     error_message: str | None
+    series_id: str | None = None
+    series_name: str | None = None
 
 
 class SessionListItem(BaseModel):
@@ -81,6 +84,8 @@ class SessionListItem(BaseModel):
     duration_seconds: int | None
     status: str
     host_name: str | None
+    series_id: str | None = None
+    series_name: str | None = None
 
 
 # --- Interpretation schemas ---
@@ -253,3 +258,42 @@ class LensInfo(BaseModel):
     name: str
     description: str
     context: str
+
+
+# --- Series schemas ---
+
+class SeriesCreate(BaseModel):
+    name: str
+    description: str = ""
+
+
+class SeriesUpdate(BaseModel):
+    name: str | None = None
+    description: str | None = None
+
+
+class SeriesResponse(BaseModel):
+    id: str
+    name: str
+    description: str
+    memory_document: str
+    session_count: int
+    created_at: str
+    updated_at: str
+
+
+class SeriesListItem(BaseModel):
+    id: str
+    name: str
+    description: str
+    session_count: int
+    created_at: str
+    updated_at: str
+
+
+class MemoryDocumentResponse(BaseModel):
+    series_id: str
+    series_name: str
+    memory_document: str
+    updated_at: str
+    session_count: int

@@ -19,23 +19,28 @@ router = APIRouter(prefix="/api/v1", tags=["agent-api"])
 @router.get("/sessions")
 async def list_sessions(
     context: str | None = None,
+    series_id: str | None = None,
     limit: int = Query(default=20, le=100),
     offset: int = Query(default=0, ge=0),
     api_key=Depends(verify_api_key),
     db=Depends(get_db),
 ):
-    query = "SELECT * FROM sessions"
+    query = "SELECT s.*, sr.name as series_name FROM sessions s LEFT JOIN series sr ON s.series_id = sr.id"
     params: list = []
     conditions = []
 
     if context:
-        conditions.append("context = ?")
+        conditions.append("s.context = ?")
         params.append(context)
+
+    if series_id:
+        conditions.append("s.series_id = ?")
+        params.append(series_id)
 
     if conditions:
         query += " WHERE " + " AND ".join(conditions)
 
-    query += " ORDER BY created_at DESC LIMIT ? OFFSET ?"
+    query += " ORDER BY s.created_at DESC LIMIT ? OFFSET ?"
     params.extend([limit, offset])
 
     cursor = await db.execute(query, params)
@@ -220,6 +225,52 @@ async def get_room(
     if not room:
         raise HTTPException(404, "Room not found")
     return room
+
+
+@router.get("/series")
+async def list_series(
+    api_key=Depends(verify_api_key),
+    db=Depends(get_db),
+):
+    cursor = await db.execute(
+        "SELECT id, name, description, session_count, created_at, updated_at "
+        "FROM series ORDER BY updated_at DESC"
+    )
+    rows = await cursor.fetchall()
+    return [dict(r) for r in rows]
+
+
+@router.get("/series/{series_id}")
+async def get_series(
+    series_id: str,
+    api_key=Depends(verify_api_key),
+    db=Depends(get_db),
+):
+    cursor = await db.execute("SELECT * FROM series WHERE id = ?", (series_id,))
+    row = await cursor.fetchone()
+    if not row:
+        raise HTTPException(404, "Series not found")
+    return dict(row)
+
+
+@router.get("/series/{series_id}/memory")
+async def get_series_memory(
+    series_id: str,
+    api_key=Depends(verify_api_key),
+    db=Depends(get_db),
+):
+    cursor = await db.execute("SELECT * FROM series WHERE id = ?", (series_id,))
+    row = await cursor.fetchone()
+    if not row:
+        raise HTTPException(404, "Series not found")
+    data = dict(row)
+    return {
+        "series_id": data["id"],
+        "series_name": data["name"],
+        "memory_document": data["memory_document"] or "",
+        "updated_at": data["updated_at"],
+        "session_count": data["session_count"],
+    }
 
 
 @router.get("/search")

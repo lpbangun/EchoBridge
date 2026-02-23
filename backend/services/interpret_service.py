@@ -20,6 +20,7 @@ async def interpret_with_lens(
     source_type: str = "user",
     source_name: str | None = None,
     db=None,
+    memory_context: str | None = None,
 ) -> dict:
     """Run a preset lens against a transcript and store the interpretation."""
     lens = get_lens(lens_id)
@@ -33,10 +34,18 @@ async def interpret_with_lens(
     metadata_str = json.dumps(context_metadata, indent=2) if context_metadata else "{}"
     prompt = lens["system_prompt"].replace("{context_metadata}", metadata_str)
 
+    if memory_context:
+        prompt += "\n\nYou have access to a Meeting Memory document from previous sessions in this series. Use it for context — reference prior decisions, note action item progress, and connect themes across meetings."
+
+    user_content = ""
+    if memory_context:
+        user_content += f"MEETING MEMORY (context from previous meetings):\n{memory_context}\n\n---\n\n"
+    user_content += f"TRANSCRIPT:\n{transcript}"
+
     output = await call_openrouter(
         model=model,
         system_prompt=prompt,
-        user_content=f"TRANSCRIPT:\n{transcript}",
+        user_content=user_content,
     )
 
     interpretation_id = str(uuid.uuid4())
@@ -76,15 +85,24 @@ async def interpret_with_custom(
     source_type: str = "user",
     source_name: str | None = None,
     db=None,
+    memory_context: str | None = None,
 ) -> dict:
     """Run a custom prompt against a transcript."""
     model = model or settings.default_model
     source_name = source_name or settings.user_display_name
 
+    if memory_context:
+        system_prompt += "\n\nYou have access to a Meeting Memory document from previous sessions in this series. Use it for context — reference prior decisions, note action item progress, and connect themes across meetings."
+
+    user_content = ""
+    if memory_context:
+        user_content += f"MEETING MEMORY (context from previous meetings):\n{memory_context}\n\n---\n\n"
+    user_content += f"TRANSCRIPT:\n{transcript}"
+
     output = await call_openrouter(
         model=model,
         system_prompt=system_prompt,
-        user_content=f"TRANSCRIPT:\n{transcript}",
+        user_content=user_content,
     )
 
     interpretation_id = str(uuid.uuid4())
@@ -125,6 +143,7 @@ async def interpret_with_socket(
     source_type: str = "user",
     source_name: str | None = None,
     db=None,
+    memory_context: str | None = None,
 ) -> dict:
     """Run a socket interpretation with structured output."""
     model = model or settings.default_model
@@ -139,10 +158,18 @@ SECTION 2: A JSON object conforming exactly to this schema:
 {json.dumps(socket_data['output_schema'], indent=2)}
 """
 
+    if memory_context:
+        prompt += "\n\nYou have access to a Meeting Memory document from previous sessions in this series. Use it for context."
+
+    user_content = ""
+    if memory_context:
+        user_content += f"MEETING MEMORY (context from previous meetings):\n{memory_context}\n\n---\n\n"
+    user_content += f"TRANSCRIPT:\n{transcript}"
+
     output = await call_openrouter(
         model=model,
         system_prompt=prompt,
-        user_content=f"TRANSCRIPT:\n{transcript}",
+        user_content=user_content,
     )
 
     # Parse structured output

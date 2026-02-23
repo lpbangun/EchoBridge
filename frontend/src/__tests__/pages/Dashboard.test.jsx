@@ -13,6 +13,7 @@ vi.mock('../../lib/api', () => ({
   listSessions: vi.fn(),
   searchSessions: vi.fn(),
   getSettings: vi.fn().mockResolvedValue({ openrouter_api_key_set: true }),
+  listSeries: vi.fn().mockResolvedValue([]),
 }));
 
 // Mock child components that are not under test

@@ -31,15 +31,37 @@ async def create_session(body: SessionCreate, db=Depends(get_db)):
     now = datetime.now(timezone.utc).isoformat()
     metadata_json = json.dumps(body.context_metadata)
 
+    # Validate series exists if provided
+    if body.series_id:
+        cursor = await db.execute(
+            "SELECT id FROM series WHERE id = ?", (body.series_id,)
+        )
+        if not await cursor.fetchone():
+            raise HTTPException(404, "Series not found")
+
     await db.execute(
-        """INSERT INTO sessions (id, title, context, context_metadata, host_name, created_at)
-        VALUES (?, ?, ?, ?, ?, ?)""",
+        """INSERT INTO sessions (id, title, context, context_metadata, host_name, series_id, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?)""",
         (session_id, body.title, body.context.value, metadata_json,
-         body.host_name, now),
+         body.host_name, body.series_id, now),
     )
+
+    # Increment series session count
+    if body.series_id:
+        await db.execute(
+            "UPDATE series SET session_count = session_count + 1 WHERE id = ?",
+            (body.series_id,),
+        )
+
     await db.commit()
 
-    cursor = await db.execute("SELECT * FROM sessions WHERE id = ?", (session_id,))
+    cursor = await db.execute(
+        """SELECT s.*, sr.name as series_name
+        FROM sessions s
+        LEFT JOIN series sr ON s.series_id = sr.id
+        WHERE s.id = ?""",
+        (session_id,),
+    )
     row = await cursor.fetchone()
     return _row_to_session(row)
 
@@ -47,23 +69,28 @@ async def create_session(body: SessionCreate, db=Depends(get_db)):
 @router.get("", response_model=list[SessionListItem])
 async def list_sessions(
     context: str | None = None,
+    series_id: str | None = None,
     q: str | None = None,
     limit: int = Query(default=50, le=100),
     offset: int = Query(default=0, ge=0),
     db=Depends(get_db),
 ):
-    query = "SELECT * FROM sessions"
+    query = "SELECT s.*, sr.name as series_name FROM sessions s LEFT JOIN series sr ON s.series_id = sr.id"
     params: list = []
     conditions = []
 
     if context:
-        conditions.append("context = ?")
+        conditions.append("s.context = ?")
         params.append(context)
+
+    if series_id:
+        conditions.append("s.series_id = ?")
+        params.append(series_id)
 
     if conditions:
         query += " WHERE " + " AND ".join(conditions)
 
-    query += " ORDER BY created_at DESC LIMIT ? OFFSET ?"
+    query += " ORDER BY s.created_at DESC LIMIT ? OFFSET ?"
     params.extend([limit, offset])
 
     cursor = await db.execute(query, params)
@@ -73,7 +100,13 @@ async def list_sessions(
 
 @router.get("/{session_id}", response_model=SessionResponse)
 async def get_session(session_id: str, db=Depends(get_db)):
-    cursor = await db.execute("SELECT * FROM sessions WHERE id = ?", (session_id,))
+    cursor = await db.execute(
+        """SELECT s.*, sr.name as series_name
+        FROM sessions s
+        LEFT JOIN series sr ON s.series_id = sr.id
+        WHERE s.id = ?""",
+        (session_id,),
+    )
     row = await cursor.fetchone()
     if not row:
         raise HTTPException(404, "Session not found")

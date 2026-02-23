@@ -7,7 +7,7 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
 from database import get_db, close_db
-from routers import sessions, transcribe, interpret, export, settings, rooms, sockets, stream, agent, storage
+from routers import sessions, transcribe, interpret, export, settings, rooms, sockets, stream, agent, storage, series
 
 
 @asynccontextmanager
@@ -55,6 +55,9 @@ app.include_router(sockets.router)
 
 # Phase 5 routers
 app.include_router(agent.router)
+
+# Meeting Memory series router
+app.include_router(series.router)
 
 # Cloud storage router
 app.include_router(storage.router)

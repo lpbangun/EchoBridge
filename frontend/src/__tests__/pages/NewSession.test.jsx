@@ -14,6 +14,8 @@ vi.mock('../../lib/api', () => ({
   getSettings: vi.fn(),
   createRoom: vi.fn(),
   uploadAudio: vi.fn(),
+  listSeries: vi.fn().mockResolvedValue([]),
+  createSeries: vi.fn(),
 }));
 
 vi.mock('../../components/ContextSelector', () => ({

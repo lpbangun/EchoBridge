@@ -5,6 +5,7 @@ import { createSession, getSettings, createRoom, uploadAudio } from '../lib/api'
 import { contextMetaLabel } from '../lib/utils';
 import ContextSelector from '../components/ContextSelector';
 import FileUploader from '../components/FileUploader';
+import SeriesSelector from '../components/SeriesSelector';
 
 export default function NewSession() {
   const navigate = useNavigate();
@@ -15,6 +16,7 @@ export default function NewSession() {
   const [models, setModels] = useState([]);
   const [showUploader, setShowUploader] = useState(false);
   const [sessionId, setSessionId] = useState(null);
+  const [seriesId, setSeriesId] = useState(null);
   const [error, setError] = useState(null);
   const [creating, setCreating] = useState(false);
 
@@ -53,6 +55,7 @@ export default function NewSession() {
         title: title.trim() || undefined,
         context_metadata: buildContextMetadata(),
         model,
+        series_id: seriesId || undefined,
       });
       navigate(`/recording/${session.id}`);
     } catch (err) {
@@ -71,6 +74,7 @@ export default function NewSession() {
           title: title.trim() || undefined,
           context_metadata: buildContextMetadata(),
           model,
+          series_id: seriesId || undefined,
         });
         setSessionId(session.id);
         setShowUploader(true);
@@ -167,6 +171,17 @@ export default function NewSession() {
             className="mt-2 glass-input w-full text-base px-4 py-3 rounded-xl"
           />
           <p className="text-xs text-slate-500 mt-1">Optional — helps the AI tailor notes to your specific context.</p>
+        </div>
+
+        {/* Series selector */}
+        <div className="mt-8">
+          <label className="section-label">
+            Series
+          </label>
+          <p className="text-xs text-slate-500 mt-1">Group sessions into a series to build meeting memory across conversations.</p>
+          <div className="mt-2">
+            <SeriesSelector value={seriesId} onChange={setSeriesId} />
+          </div>
         </div>
 
         {/* Model selector */}

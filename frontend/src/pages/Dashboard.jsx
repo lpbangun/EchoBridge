@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Settings, Plus, MessageSquare, Key, CloudOff, RefreshCw } from 'lucide-react';
-import { listSessions, searchSessions, getSettings } from '../lib/api';
+import { Settings, Plus, MessageSquare, Key, CloudOff, RefreshCw, BookOpen } from 'lucide-react';
+import { listSessions, searchSessions, getSettings, listSeries } from '../lib/api';
 import { getPendingCount } from '../lib/offlineStorage';
 import { syncPendingRecordings, onSyncStatusChange } from '../lib/syncManager';
 import SessionCard from '../components/SessionCard';
@@ -15,15 +15,20 @@ export default function Dashboard() {
   const [searchQuery, setSearchQuery] = useState('');
   const [contextFilter, setContextFilter] = useState(null);
   const [needsApiKey, setNeedsApiKey] = useState(false);
+  const [seriesList, setSeriesList] = useState([]);
+  const [seriesFilter, setSeriesFilter] = useState(null);
   const [pendingCount, setPendingCount] = useState(0);
   const [syncing, setSyncing] = useState(false);
 
-  // Check if API key is set
+  // Check if API key is set and load series
   useEffect(() => {
     getSettings()
       .then((settings) => {
         setNeedsApiKey(!settings.openrouter_api_key_set);
       })
+      .catch(() => {});
+    listSeries()
+      .then((data) => setSeriesList(Array.isArray(data) ? data : []))
       .catch(() => {});
   }, []);
 
@@ -53,7 +58,10 @@ export default function Dashboard() {
       if (searchQuery.trim()) {
         result = await searchSessions(searchQuery.trim());
       } else {
-        result = await listSessions({ context: contextFilter });
+        result = await listSessions({
+          context: contextFilter,
+          series_id: seriesFilter,
+        });
       }
       setSessions(Array.isArray(result) ? result : result?.sessions || []);
     } catch (err) {
@@ -61,7 +69,7 @@ export default function Dashboard() {
     } finally {
       setLoading(false);
     }
-  }, [searchQuery, contextFilter]);
+  }, [searchQuery, contextFilter, seriesFilter]);
 
   useEffect(() => {
     const timeout = setTimeout(fetchSessions, searchQuery ? 300 : 0);
@@ -145,10 +153,49 @@ export default function Dashboard() {
           onSearch={(q) => setSearchQuery(q)}
           onFilterChange={(id) => {
             setContextFilter(id);
+            setSeriesFilter(null);
             setSearchQuery('');
           }}
           activeFilter={contextFilter}
         />
+
+        {/* Series filter chips */}
+        {seriesList.length > 0 && (
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            <BookOpen size={14} strokeWidth={1.5} className="text-slate-500 shrink-0" />
+            <button
+              onClick={() => { setSeriesFilter(null); setContextFilter(null); }}
+              className={`text-xs font-medium px-2.5 py-1 rounded-full transition-all duration-200 touch-target ${
+                !seriesFilter
+                  ? 'bg-indigo-500/20 border border-indigo-400/50 text-indigo-300'
+                  : 'bg-white/5 border border-white/10 text-slate-400 hover:bg-white/10'
+              }`}
+            >
+              All
+            </button>
+            {seriesList.map((s) => (
+              <div key={s.id} className="flex items-center gap-1">
+                <button
+                  onClick={() => { setSeriesFilter(s.id); setContextFilter(null); setSearchQuery(''); }}
+                  className={`text-xs font-medium px-2.5 py-1 rounded-full transition-all duration-200 touch-target ${
+                    seriesFilter === s.id
+                      ? 'bg-indigo-500/20 border border-indigo-400/50 text-indigo-300'
+                      : 'bg-white/5 border border-white/10 text-slate-400 hover:bg-white/10'
+                  }`}
+                >
+                  {s.name}
+                </button>
+                <button
+                  onClick={() => navigate(`/series/${s.id}`)}
+                  className="text-slate-500 hover:text-indigo-400 transition-colors"
+                  title="View Memory"
+                >
+                  <BookOpen size={12} strokeWidth={1.5} />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Session list */}

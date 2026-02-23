@@ -1,5 +1,6 @@
 """Interpretation router."""
 
+import asyncio
 import json
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -10,6 +11,10 @@ from services.interpret_service import (
     interpret_with_custom,
     interpret_with_lens,
     interpret_with_socket,
+)
+from services.memory_service import (
+    get_memory_context_for_session,
+    synthesize_and_store_memory,
 )
 
 router = APIRouter(prefix="/api/sessions", tags=["interpretation"])
@@ -35,6 +40,9 @@ async def interpret_session(
     if isinstance(metadata, str):
         metadata = json.loads(metadata)
 
+    # Fetch memory context if session belongs to a series
+    memory_context = await get_memory_context_for_session(session_id, db)
+
     if body.lens_type.value == "preset":
         if not body.lens_id:
             # Default to session context
@@ -47,6 +55,7 @@ async def interpret_session(
             context_metadata=metadata,
             source_name=body.source_name,
             db=db,
+            memory_context=memory_context,
         )
     elif body.lens_type.value == "custom":
         if not body.system_prompt:
@@ -58,6 +67,7 @@ async def interpret_session(
             model=body.model,
             source_name=body.source_name,
             db=db,
+            memory_context=memory_context,
         )
     elif body.lens_type.value == "socket":
         if not body.lens_id:
@@ -76,6 +86,7 @@ async def interpret_session(
             model=body.model,
             source_name=body.source_name,
             db=db,
+            memory_context=memory_context,
         )
     else:
         raise HTTPException(400, f"Unknown lens type: {body.lens_type}")
@@ -86,6 +97,18 @@ async def interpret_session(
         (session_id,),
     )
     await db.commit()
+
+    # Fire-and-forget memory synthesis if session belongs to a series
+    if session.get("series_id"):
+        asyncio.create_task(
+            synthesize_and_store_memory(
+                series_id=session["series_id"],
+                session=session,
+                interpretation_markdown=result.get("output_markdown", ""),
+                model=body.model,
+                db=db,
+            )
+        )
 
     return result
 

@@ -16,6 +16,8 @@ vi.mock('../../lib/api', () => ({
   interpretSession: vi.fn(),
   exportMarkdown: vi.fn(),
   updateSession: vi.fn(),
+  listSeries: vi.fn().mockResolvedValue([]),
+  addSessionToSeries: vi.fn(),
 }));
 
 vi.mock('../../components/MarkdownPreview', () => ({

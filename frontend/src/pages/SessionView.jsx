@@ -7,6 +7,8 @@ import {
   interpretSession,
   exportMarkdown,
   updateSession,
+  listSeries,
+  addSessionToSeries,
 } from '../lib/api';
 import {
   contextLabel,
@@ -48,6 +50,9 @@ export default function SessionView() {
   const [selectedLens, setSelectedLens] = useState(null);
   const [interpreting, setInterpreting] = useState(false);
   const [interpretError, setInterpretError] = useState(null);
+  const [showSeriesAdd, setShowSeriesAdd] = useState(false);
+  const [allSeries, setAllSeries] = useState([]);
+  const [addingSeries, setAddingSeries] = useState(false);
 
   useEffect(() => {
     async function load() {
@@ -263,6 +268,69 @@ export default function SessionView() {
                   <span className={darkStatusColor(session.status)}>
                     {session.status}
                   </span>
+                </>
+              )}
+            </div>
+
+            {/* Series badge */}
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              {session.series_id && session.series_name ? (
+                <button
+                  onClick={() => navigate(`/series/${session.series_id}`)}
+                  className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 bg-indigo-500/10 border border-indigo-400/20 text-xs font-medium text-indigo-300 hover:bg-indigo-500/20 transition-colors"
+                >
+                  {session.series_name}
+                </button>
+              ) : (
+                <>
+                  {showSeriesAdd ? (
+                    <div className="flex items-center gap-2">
+                      <select
+                        onChange={async (e) => {
+                          if (!e.target.value) return;
+                          setAddingSeries(true);
+                          try {
+                            await addSessionToSeries(e.target.value, session.id);
+                            const updated = await getSession(session.id);
+                            setSession(updated);
+                            setShowSeriesAdd(false);
+                          } catch {
+                            // Silently fail
+                          } finally {
+                            setAddingSeries(false);
+                          }
+                        }}
+                        disabled={addingSeries}
+                        className="glass-select text-xs px-2 py-1 rounded-lg"
+                      >
+                        <option value="">Select series...</option>
+                        {allSeries.map((s) => (
+                          <option key={s.id} value={s.id}>{s.name}</option>
+                        ))}
+                      </select>
+                      <button
+                        onClick={() => setShowSeriesAdd(false)}
+                        className="text-xs text-slate-500 hover:text-slate-300"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={async () => {
+                        try {
+                          const series = await listSeries();
+                          setAllSeries(Array.isArray(series) ? series : []);
+                        } catch {
+                          setAllSeries([]);
+                        }
+                        setShowSeriesAdd(true);
+                      }}
+                      className="text-xs text-slate-500 hover:text-indigo-400 transition-colors"
+                    >
+                      + Add to Series
+                    </button>
+                  )}
                 </>
               )}
             </div>
