@@ -138,7 +138,13 @@ async def update_session(session_id: str, body: SessionUpdate, db=Depends(get_db
     )
     await db.commit()
 
-    cursor = await db.execute("SELECT * FROM sessions WHERE id = ?", (session_id,))
+    cursor = await db.execute(
+        """SELECT s.*, sr.name as series_name
+        FROM sessions s
+        LEFT JOIN series sr ON s.series_id = sr.id
+        WHERE s.id = ?""",
+        (session_id,),
+    )
     row = await cursor.fetchone()
     return _row_to_session(row)
 
@@ -150,6 +156,16 @@ async def delete_session(session_id: str, db=Depends(get_db)):
     if not row:
         raise HTTPException(404, "Session not found")
 
+    session = dict(row)
+
     await db.execute("DELETE FROM sessions WHERE id = ?", (session_id,))
+
+    # Decrement series session count if session belonged to a series
+    if session.get("series_id"):
+        await db.execute(
+            "UPDATE series SET session_count = MAX(session_count - 1, 0) WHERE id = ?",
+            (session["series_id"],),
+        )
+
     await db.commit()
     return {"ok": True}
