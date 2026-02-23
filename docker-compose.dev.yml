@@ -1,0 +1,30 @@
+services:
+  echobridge-dev:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    volumes:
+      - .:/app
+      - dev-data:/data
+      - dev-output:/output
+      - /app/frontend/node_modules
+      - /app/backend/__pycache__
+    ports:
+      - "127.0.0.1:8000:8000"
+      - "127.0.0.1:5173:5173"
+    environment:
+      - DATABASE_PATH=/data/echobridge.db
+      - AUDIO_DIR=/data/audio
+      - OUTPUT_DIR=/output
+    env_file:
+      - .env
+    command: >
+      bash -c "
+        cd /app/backend && uvicorn main:app --reload --host 0.0.0.0 --port 8000 &
+        cd /app/frontend && npm run dev -- --host 0.0.0.0 --port 5173 &
+        wait
+      "
+
+volumes:
+  dev-data:
+  dev-output:

@@ -1,0 +1,203 @@
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
+import { Pause, Square, Play } from 'lucide-react';
+import { getSession, submitTranscript } from '../lib/api';
+import { formatDuration, contextLabel } from '../lib/utils';
+import AudioRecorder from '../components/AudioRecorder';
+
+export default function Recording() {
+  const navigate = useNavigate();
+  const { sessionId } = useParams();
+  const [session, setSession] = useState(null);
+  const [isRecording, setIsRecording] = useState(true);
+  const [isPaused, setIsPaused] = useState(false);
+  const [elapsed, setElapsed] = useState(0);
+  const [audioLevel, setAudioLevel] = useState(0);
+  const [transcript, setTranscript] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState(null);
+  const startTimeRef = useRef(Date.now());
+  const pausedTimeRef = useRef(0);
+  const lastPauseRef = useRef(null);
+  const transcriptRef = useRef('');
+
+  // Fetch session info
+  useEffect(() => {
+    if (sessionId) {
+      getSession(sessionId)
+        .then(setSession)
+        .catch(() => {});
+    }
+  }, [sessionId]);
+
+  // Timer
+  useEffect(() => {
+    if (!isRecording) return;
+
+    const interval = setInterval(() => {
+      if (!isPaused) {
+        const pausedTotal = pausedTimeRef.current +
+          (lastPauseRef.current ? Date.now() - lastPauseRef.current : 0);
+        const ms = Date.now() - startTimeRef.current - pausedTotal;
+        setElapsed(Math.floor(ms / 1000));
+      }
+    }, 100);
+
+    return () => clearInterval(interval);
+  }, [isRecording, isPaused]);
+
+  const handleTranscriptChunk = useCallback((text, isFinal) => {
+    if (isFinal) {
+      transcriptRef.current = transcriptRef.current
+        ? transcriptRef.current + ' ' + text
+        : text;
+      setTranscript(transcriptRef.current);
+    }
+  }, []);
+
+  const handleAudioLevel = useCallback((level) => {
+    setAudioLevel(level);
+  }, []);
+
+  function handlePause() {
+    if (isPaused) {
+      // Resuming
+      if (lastPauseRef.current) {
+        pausedTimeRef.current += Date.now() - lastPauseRef.current;
+        lastPauseRef.current = null;
+      }
+      setIsPaused(false);
+    } else {
+      // Pausing
+      lastPauseRef.current = Date.now();
+      setIsPaused(true);
+    }
+  }
+
+  async function handleStop() {
+    setIsRecording(false);
+    setIsPaused(false);
+    setSubmitting(true);
+    setError(null);
+
+    try {
+      await submitTranscript(sessionId, transcriptRef.current || '', elapsed);
+      navigate(`/session/${sessionId}`);
+    } catch (err) {
+      setError(err.message || 'Failed to submit transcript.');
+      setSubmitting(false);
+    }
+  }
+
+  // Generate waveform bars based on audio level
+  const barCount = 24;
+  const bars = Array.from({ length: barCount }, (_, i) => {
+    const centerDist = Math.abs(i - barCount / 2) / (barCount / 2);
+    const baseHeight = 0.1 + (1 - centerDist) * 0.6;
+    const level = isPaused ? 0.05 : audioLevel;
+    const height = Math.max(0.05, baseHeight * level + Math.random() * 0.1 * level);
+    return height;
+  });
+
+  return (
+    <div className="w-full min-h-screen flex flex-col items-center justify-center px-6">
+      <AudioRecorder
+        onTranscriptChunk={handleTranscriptChunk}
+        onAudioLevel={handleAudioLevel}
+        isRecording={isRecording}
+        isPaused={isPaused}
+      />
+
+      {/* Recording indicator + label */}
+      <div className="flex items-center gap-3">
+        {isRecording && !isPaused && (
+          <span className="relative flex h-3 w-3">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-75" />
+            <span className="relative inline-flex rounded-full h-3 w-3 bg-red-600" />
+          </span>
+        )}
+        <span className="text-xs font-medium tracking-widest uppercase text-neutral-500">
+          {submitting ? 'Processing' : isPaused ? 'Paused' : 'Recording'}
+        </span>
+      </div>
+
+      {/* Timer */}
+      <div className="mt-6">
+        <span className="text-2xl font-bold font-mono text-neutral-900">
+          {formatDuration(elapsed)}
+        </span>
+      </div>
+
+      {/* Waveform visualization */}
+      <div className="mt-8 flex items-end gap-0.5 h-16">
+        {bars.map((height, i) => (
+          <div
+            key={i}
+            className="w-1.5 bg-neutral-400 transition-all duration-75"
+            style={{ height: `${height * 64}px` }}
+          />
+        ))}
+      </div>
+
+      {/* Controls */}
+      <div className="mt-8 flex items-center gap-4">
+        {!submitting && isRecording && (
+          <>
+            <button
+              onClick={handlePause}
+              className="bg-white text-neutral-700 text-sm font-medium px-5 py-2.5 border border-neutral-200 hover:border-neutral-400 transition-colors inline-flex items-center gap-2"
+            >
+              {isPaused ? (
+                <>
+                  <Play size={16} strokeWidth={1.5} />
+                  Resume
+                </>
+              ) : (
+                <>
+                  <Pause size={16} strokeWidth={1.5} />
+                  Pause
+                </>
+              )}
+            </button>
+            <button
+              onClick={handleStop}
+              className="bg-neutral-900 text-white text-sm font-medium px-5 py-2.5 hover:bg-neutral-800 transition-colors inline-flex items-center gap-2"
+            >
+              <Square size={16} strokeWidth={1.5} />
+              Stop
+            </button>
+          </>
+        )}
+        {submitting && (
+          <p className="text-sm text-neutral-500">Submitting transcript...</p>
+        )}
+      </div>
+
+      {/* Error */}
+      {error && (
+        <p className="mt-4 text-sm text-red-600">{error}</p>
+      )}
+
+      {/* Session metadata */}
+      <div className="mt-16 text-center">
+        {session && (
+          <>
+            <p className="text-sm text-neutral-500">
+              <span className="text-xs font-medium tracking-widest uppercase">
+                {contextLabel(session.context)}
+              </span>
+              {session.title && (
+                <span className="ml-2">{session.title}</span>
+              )}
+            </p>
+            {session.room_code && (
+              <p className="mt-1 text-sm text-neutral-400">
+                Room: {session.room_code}
+              </p>
+            )}
+          </>
+        )}
+      </div>
+    </div>
+  );
+}

@@ -1,0 +1,25 @@
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import Dashboard from './pages/Dashboard';
+import NewSession from './pages/NewSession';
+import Recording from './pages/Recording';
+import SessionView from './pages/SessionView';
+import RoomView from './pages/RoomView';
+import JoinRoom from './pages/JoinRoom';
+import SettingsPage from './pages/SettingsPage';
+
+export default function App() {
+  return (
+    <BrowserRouter>
+      <Routes>
+        <Route path="/" element={<Dashboard />} />
+        <Route path="/new" element={<NewSession />} />
+        <Route path="/recording/:sessionId" element={<Recording />} />
+        <Route path="/session/:id" element={<SessionView />} />
+        <Route path="/room/:code" element={<RoomView />} />
+        <Route path="/join" element={<JoinRoom />} />
+        <Route path="/settings" element={<SettingsPage />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </BrowserRouter>
+  );
+}
