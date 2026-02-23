@@ -129,4 +129,12 @@ async def save_markdown(
     with open(filepath, "w", encoding="utf-8") as f:
         f.write(content)
 
+    # Enqueue export for cloud sync if enabled
+    if settings.cloud_storage_enabled and settings.cloud_sync_exports:
+        from services.sync_service import get_sync_service
+        sync = get_sync_service()
+        if sync:
+            remote_key = f"exports/{filename}"
+            sync.enqueue(filepath, remote_key, file_type="export")
+
     return filepath

@@ -23,6 +23,8 @@ async def test_get_settings(client):
     assert "default_model" in data
     assert "models" in data
     assert isinstance(data["models"], dict)
+    assert "ai_provider" in data
+    assert "provider_models" in data
 
 
 @pytest.mark.asyncio

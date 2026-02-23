@@ -5,11 +5,7 @@ import { formatDuration } from '../lib/utils';
 
 /**
  * Recording component using the browser Web Speech API.
- * Shows:
- *  - Pulsing red recording dot (the ONLY rounded element per DESIGN.md)
- *  - Timer display (font-mono text-2xl font-bold)
- *  - Pause / Resume / Stop buttons
- *
+ * Shows a pulsing red recording dot, timer, and pause/resume/stop controls.
  * Collects all transcript chunks and passes them upstream.
  */
 export default function AudioRecorder({ onTranscriptChunk, onRecordingComplete }) {
@@ -122,7 +118,7 @@ export default function AudioRecorder({ onTranscriptChunk, onRecordingComplete }
       <div className="flex flex-col items-center py-16">
         <button
           onClick={handleStart}
-          className="bg-neutral-900 text-white text-sm font-medium px-5 py-2.5 hover:bg-neutral-800 transition-colors"
+          className="btn-primary inline-flex items-center gap-2 touch-target"
         >
           Start Recording
         </button>
@@ -132,21 +128,21 @@ export default function AudioRecorder({ onTranscriptChunk, onRecordingComplete }
 
   return (
     <div className="flex flex-col items-center py-16">
-      {/* Recording indicator: pulsing red dot -- ONLY rounded element */}
+      {/* Recording indicator: pulsing red dot with glow */}
       <div className="flex items-center gap-2">
-        <span className="relative flex h-3 w-3">
+        <span className="relative flex h-3 w-3" style={{ filter: 'drop-shadow(0 0 8px rgba(239, 68, 68, 0.5))' }}>
           {!isPaused && (
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-75" />
           )}
-          <span className="relative inline-flex rounded-full h-3 w-3 bg-red-600" />
+          <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500" />
         </span>
-        <span className="text-xs font-medium tracking-widest uppercase text-red-600">
+        <span className="text-xs font-medium tracking-widest uppercase text-red-400">
           {isPaused ? 'Paused' : 'Recording'}
         </span>
       </div>
 
       {/* Timer */}
-      <div className="mt-6 font-mono text-2xl font-bold text-neutral-900">
+      <div className="mt-6 font-mono text-3xl md:text-4xl font-bold text-slate-50">
         {formatDuration(elapsedSeconds)}
       </div>
 
@@ -154,7 +150,7 @@ export default function AudioRecorder({ onTranscriptChunk, onRecordingComplete }
       <div className="mt-8 flex items-center gap-4">
         <button
           onClick={handlePause}
-          className="bg-white text-neutral-700 text-sm font-medium px-5 py-2.5 border border-neutral-200 hover:border-neutral-400 transition-colors flex items-center gap-2"
+          className="btn-secondary inline-flex items-center gap-2 touch-target"
         >
           {isPaused ? (
             <>
@@ -171,7 +167,7 @@ export default function AudioRecorder({ onTranscriptChunk, onRecordingComplete }
 
         <button
           onClick={handleStop}
-          className="bg-white text-neutral-700 text-sm font-medium px-5 py-2.5 border border-neutral-200 hover:border-neutral-400 transition-colors flex items-center gap-2"
+          className="bg-red-500 hover:bg-red-400 text-white text-sm font-medium px-5 py-2.5 rounded-lg transition-all duration-200 shadow-lg shadow-red-500/25 inline-flex items-center gap-2 touch-target"
         >
           <Square size={20} strokeWidth={1.5} />
           Stop

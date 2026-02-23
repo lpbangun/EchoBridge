@@ -7,15 +7,26 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
 from database import get_db, close_db
-from routers import sessions, transcribe, interpret, export, settings, rooms, sockets, stream, agent
+from routers import sessions, transcribe, interpret, export, settings, rooms, sockets, stream, agent, storage
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup: ensure DB is initialized
     await get_db()
+
+    # Start cloud sync service
+    from config import settings as app_settings
+    from services.storage.factory import get_storage_backend
+    from services.sync_service import init_sync_service
+    backend = get_storage_backend(app_settings)
+    sync_svc = init_sync_service(backend)
+    sync_svc.start()
+
     yield
-    # Shutdown: close DB
+
+    # Shutdown: stop sync and close DB
+    sync_svc.stop()
     await close_db()
 
 
@@ -44,6 +55,9 @@ app.include_router(sockets.router)
 
 # Phase 5 routers
 app.include_router(agent.router)
+
+# Cloud storage router
+app.include_router(storage.router)
 
 
 @app.get("/api/health")

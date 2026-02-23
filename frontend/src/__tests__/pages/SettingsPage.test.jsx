@@ -14,24 +14,58 @@ vi.mock('../../lib/api', () => ({
   getSettings: vi.fn(),
   updateSettings: vi.fn(),
   createApiKey: vi.fn(),
+  testCloudConnection: vi.fn(),
+  getStorageStatus: vi.fn(),
 }));
 
-import { getSettings, updateSettings, createApiKey } from '../../lib/api';
+import { getSettings, updateSettings, createApiKey, testCloudConnection, getStorageStatus } from '../../lib/api';
 
 // --- Helpers ---
 
 const MOCK_SETTINGS = {
   user_display_name: 'Alice',
-  default_model: 'anthropic/claude-sonnet-4-20250514',
+  ai_provider: 'openrouter',
+  default_model: 'anthropic/claude-sonnet-4.6',
   output_dir: '/output',
   auto_export: true,
   include_transcript_in_md: false,
   whisper_model: 'small',
   openrouter_api_key_set: true,
+  openai_api_key_set: false,
+  anthropic_api_key_set: false,
+  google_api_key_set: false,
+  xai_api_key_set: false,
   models: {
-    'anthropic/claude-sonnet-4-20250514': 'Claude Sonnet 4',
-    'google/gemini-2.5-flash-preview': 'Gemini 2.5 Flash',
+    'anthropic/claude-sonnet-4.6': 'Claude Sonnet 4.6',
+    'google/gemini-3-flash-preview': 'Gemini 3 Flash',
   },
+  provider_models: {
+    openrouter: {
+      'anthropic/claude-sonnet-4.6': 'Claude Sonnet 4.6',
+      'google/gemini-3-flash-preview': 'Gemini 3 Flash',
+    },
+    openai: {
+      'gpt-4o': 'GPT-4o',
+    },
+    anthropic: {
+      'claude-sonnet-4-6-latest': 'Claude Sonnet 4.6',
+    },
+    google: {
+      'gemini-2.5-flash': 'Gemini 2.5 Flash',
+    },
+    xai: {
+      'grok-3': 'Grok 3',
+    },
+  },
+  cloud_storage_enabled: false,
+  s3_endpoint_url: '',
+  s3_access_key_id: '',
+  s3_secret_configured: false,
+  s3_bucket_name: '',
+  s3_region: 'auto',
+  s3_prefix: 'echobridge/',
+  cloud_sync_audio: true,
+  cloud_sync_exports: true,
 };
 
 // --- Tests ---
@@ -69,9 +103,9 @@ describe('SettingsPage', () => {
     await waitFor(() => {
       expect(screen.getByText('Default Model')).toBeInTheDocument();
     });
-    // The select should have the model options
-    expect(screen.getByText('Claude Sonnet 4')).toBeInTheDocument();
-    expect(screen.getByText('Gemini 2.5 Flash')).toBeInTheDocument();
+    // The select should have the model options (format: "Name — id")
+    expect(screen.getByText('Claude Sonnet 4.6 — anthropic/claude-sonnet-4.6')).toBeInTheDocument();
+    expect(screen.getByText('Gemini 3 Flash — google/gemini-3-flash-preview')).toBeInTheDocument();
   });
 
   it('shows Whisper Model selector', async () => {

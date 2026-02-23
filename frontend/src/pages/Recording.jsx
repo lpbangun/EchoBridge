@@ -1,13 +1,16 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Pause, Square, Play } from 'lucide-react';
+import { Pause, Square, Play, WifiOff } from 'lucide-react';
 import { getSession, submitTranscript } from '../lib/api';
 import { formatDuration, contextLabel } from '../lib/utils';
+import { savePendingRecording } from '../lib/offlineStorage';
+import useOnlineStatus from '../hooks/useOnlineStatus';
 import AudioRecorder from '../components/AudioRecorder';
 
 export default function Recording() {
   const navigate = useNavigate();
   const { sessionId } = useParams();
+  const isOnline = useOnlineStatus();
   const [session, setSession] = useState(null);
   const [isRecording, setIsRecording] = useState(true);
   const [isPaused, setIsPaused] = useState(false);
@@ -16,6 +19,7 @@ export default function Recording() {
   const [transcript, setTranscript] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
+  const [savedOffline, setSavedOffline] = useState(false);
   const startTimeRef = useRef(Date.now());
   const pausedTimeRef = useRef(0);
   const lastPauseRef = useRef(null);
@@ -80,8 +84,27 @@ export default function Recording() {
     setSubmitting(true);
     setError(null);
 
+    const currentTranscript = transcriptRef.current || '';
+
+    if (!isOnline) {
+      // Save to IndexedDB for later sync
+      try {
+        await savePendingRecording({
+          sessionId,
+          transcript: currentTranscript,
+          durationSeconds: elapsed,
+        });
+        setSavedOffline(true);
+        setSubmitting(false);
+      } catch (err) {
+        setError('Failed to save recording offline: ' + (err.message || 'Unknown error'));
+        setSubmitting(false);
+      }
+      return;
+    }
+
     try {
-      await submitTranscript(sessionId, transcriptRef.current || '', elapsed);
+      await submitTranscript(sessionId, currentTranscript, elapsed);
       navigate(`/session/${sessionId}`);
     } catch (err) {
       setError(err.message || 'Failed to submit transcript.');
@@ -100,7 +123,7 @@ export default function Recording() {
   });
 
   return (
-    <div className="w-full min-h-screen flex flex-col items-center justify-center px-6">
+    <div className="w-full min-h-screen flex flex-col items-center justify-center px-4 md:px-6 safe-area-inset">
       <AudioRecorder
         onTranscriptChunk={handleTranscriptChunk}
         onAudioLevel={handleAudioLevel}
@@ -109,7 +132,7 @@ export default function Recording() {
       />
 
       {/* Glass container for recording UI */}
-      <div className="glass rounded-xl p-12 flex flex-col items-center">
+      <div className="glass rounded-xl p-6 md:p-12 flex flex-col items-center w-full max-w-lg">
         {/* Recording indicator + label */}
         <div className="flex items-center gap-3">
           {isRecording && !isPaused && (
@@ -125,7 +148,7 @@ export default function Recording() {
 
         {/* Timer */}
         <div className="mt-6">
-          <span className="text-5xl font-bold font-mono text-slate-50">
+          <span className="text-3xl md:text-5xl font-bold font-mono text-slate-50">
             {formatDuration(elapsed)}
           </span>
         </div>
@@ -152,13 +175,21 @@ export default function Recording() {
           <p className="mt-4 text-xs text-slate-500">Audio is being transcribed using speech recognition.</p>
         )}
 
+        {/* Offline saved confirmation */}
+        {savedOffline && (
+          <div className="mt-6 flex items-center gap-2 text-amber-400">
+            <WifiOff size={16} strokeWidth={1.5} />
+            <p className="text-sm">Recording saved offline. It will sync when you reconnect.</p>
+          </div>
+        )}
+
         {/* Controls */}
         <div className="mt-8 flex items-center gap-4">
           {!submitting && isRecording && (
             <>
               <button
                 onClick={handlePause}
-                className="btn-secondary inline-flex items-center gap-2"
+                className="btn-secondary inline-flex items-center gap-2 touch-target"
               >
                 {isPaused ? (
                   <>
@@ -174,7 +205,7 @@ export default function Recording() {
               </button>
               <button
                 onClick={handleStop}
-                className="bg-red-500 hover:bg-red-400 text-white text-sm font-medium px-5 py-2.5 rounded-lg transition-all duration-200 shadow-lg shadow-red-500/25 hover:shadow-red-400/30 inline-flex items-center gap-2"
+                className="bg-red-500 hover:bg-red-400 text-white text-sm font-medium px-5 py-2.5 rounded-lg transition-all duration-200 shadow-lg shadow-red-500/25 hover:shadow-red-400/30 inline-flex items-center gap-2 touch-target"
               >
                 <Square size={16} strokeWidth={1.5} />
                 Stop
@@ -186,6 +217,14 @@ export default function Recording() {
               <div className="h-4 w-4 border-2 border-indigo-400 border-t-transparent rounded-full animate-spin" />
               <p className="text-sm text-slate-400">Saving transcript...</p>
             </div>
+          )}
+          {savedOffline && (
+            <button
+              onClick={() => navigate('/')}
+              className="btn-primary inline-flex items-center gap-2 touch-target"
+            >
+              Back to Dashboard
+            </button>
           )}
         </div>
       </div>

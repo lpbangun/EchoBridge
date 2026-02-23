@@ -1,28 +1,45 @@
-import { contextLabel, formatDate, formatDurationShort, statusColor } from '../lib/utils';
+import { contextLabel, formatDate, formatDurationShort } from '../lib/utils';
 
 /**
  * Card component for the dashboard session list.
- * Follows DESIGN.md card style: 1px neutral-200 border, no background,
- * no rounded corners, no shadows, hover to neutral-400.
+ * Glassmorphism dark theme: glass card with rounded-xl, glow on hover.
+ * Status colors adapted for dark backgrounds.
  */
+
+const STATUS_STYLES = {
+  created: { dot: 'bg-slate-400', text: 'text-slate-400' },
+  recording: { dot: 'bg-red-400', text: 'text-red-400' },
+  transcribing: { dot: 'bg-amber-400', text: 'text-amber-400' },
+  processing: { dot: 'bg-amber-400', text: 'text-amber-400' },
+  complete: { dot: 'bg-green-400', text: 'text-green-400' },
+  error: { dot: 'bg-red-400', text: 'text-red-400' },
+  waiting: { dot: 'bg-slate-400', text: 'text-slate-400' },
+  closed: { dot: 'bg-slate-400', text: 'text-slate-400' },
+};
+
+function getStatusStyle(status) {
+  return STATUS_STYLES[status] || { dot: 'bg-slate-400', text: 'text-slate-400' };
+}
+
 export default function SessionCard({ session, onClick }) {
   const status = session.status;
   const showStatus = status && status !== 'complete';
+  const statusStyle = getStatusStyle(status);
 
   return (
     <button
       onClick={() => onClick(session.id)}
-      className="w-full text-left p-6 border border-neutral-200 hover:border-neutral-400 transition-colors"
+      className="w-full text-left glass rounded-xl p-4 md:p-6 hover:bg-white/[0.08] hover:border-white/20 hover:shadow-glow transition-all duration-200 touch-target"
     >
-      <span className="text-xs font-medium tracking-widest uppercase text-neutral-500">
+      <span className="section-label">
         {contextLabel(session.context)}
       </span>
 
-      <h3 className="mt-2 text-base font-medium text-neutral-900">
+      <h3 className="mt-2 text-base font-medium text-slate-100">
         {session.title || 'Untitled Session'}
       </h3>
 
-      <p className="mt-1 text-sm text-neutral-500">
+      <p className="mt-1 text-sm text-slate-400">
         {formatDate(session.created_at)}
         {session.duration_seconds != null && (
           <span> &middot; {formatDurationShort(session.duration_seconds)}</span>
@@ -33,7 +50,8 @@ export default function SessionCard({ session, onClick }) {
       </p>
 
       {showStatus && (
-        <span className={`inline-block mt-2 text-xs font-medium tracking-wide ${statusColor(status)}`}>
+        <span className={`inline-flex items-center gap-1.5 mt-3 rounded-full px-2.5 py-0.5 bg-white/5 text-xs font-medium ${statusStyle.text}`}>
+          <span className={`w-1.5 h-1.5 rounded-full ${statusStyle.dot}`} />
           {status}
         </span>
       )}

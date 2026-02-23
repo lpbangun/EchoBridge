@@ -146,7 +146,7 @@ export default function SessionView() {
 
   if (loading) {
     return (
-      <div className="max-w-3xl mx-auto px-6 py-12">
+      <div className="max-w-3xl mx-auto px-4 py-6 md:px-6 md:py-12 safe-area-inset">
         <p className="text-sm text-slate-500">Loading...</p>
       </div>
     );
@@ -154,7 +154,7 @@ export default function SessionView() {
 
   if (error) {
     return (
-      <div className="max-w-3xl mx-auto px-6 py-12">
+      <div className="max-w-3xl mx-auto px-4 py-6 md:px-6 md:py-12 safe-area-inset">
         <p className="text-sm text-red-400">{error}</p>
       </div>
     );
@@ -163,49 +163,49 @@ export default function SessionView() {
   if (!session) return null;
 
   return (
-    <div className="max-w-3xl mx-auto px-6 py-12">
+    <div className="max-w-3xl mx-auto px-4 py-6 md:px-6 md:py-12 safe-area-inset">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-4">
         <button
           onClick={() => navigate('/')}
-          className="text-slate-400 hover:text-indigo-400 transition-colors inline-flex items-center gap-2 text-sm font-medium"
+          className="text-slate-400 hover:text-indigo-400 transition-colors inline-flex items-center gap-2 text-sm font-medium touch-target shrink-0"
         >
           <ArrowLeft size={20} strokeWidth={1.5} />
-          Back
+          <span className="hidden sm:inline">Back</span>
         </button>
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2 md:gap-4 min-w-0">
           {editingTitle ? (
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 min-w-0">
               <input
                 type="text"
                 value={titleDraft}
                 onChange={(e) => setTitleDraft(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleSaveTitle()}
-                className="glass-input text-base px-4 py-2"
+                className="glass-input text-base px-4 py-2 min-w-0"
                 autoFocus
               />
               <button
                 onClick={handleSaveTitle}
-                className="text-sm font-medium text-slate-300 hover:text-indigo-400 transition-colors"
+                className="text-sm font-medium text-slate-300 hover:text-indigo-400 transition-colors touch-target"
               >
                 Save
               </button>
             </div>
           ) : (
-            <h1 className="text-xl font-semibold text-slate-100">
+            <h1 className="text-lg md:text-xl font-semibold text-slate-100 truncate">
               {session.title || 'Untitled Session'}
             </h1>
           )}
           <button
             onClick={() => setEditingTitle(!editingTitle)}
-            className="text-slate-400 hover:text-indigo-400 transition-colors"
+            className="text-slate-400 hover:text-indigo-400 transition-colors touch-target inline-flex items-center justify-center shrink-0"
             aria-label="Edit title"
           >
             <Pencil size={16} strokeWidth={1.5} />
           </button>
           <button
             onClick={handleExport}
-            className="text-slate-400 hover:text-indigo-400 transition-colors"
+            className="text-slate-400 hover:text-indigo-400 transition-colors touch-target inline-flex items-center justify-center shrink-0"
             aria-label="Download export"
           >
             <Download size={16} strokeWidth={1.5} />
@@ -215,7 +215,7 @@ export default function SessionView() {
 
       {/* Tabs */}
       <nav className="mt-8">
-        <div className="glass rounded-xl p-1 inline-flex gap-1">
+        <div className="glass rounded-xl p-1 inline-flex gap-1 overflow-x-auto max-w-full">
           {TABS.map((tab) => {
             const label =
               tab === 'Interpretations'
@@ -226,7 +226,7 @@ export default function SessionView() {
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
-                className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
+                className={`px-3 md:px-4 py-2 text-sm font-medium rounded-lg transition-colors whitespace-nowrap touch-target ${
                   isActive
                     ? 'bg-indigo-500/20 text-indigo-300'
                     : 'text-slate-400 hover:text-slate-200'
@@ -319,7 +319,7 @@ export default function SessionView() {
         {activeTab === 'Transcript' && (
           <div>
             {session.transcript ? (
-              <div className="glass rounded-xl p-6 max-h-[600px] overflow-y-auto">
+              <div className="glass rounded-xl p-4 md:p-6 max-h-[600px] overflow-y-auto">
                 <p className="font-mono text-sm text-slate-300 leading-relaxed whitespace-pre-wrap">
                   {session.transcript}
                 </p>
@@ -370,11 +370,11 @@ export default function SessionView() {
                       <p className="mt-4 text-sm text-red-400">{interpretError}</p>
                     )
                   )}
-                  <div className="mt-4 flex gap-4">
+                  <div className="mt-4 flex flex-col sm:flex-row gap-4">
                     <button
                       onClick={handleInterpret}
                       disabled={!selectedLens || interpreting}
-                      className="btn-primary"
+                      className="btn-primary touch-target"
                     >
                       {interpreting ? 'Interpreting...' : 'Run Interpretation'}
                     </button>
@@ -384,7 +384,7 @@ export default function SessionView() {
                         setSelectedLens(null);
                         setInterpretError(null);
                       }}
-                      className="btn-secondary"
+                      className="btn-secondary touch-target"
                     >
                       Cancel
                     </button>
@@ -393,7 +393,7 @@ export default function SessionView() {
               ) : (
                 <button
                   onClick={() => setShowLensSelector(true)}
-                  className="btn-secondary"
+                  className="btn-secondary touch-target"
                 >
                   New Interpretation
                 </button>

@@ -40,18 +40,20 @@ describe('SearchBar', () => {
     expect(onFilterChange).toHaveBeenCalledWith('startup_meeting');
   });
 
-  it('applies border-neutral-900 to the active filter chip', () => {
+  it('applies active styles to the active filter chip', () => {
     render(
       <SearchBar onSearch={onSearch} onFilterChange={onFilterChange} activeFilter="class_lecture" />
     );
     const activeChip = screen.getByText('Class Lecture').closest('button');
-    expect(activeChip.className).toContain('border-neutral-900');
+    expect(activeChip.className).toContain('bg-indigo-500/20');
+    expect(activeChip.className).toContain('border-indigo-400/50');
   });
 
   it('"All" chip is active when activeFilter is null', () => {
     render(<SearchBar onSearch={onSearch} onFilterChange={onFilterChange} activeFilter={null} />);
     const allChip = screen.getByText('All').closest('button');
-    expect(allChip.className).toContain('border-neutral-900');
+    expect(allChip.className).toContain('bg-indigo-500/20');
+    expect(allChip.className).toContain('border-indigo-400/50');
   });
 
   it('calls onFilterChange with null when "All" chip is clicked', () => {

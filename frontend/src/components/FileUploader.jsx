@@ -100,7 +100,7 @@ export default function FileUploader({ sessionId, onComplete, onError }) {
         onDragLeave={() => setDragOver(false)}
         onDrop={handleDrop}
         onClick={() => !uploading && inputRef.current?.click()}
-        className={`glass rounded-xl p-8 text-center transition-all duration-200 ${
+        className={`glass rounded-xl p-6 md:p-8 text-center transition-all duration-200 touch-target ${
           uploading ? 'cursor-default' : 'cursor-pointer'
         } ${
           dragOver

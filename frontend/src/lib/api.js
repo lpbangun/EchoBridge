@@ -212,3 +212,15 @@ export async function stopRoom(code) {
     method: 'POST',
   });
 }
+
+// --- Cloud Storage ---
+
+export async function testCloudConnection() {
+  return request('/storage/test', {
+    method: 'POST',
+  });
+}
+
+export async function getStorageStatus() {
+  return request('/storage/status');
+}

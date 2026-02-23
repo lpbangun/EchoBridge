@@ -39,17 +39,17 @@ export default function JoinRoom() {
   }
 
   return (
-    <div className="max-w-3xl mx-auto px-6 py-12">
+    <div className="max-w-3xl mx-auto px-4 py-6 md:px-6 md:py-12 safe-area-inset">
       {/* Header */}
       <div className="flex items-center justify-between">
         <button
           onClick={() => navigate('/')}
-          className="text-slate-400 hover:text-indigo-400 transition-colors inline-flex items-center gap-2 text-sm font-medium"
+          className="text-slate-400 hover:text-indigo-400 transition-colors inline-flex items-center gap-2 text-sm font-medium touch-target"
         >
           <ArrowLeft size={20} strokeWidth={1.5} />
           Back
         </button>
-        <h1 className="text-xl font-semibold text-slate-100">
+        <h1 className="text-lg md:text-xl font-semibold text-slate-100">
           JOIN ROOM
         </h1>
       </div>
@@ -59,7 +59,7 @@ export default function JoinRoom() {
 
       {/* Form */}
       <form onSubmit={handleJoin} className="mt-8">
-        <div className="glass rounded-xl p-8">
+        <div className="glass rounded-xl p-4 md:p-8">
           {/* Room Code */}
           <div>
             <label className="section-label">
@@ -101,7 +101,7 @@ export default function JoinRoom() {
             <button
               type="submit"
               disabled={joining}
-              className="btn-primary inline-flex items-center gap-2 disabled:opacity-50"
+              className="btn-primary inline-flex items-center gap-2 disabled:opacity-50 touch-target"
             >
               <Users size={16} strokeWidth={1.5} />
               {joining ? 'Joining...' : 'Join Room'}

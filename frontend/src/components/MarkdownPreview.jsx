@@ -1,12 +1,12 @@
 /**
  * Simple markdown-to-JSX preview component.
  * Renders markdown content as formatted React elements.
- * No dangerouslySetInnerHTML - all rendering is done via React elements.
+ * All rendering is done via safe React elements only.
  */
 export default function MarkdownPreview({ content }) {
   if (!content) {
     return (
-      <p className="text-sm text-neutral-400">No content available.</p>
+      <p className="text-sm text-slate-500">No content available.</p>
     );
   }
 
@@ -19,21 +19,21 @@ export default function MarkdownPreview({ content }) {
 
         if (trimmed.startsWith('### ')) {
           return (
-            <h3 key={i} className="text-base font-medium text-neutral-900 mt-4 mb-1">
+            <h3 key={i} className="text-base font-medium text-slate-200 mt-4 mb-1">
               {renderInline(trimmed.slice(4))}
             </h3>
           );
         }
         if (trimmed.startsWith('## ')) {
           return (
-            <h2 key={i} className="text-lg font-medium text-neutral-900 mt-6 mb-2">
+            <h2 key={i} className="text-lg font-medium text-slate-100 mt-6 mb-2">
               {renderInline(trimmed.slice(3))}
             </h2>
           );
         }
         if (trimmed.startsWith('# ')) {
           return (
-            <h1 key={i} className="text-xl font-bold tracking-tight text-neutral-900 mt-6 mb-2">
+            <h1 key={i} className="text-xl font-bold text-slate-50 mt-6 mb-2">
               {renderInline(trimmed.slice(2))}
             </h1>
           );
@@ -42,8 +42,8 @@ export default function MarkdownPreview({ content }) {
           const checked = trimmed.startsWith('- [x] ');
           const text = trimmed.slice(6);
           return (
-            <div key={i} className="flex items-start gap-2 text-base text-neutral-700">
-              <span className={`mt-0.5 ${checked ? 'text-green-600' : 'text-neutral-400'}`}>
+            <div key={i} className="flex items-start gap-2 text-base text-slate-300">
+              <span className={`mt-0.5 ${checked ? 'text-green-400' : 'text-slate-500'}`}>
                 {checked ? '\u2611' : '\u2610'}
               </span>
               <span>{renderInline(text)}</span>
@@ -52,8 +52,8 @@ export default function MarkdownPreview({ content }) {
         }
         if (trimmed.startsWith('- ') || trimmed.startsWith('* ')) {
           return (
-            <div key={i} className="flex items-start gap-2 text-base text-neutral-700 leading-relaxed">
-              <span className="text-neutral-400 mt-0.5">&bull;</span>
+            <div key={i} className="flex items-start gap-2 text-base text-slate-300 leading-relaxed">
+              <span className="text-indigo-400 mt-0.5">&bull;</span>
               <span>{renderInline(trimmed.slice(2))}</span>
             </div>
           );
@@ -61,21 +61,21 @@ export default function MarkdownPreview({ content }) {
         if (/^\d+\.\s/.test(trimmed)) {
           const match = trimmed.match(/^(\d+)\.\s(.*)/);
           return (
-            <div key={i} className="flex items-start gap-2 text-base text-neutral-700 leading-relaxed">
-              <span className="text-neutral-500 font-medium min-w-[1.5rem]">{match[1]}.</span>
+            <div key={i} className="flex items-start gap-2 text-base text-slate-300 leading-relaxed">
+              <span className="text-indigo-400 font-medium min-w-[1.5rem]">{match[1]}.</span>
               <span>{renderInline(match[2])}</span>
             </div>
           );
         }
         if (trimmed === '---' || trimmed === '***') {
-          return <hr key={i} className="border-neutral-200 my-4" />;
+          return <hr key={i} className="border-white/10 my-4" />;
         }
         if (trimmed === '') {
           return <div key={i} className="h-2" />;
         }
 
         return (
-          <p key={i} className="text-base font-normal text-neutral-700 leading-relaxed">
+          <p key={i} className="text-base text-slate-300 leading-relaxed">
             {renderInline(trimmed)}
           </p>
         );
@@ -86,7 +86,7 @@ export default function MarkdownPreview({ content }) {
 
 /**
  * Parse inline markdown (bold, italic, code) into React elements.
- * No HTML injection - pure React rendering.
+ * Uses pure React rendering for safety.
  */
 function renderInline(text) {
   if (!text) return null;
@@ -100,7 +100,7 @@ function renderInline(text) {
     const boldMatch = remaining.match(/^(.*?)\*\*(.+?)\*\*(.*)/s);
     if (boldMatch) {
       if (boldMatch[1]) parts.push(<span key={key++}>{boldMatch[1]}</span>);
-      parts.push(<strong key={key++} className="font-bold">{boldMatch[2]}</strong>);
+      parts.push(<strong key={key++} className="font-bold text-slate-100">{boldMatch[2]}</strong>);
       remaining = boldMatch[3];
       continue;
     }
@@ -119,7 +119,7 @@ function renderInline(text) {
     if (codeMatch) {
       if (codeMatch[1]) parts.push(<span key={key++}>{codeMatch[1]}</span>);
       parts.push(
-        <code key={key++} className="font-mono text-sm bg-neutral-100 px-1 py-0.5">
+        <code key={key++} className="font-mono text-sm bg-white/10 text-indigo-300 px-1.5 py-0.5 rounded">
           {codeMatch[2]}
         </code>
       );

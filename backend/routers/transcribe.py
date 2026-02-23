@@ -61,6 +61,14 @@ async def upload_audio(
             (result.text, int(result.duration_seconds), session_id),
         )
         await db.commit()
+        # Enqueue audio for cloud sync if enabled
+        if settings.cloud_storage_enabled and settings.cloud_sync_audio:
+            from services.sync_service import get_sync_service
+            sync = get_sync_service()
+            if sync:
+                remote_key = f"audio/{file_id}{ext}"
+                sync.enqueue(audio_path, remote_key, file_type="audio")
+
         return {
             "session_id": session_id,
             "transcript_length": len(result.text),

@@ -165,7 +165,7 @@ export default function RoomView() {
 
   if (loading) {
     return (
-      <div className="max-w-3xl mx-auto px-6 py-12">
+      <div className="max-w-3xl mx-auto px-4 py-6 md:px-6 md:py-12 safe-area-inset">
         <p className="text-sm text-slate-500">Loading...</p>
       </div>
     );
@@ -173,7 +173,7 @@ export default function RoomView() {
 
   if (error) {
     return (
-      <div className="max-w-3xl mx-auto px-6 py-12">
+      <div className="max-w-3xl mx-auto px-4 py-6 md:px-6 md:py-12 safe-area-inset">
         <p className="text-sm text-red-400">{error}</p>
       </div>
     );
@@ -186,23 +186,23 @@ export default function RoomView() {
   const isProcessing = room.status === 'processing';
 
   return (
-    <div className="max-w-3xl mx-auto px-6 py-12">
+    <div className="max-w-3xl mx-auto px-4 py-6 md:px-6 md:py-12 safe-area-inset">
       {/* Header */}
       <div className="flex items-center justify-between">
         <button
           onClick={() => navigate('/')}
-          className="text-slate-400 hover:text-indigo-400 transition-colors inline-flex items-center gap-2 text-sm font-medium"
+          className="text-slate-400 hover:text-indigo-400 transition-colors inline-flex items-center gap-2 text-sm font-medium touch-target"
         >
           <ArrowLeft size={20} strokeWidth={1.5} />
           Back
         </button>
         <div className="inline-flex items-center gap-2">
-          <h1 className="text-xl font-semibold font-mono text-slate-100">
+          <h1 className="text-lg md:text-xl font-semibold font-mono text-slate-100">
             {code}
           </h1>
           <button
             onClick={handleCopyCode}
-            className="text-slate-400 hover:text-indigo-400 transition-colors"
+            className="text-slate-400 hover:text-indigo-400 transition-colors touch-target inline-flex items-center justify-center"
             aria-label="Copy room code"
           >
             <Copy size={16} strokeWidth={1.5} />
@@ -271,12 +271,12 @@ export default function RoomView() {
       )}
 
       {/* Controls */}
-      <div className="mt-8 flex gap-4">
+      <div className="mt-8 flex flex-col sm:flex-row gap-4">
         {isWaiting && (
           <button
             onClick={handleStart}
             disabled={actionLoading}
-            className="btn-primary inline-flex items-center gap-2 disabled:opacity-50"
+            className="btn-primary inline-flex items-center gap-2 disabled:opacity-50 touch-target"
           >
             <Mic size={16} strokeWidth={1.5} />
             {actionLoading ? 'Starting...' : 'Start Recording'}
@@ -286,7 +286,7 @@ export default function RoomView() {
           <button
             onClick={handleStop}
             disabled={actionLoading}
-            className="bg-red-500 hover:bg-red-400 text-white text-sm font-medium px-5 py-2.5 rounded-lg transition-colors inline-flex items-center gap-2 disabled:opacity-50"
+            className="bg-red-500 hover:bg-red-400 text-white text-sm font-medium px-5 py-2.5 rounded-lg transition-colors inline-flex items-center gap-2 disabled:opacity-50 touch-target"
           >
             <Square size={16} strokeWidth={1.5} />
             {actionLoading ? 'Stopping...' : 'Stop Recording'}

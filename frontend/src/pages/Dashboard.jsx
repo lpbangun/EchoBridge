@@ -1,7 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Settings, Plus, MessageSquare, Key } from 'lucide-react';
+import { Settings, Plus, MessageSquare, Key, CloudOff, RefreshCw } from 'lucide-react';
 import { listSessions, searchSessions, getSettings } from '../lib/api';
+import { getPendingCount } from '../lib/offlineStorage';
+import { syncPendingRecordings, onSyncStatusChange } from '../lib/syncManager';
 import SessionCard from '../components/SessionCard';
 import SearchBar from '../components/SearchBar';
 
@@ -13,6 +15,8 @@ export default function Dashboard() {
   const [searchQuery, setSearchQuery] = useState('');
   const [contextFilter, setContextFilter] = useState(null);
   const [needsApiKey, setNeedsApiKey] = useState(false);
+  const [pendingCount, setPendingCount] = useState(0);
+  const [syncing, setSyncing] = useState(false);
 
   // Check if API key is set
   useEffect(() => {
@@ -21,6 +25,24 @@ export default function Dashboard() {
         setNeedsApiKey(!settings.openrouter_api_key_set);
       })
       .catch(() => {});
+  }, []);
+
+  // Check for pending offline recordings
+  useEffect(() => {
+    getPendingCount()
+      .then(setPendingCount)
+      .catch(() => {});
+
+    const unsubscribe = onSyncStatusChange((status) => {
+      setSyncing(status.syncing);
+      if (!status.syncing) {
+        getPendingCount()
+          .then(setPendingCount)
+          .catch(() => {});
+      }
+    });
+
+    return unsubscribe;
   }, []);
 
   const fetchSessions = useCallback(async () => {
@@ -50,10 +72,14 @@ export default function Dashboard() {
     navigate(`/session/${id}`);
   }
 
+  function handleSync() {
+    syncPendingRecordings();
+  }
+
   return (
-    <div className="max-w-5xl mx-auto px-6 py-12">
+    <div className="max-w-5xl mx-auto px-4 py-6 md:px-6 md:py-12 safe-area-inset">
       {/* Header */}
-      <div className="glass rounded-xl px-6 py-4 flex items-center justify-between">
+      <div className="glass rounded-xl px-4 py-3 md:px-6 md:py-4 flex items-center justify-between gap-4">
         <div>
           <h1
             className="text-xl font-bold tracking-tight text-slate-50"
@@ -66,14 +92,14 @@ export default function Dashboard() {
         <div className="flex items-center gap-4">
           <button
             onClick={() => navigate('/settings')}
-            className="text-slate-400 hover:text-indigo-400 transition-colors"
+            className="text-slate-400 hover:text-indigo-400 transition-colors touch-target inline-flex items-center justify-center"
             aria-label="Settings"
           >
             <Settings size={20} strokeWidth={1.5} />
           </button>
           <button
             onClick={() => navigate('/new')}
-            className="btn-primary inline-flex items-center gap-2"
+            className="btn-primary inline-flex items-center gap-2 touch-target"
           >
             <Plus size={16} strokeWidth={1.5} />
             New
@@ -81,9 +107,27 @@ export default function Dashboard() {
         </div>
       </div>
 
+      {/* Pending offline recordings banner */}
+      {pendingCount > 0 && (
+        <div className="glass rounded-xl p-4 mt-6 flex flex-col sm:flex-row items-start sm:items-center gap-3">
+          <CloudOff size={20} strokeWidth={1.5} className="text-amber-400 shrink-0" />
+          <p className="text-sm text-amber-400 flex-1">
+            {pendingCount} recording{pendingCount !== 1 ? 's' : ''} saved offline, waiting to sync.
+          </p>
+          <button
+            onClick={handleSync}
+            disabled={syncing}
+            className="btn-secondary text-xs whitespace-nowrap inline-flex items-center gap-1.5"
+          >
+            <RefreshCw size={14} strokeWidth={1.5} className={syncing ? 'animate-spin' : ''} />
+            {syncing ? 'Syncing...' : 'Sync Now'}
+          </button>
+        </div>
+      )}
+
       {/* Setup banner */}
       {needsApiKey && (
-        <div className="glass rounded-xl p-4 mt-6 flex items-center gap-3">
+        <div className="glass rounded-xl p-4 mt-6 flex flex-col sm:flex-row items-start sm:items-center gap-3">
           <Key size={20} strokeWidth={1.5} className="text-amber-400 shrink-0" />
           <p className="text-sm text-amber-400 flex-1">Set up your API key to enable AI-powered notes.</p>
           <button
@@ -118,7 +162,7 @@ export default function Dashboard() {
         )}
 
         {!loading && !error && sessions.length === 0 && (
-          <div className="glass rounded-xl p-12 flex flex-col items-center text-center">
+          <div className="glass rounded-xl p-8 md:p-12 flex flex-col items-center text-center">
             <MessageSquare size={40} strokeWidth={1.5} className="text-slate-500 mb-4" />
             <p className="text-base font-medium text-slate-300">No sessions yet</p>
             <p className="mt-1 text-sm text-slate-500 max-w-md">

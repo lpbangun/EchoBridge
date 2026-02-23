@@ -182,7 +182,12 @@ class SearchResponse(BaseModel):
 # --- Settings schemas ---
 
 class SettingsResponse(BaseModel):
+    ai_provider: str
     openrouter_api_key_set: bool
+    openai_api_key_set: bool
+    anthropic_api_key_set: bool
+    google_api_key_set: bool
+    xai_api_key_set: bool
     user_display_name: str
     output_dir: str
     auto_export: bool
@@ -190,16 +195,42 @@ class SettingsResponse(BaseModel):
     whisper_model: str
     default_model: str
     models: dict[str, str]
+    provider_models: dict[str, dict[str, str]]
+    # Cloud storage
+    cloud_storage_enabled: bool
+    s3_endpoint_url: str
+    s3_access_key_id: str
+    s3_secret_configured: bool
+    s3_bucket_name: str
+    s3_region: str
+    s3_prefix: str
+    cloud_sync_audio: bool
+    cloud_sync_exports: bool
 
 
 class SettingsUpdate(BaseModel):
+    ai_provider: str | None = None
     openrouter_api_key: str | None = None
+    openai_api_key: str | None = None
+    anthropic_api_key: str | None = None
+    google_api_key: str | None = None
+    xai_api_key: str | None = None
     user_display_name: str | None = None
     output_dir: str | None = None
     auto_export: bool | None = None
     include_transcript_in_md: bool | None = None
     whisper_model: str | None = None
     default_model: str | None = None
+    # Cloud storage
+    cloud_storage_enabled: bool | None = None
+    s3_endpoint_url: str | None = None
+    s3_access_key_id: str | None = None
+    s3_secret_access_key: str | None = None
+    s3_bucket_name: str | None = None
+    s3_region: str | None = None
+    s3_prefix: str | None = None
+    cloud_sync_audio: bool | None = None
+    cloud_sync_exports: bool | None = None
 
 
 # --- API Key schemas ---

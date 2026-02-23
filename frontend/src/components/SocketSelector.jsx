@@ -41,7 +41,7 @@ export default function SocketSelector({ onSelect, value }) {
                 <button
                   key={lens.id}
                   onClick={() => onSelect({ lens_type: 'preset', lens_id: lens.id })}
-                  className={`glass rounded-xl w-full text-left px-4 py-3 transition-all duration-200 ${
+                  className={`glass rounded-xl w-full text-left px-4 py-3 transition-all duration-200 touch-target ${
                     isSelected
                       ? 'border-indigo-400/50 bg-indigo-500/10 text-slate-100'
                       : 'border-white/10 text-slate-400 hover:bg-white/[0.08] hover:border-white/20'
@@ -69,7 +69,7 @@ export default function SocketSelector({ onSelect, value }) {
                 <button
                   key={socket.id}
                   onClick={() => onSelect({ lens_type: 'socket', lens_id: socket.id })}
-                  className={`glass rounded-xl w-full text-left px-4 py-3 transition-all duration-200 ${
+                  className={`glass rounded-xl w-full text-left px-4 py-3 transition-all duration-200 touch-target ${
                     isSelected
                       ? 'border-indigo-400/50 bg-indigo-500/10 text-slate-100'
                       : 'border-white/10 text-slate-400 hover:bg-white/[0.08] hover:border-white/20'
