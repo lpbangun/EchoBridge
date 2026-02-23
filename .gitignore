@@ -48,3 +48,4 @@ frontend/dist/
 
 # Windows artifacts
 nul
+.worktrees/
