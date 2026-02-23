@@ -4,7 +4,7 @@ import { uploadAudio } from '../lib/api';
 
 /**
  * File upload component with drag-and-drop support.
- * Shows a thin progress bar (no rounded corners) during upload.
+ * Shows a thin progress bar during upload.
  * Accepted formats: .mp3, .wav, .m4a, .webm, .ogg
  */
 
@@ -100,26 +100,26 @@ export default function FileUploader({ sessionId, onComplete, onError }) {
         onDragLeave={() => setDragOver(false)}
         onDrop={handleDrop}
         onClick={() => !uploading && inputRef.current?.click()}
-        className={`border border-dashed p-8 text-center transition-colors ${
+        className={`glass rounded-xl p-8 text-center transition-all duration-200 ${
           uploading ? 'cursor-default' : 'cursor-pointer'
         } ${
           dragOver
-            ? 'border-neutral-900'
-            : 'border-neutral-300 hover:border-neutral-400'
+            ? 'border-indigo-400/50 bg-indigo-500/10'
+            : 'border-white/10 border-dashed hover:bg-white/[0.08]'
         }`}
       >
-        <Upload size={20} strokeWidth={1.5} className="mx-auto text-neutral-500" />
+        <Upload size={20} strokeWidth={1.5} className="mx-auto text-slate-500" />
 
         {uploading ? (
-          <p className="mt-2 text-sm text-neutral-600">
+          <p className="mt-2 text-sm text-slate-300">
             Uploading {fileName}...
           </p>
         ) : (
           <>
-            <p className="mt-2 text-sm text-neutral-600">
+            <p className="mt-2 text-sm text-slate-400">
               Drop audio file here or click to browse
             </p>
-            <p className="mt-1 text-xs text-neutral-400">
+            <p className="mt-1 text-xs text-slate-600">
               .mp3, .wav, .m4a, .webm, .ogg
             </p>
           </>
@@ -134,11 +134,16 @@ export default function FileUploader({ sessionId, onComplete, onError }) {
         />
       </div>
 
-      {/* Progress bar: thin, no rounded corners, per DESIGN.md */}
+      {/* Format hint */}
+      {!uploading && (
+        <p className="mt-2 text-xs text-slate-500">Supported: MP3, WAV, M4A, WebM, OGG. After upload, the file is transcribed automatically.</p>
+      )}
+
+      {/* Progress bar */}
       {uploading && (
-        <div className="mt-2 h-1 w-full bg-neutral-100">
+        <div className="mt-2 h-1 w-full bg-white/10 rounded-full overflow-hidden">
           <div
-            className="h-1 bg-neutral-900 transition-all duration-300"
+            className="h-1 bg-indigo-400 rounded-full transition-all duration-300"
             style={{ width: `${Math.min(progress, 100)}%` }}
           />
         </div>

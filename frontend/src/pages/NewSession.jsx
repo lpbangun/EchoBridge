@@ -21,7 +21,9 @@ export default function NewSession() {
   useEffect(() => {
     getSettings()
       .then((settings) => {
-        const modelList = settings.models || [];
+        // models can be an object {id: label} or an array
+        const raw = settings.models || {};
+        const modelList = Array.isArray(raw) ? raw : Object.keys(raw);
         setModels(modelList);
         setModel(settings.default_model || modelList[0] || '');
       })
@@ -109,119 +111,142 @@ export default function NewSession() {
   }
 
   return (
-    <div className="max-w-3xl mx-auto px-6 py-16">
+    <div className="max-w-3xl mx-auto px-6 py-12">
       {/* Header */}
       <div className="flex items-center justify-between">
         <button
           onClick={() => navigate('/')}
-          className="text-neutral-500 hover:text-neutral-700 transition-colors inline-flex items-center gap-2 text-sm font-medium"
+          className="text-slate-400 hover:text-indigo-400 transition-colors inline-flex items-center gap-2 text-sm font-medium"
         >
           <ArrowLeft size={20} strokeWidth={1.5} />
           Back
         </button>
-        <h1 className="text-xl font-bold tracking-tight text-neutral-900">
+        <h1 className="text-xl font-semibold text-slate-100">
           NEW SESSION
         </h1>
       </div>
 
-      {/* Session Type */}
-      <div className="mt-12">
-        <span className="text-xs font-medium tracking-widest uppercase text-neutral-500">
-          Session Type
-        </span>
-        <div className="mt-4">
-          <ContextSelector selected={context} onSelect={setContext} />
+      <p className="mt-6 text-sm text-slate-400">Choose a session type, then record live, upload a file, or start a collaborative room.</p>
+
+      {/* Glass form container */}
+      <div className="mt-8 glass rounded-xl p-8">
+        {/* Session Type */}
+        <div>
+          <span className="section-label">
+            Session Type
+          </span>
+          <div className="mt-4">
+            <ContextSelector selected={context} onSelect={setContext} />
+          </div>
         </div>
-      </div>
 
-      {/* Title */}
-      <div className="mt-8">
-        <label className="text-xs font-medium tracking-widest uppercase text-neutral-500">
-          Title
-        </label>
-        <input
-          type="text"
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          placeholder="Session title..."
-          className="mt-2 w-full text-base px-4 py-3 border border-neutral-200 bg-white placeholder:text-neutral-400 focus:border-neutral-900 focus:outline-none transition-colors"
-        />
-      </div>
-
-      {/* Context metadata */}
-      <div className="mt-8">
-        <label className="text-xs font-medium tracking-widest uppercase text-neutral-500">
-          {contextMetaLabel(context)}
-        </label>
-        <input
-          type="text"
-          value={contextMeta}
-          onChange={(e) => setContextMeta(e.target.value)}
-          placeholder={`${contextMetaLabel(context)} name...`}
-          className="mt-2 w-full text-base px-4 py-3 border border-neutral-200 bg-white placeholder:text-neutral-400 focus:border-neutral-900 focus:outline-none transition-colors"
-        />
-      </div>
-
-      {/* Model selector */}
-      <div className="mt-8">
-        <label className="text-xs font-medium tracking-widest uppercase text-neutral-500">
-          Model
-        </label>
-        <select
-          value={model}
-          onChange={(e) => setModel(e.target.value)}
-          className="mt-2 w-full text-base px-4 py-3 border border-neutral-200 bg-white focus:border-neutral-900 focus:outline-none transition-colors appearance-none"
-        >
-          {models.map((m) => (
-            <option key={m} value={m}>
-              {m}
-            </option>
-          ))}
-        </select>
-      </div>
-
-      {/* Error */}
-      {error && (
-        <p className="mt-8 text-sm text-red-600">{error}</p>
-      )}
-
-      {/* File uploader (shown when Upload File is clicked) */}
-      {showUploader && sessionId && (
+        {/* Title */}
         <div className="mt-8">
-          <FileUploader
-            sessionId={sessionId}
-            onComplete={handleUploadComplete}
-            onError={handleUploadError}
+          <label className="section-label">
+            Title
+          </label>
+          <input
+            type="text"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            placeholder="Session title..."
+            className="mt-2 glass-input w-full text-base px-4 py-3 rounded-xl"
           />
         </div>
-      )}
 
-      {/* Action buttons */}
-      <div className="mt-12 flex gap-4">
-        <button
-          onClick={handleRecordLive}
-          disabled={creating}
-          className="bg-neutral-900 text-white text-sm font-medium px-5 py-2.5 hover:bg-neutral-800 transition-colors inline-flex items-center gap-2 disabled:opacity-50"
-        >
-          <Mic size={16} strokeWidth={1.5} />
-          Record Live
-        </button>
-        <button
-          onClick={handleUploadFile}
-          disabled={creating}
-          className="bg-white text-neutral-700 text-sm font-medium px-5 py-2.5 border border-neutral-200 hover:border-neutral-400 transition-colors inline-flex items-center gap-2 disabled:opacity-50"
-        >
-          <Upload size={16} strokeWidth={1.5} />
-          Upload File
-        </button>
-        <button
-          onClick={handleCreateRoom}
-          disabled={creating}
-          className="bg-white text-neutral-700 text-sm font-medium px-5 py-2.5 border border-neutral-200 hover:border-neutral-400 transition-colors inline-flex items-center gap-2 disabled:opacity-50"
-        >
-          <Users size={16} strokeWidth={1.5} />
-          Create Room
-        </button>
+        {/* Context metadata */}
+        <div className="mt-8">
+          <label className="section-label">
+            {contextMetaLabel(context)}
+          </label>
+          <input
+            type="text"
+            value={contextMeta}
+            onChange={(e) => setContextMeta(e.target.value)}
+            placeholder={`${contextMetaLabel(context)} name...`}
+            className="mt-2 glass-input w-full text-base px-4 py-3 rounded-xl"
+          />
+          <p className="text-xs text-slate-500 mt-1">Optional — helps the AI tailor notes to your specific context.</p>
+        </div>
+
+        {/* Model selector */}
+        <div className="mt-8">
+          <label className="section-label">
+            Model
+          </label>
+          <p className="text-xs text-slate-500 mt-1">The AI model used to generate notes. Different models vary in speed and quality.</p>
+          <div className="relative mt-2">
+            <select
+              value={model}
+              onChange={(e) => setModel(e.target.value)}
+              className="glass-select w-full text-base px-4 py-3 rounded-xl pr-10"
+            >
+              {models.map((m) => (
+                <option key={m} value={m}>
+                  {m}
+                </option>
+              ))}
+            </select>
+            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3">
+              <svg className="h-5 w-5 text-slate-500" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clipRule="evenodd" />
+              </svg>
+            </div>
+          </div>
+        </div>
+
+        {/* Error */}
+        {error && (
+          <p className="mt-8 text-sm text-red-400">{error}</p>
+        )}
+
+        {/* File uploader (shown when Upload File is clicked) */}
+        {showUploader && sessionId && (
+          <div className="mt-8">
+            <FileUploader
+              sessionId={sessionId}
+              onComplete={handleUploadComplete}
+              onError={handleUploadError}
+            />
+          </div>
+        )}
+
+        {/* Action buttons */}
+        <div className="mt-12 space-y-4">
+          <div>
+            <button
+              onClick={handleRecordLive}
+              disabled={creating}
+              className="btn-primary inline-flex items-center gap-2 disabled:opacity-50 w-full justify-center"
+            >
+              <Mic size={16} strokeWidth={1.5} />
+              Record Live
+            </button>
+            <p className="text-xs text-slate-500 mt-1 text-center">Use your microphone to capture audio in real-time</p>
+          </div>
+          <div>
+            <button
+              onClick={handleUploadFile}
+              disabled={creating}
+              className="btn-secondary inline-flex items-center gap-2 disabled:opacity-50 w-full justify-center"
+            >
+              <Upload size={16} strokeWidth={1.5} />
+              Upload File
+            </button>
+            <p className="text-xs text-slate-500 mt-1 text-center">Upload a pre-recorded audio file (.mp3, .wav, .m4a)</p>
+          </div>
+          <div>
+            <button
+              onClick={handleCreateRoom}
+              disabled={creating}
+              className="btn-secondary inline-flex items-center gap-2 disabled:opacity-50 w-full justify-center"
+            >
+              <Users size={16} strokeWidth={1.5} />
+              Create Room
+            </button>
+            <p className="text-xs text-slate-500 mt-1 text-center">Start a shared session others can join with a code</p>
+          </div>
+        </div>
       </div>
     </div>
   );

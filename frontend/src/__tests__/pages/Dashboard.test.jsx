@@ -12,17 +12,27 @@ vi.mock('react-router-dom', () => ({
 vi.mock('../../lib/api', () => ({
   listSessions: vi.fn(),
   searchSessions: vi.fn(),
+  getSettings: vi.fn().mockResolvedValue({ openrouter_api_key_set: true }),
 }));
 
 // Mock child components that are not under test
 vi.mock('../../components/SearchBar', () => ({
-  default: ({ value, onChange, placeholder }) => (
-    <input
-      data-testid="search-bar"
-      value={value || ''}
-      onChange={(e) => onChange && onChange(e.target.value)}
-      placeholder={placeholder}
-    />
+  default: ({ onSearch, onFilterChange, activeFilter }) => (
+    <div>
+      <input
+        data-testid="search-bar"
+        onChange={(e) => onSearch && onSearch(e.target.value)}
+        placeholder="Search sessions..."
+      />
+      <div>
+        <button onClick={() => onFilterChange && onFilterChange(null)}>All</button>
+        <button onClick={() => onFilterChange && onFilterChange('class_lecture')}>Class Lecture</button>
+        <button onClick={() => onFilterChange && onFilterChange('startup_meeting')}>Startup Meeting</button>
+        <button onClick={() => onFilterChange && onFilterChange('research_discussion')}>Research</button>
+        <button onClick={() => onFilterChange && onFilterChange('working_session')}>Working Session</button>
+        <button onClick={() => onFilterChange && onFilterChange('talk_seminar')}>Talk / Seminar</button>
+      </div>
+    </div>
   ),
 }));
 

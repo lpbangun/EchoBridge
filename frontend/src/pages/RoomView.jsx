@@ -148,18 +148,33 @@ export default function RoomView() {
     });
   }
 
+  function roomStatusColor(status) {
+    switch (status) {
+      case 'recording':
+        return 'text-red-400';
+      case 'waiting':
+        return 'text-amber-400';
+      case 'processing':
+        return 'text-amber-400';
+      case 'closed':
+        return 'text-slate-500';
+      default:
+        return 'text-slate-400';
+    }
+  }
+
   if (loading) {
     return (
-      <div className="max-w-3xl mx-auto px-6 py-16">
-        <p className="text-sm text-neutral-500">Loading...</p>
+      <div className="max-w-3xl mx-auto px-6 py-12">
+        <p className="text-sm text-slate-500">Loading...</p>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="max-w-3xl mx-auto px-6 py-16">
-        <p className="text-sm text-red-600">{error}</p>
+      <div className="max-w-3xl mx-auto px-6 py-12">
+        <p className="text-sm text-red-400">{error}</p>
       </div>
     );
   }
@@ -171,39 +186,47 @@ export default function RoomView() {
   const isProcessing = room.status === 'processing';
 
   return (
-    <div className="max-w-3xl mx-auto px-6 py-16">
+    <div className="max-w-3xl mx-auto px-6 py-12">
       {/* Header */}
       <div className="flex items-center justify-between">
         <button
           onClick={() => navigate('/')}
-          className="text-neutral-500 hover:text-neutral-700 transition-colors inline-flex items-center gap-2 text-sm font-medium"
+          className="text-slate-400 hover:text-indigo-400 transition-colors inline-flex items-center gap-2 text-sm font-medium"
         >
           <ArrowLeft size={20} strokeWidth={1.5} />
           Back
         </button>
         <div className="inline-flex items-center gap-2">
-          <h1 className="text-xl font-bold tracking-tight text-neutral-900">
+          <h1 className="text-xl font-semibold font-mono text-slate-100">
             {code}
           </h1>
           <button
             onClick={handleCopyCode}
-            className="text-neutral-500 hover:text-neutral-700 transition-colors"
+            className="text-slate-400 hover:text-indigo-400 transition-colors"
             aria-label="Copy room code"
           >
             <Copy size={16} strokeWidth={1.5} />
           </button>
           {copied && (
-            <span className="text-xs text-neutral-400">Copied</span>
+            <span className="text-xs text-green-400">Copied</span>
           )}
         </div>
       </div>
 
+      {/* Sharing hint */}
+      {isWaiting && (
+        <p className="mt-6 text-sm text-slate-400">Share this code with others so they can join. Recording begins when you start it.</p>
+      )}
+      {isRecording && (
+        <p className="mt-6 text-sm text-slate-400">Everyone in the room shares a live transcript.</p>
+      )}
+
       {/* Status */}
       <div className="mt-8 flex items-center gap-3">
-        <span className="text-xs font-medium tracking-widest uppercase text-neutral-500">
+        <span className="section-label">
           Status
         </span>
-        <span className={`text-sm font-medium ${statusColor(room.status)}`}>
+        <span className={`text-sm font-medium ${roomStatusColor(room.status)}`}>
           {room.status}
         </span>
         {isRecording && (
@@ -217,10 +240,10 @@ export default function RoomView() {
       {/* Host */}
       {room.host_name && (
         <div className="mt-4">
-          <span className="text-xs font-medium tracking-widest uppercase text-neutral-500">
+          <span className="section-label">
             Host
           </span>
-          <p className="mt-1 text-sm text-neutral-700">{room.host_name}</p>
+          <p className="mt-1 text-sm text-slate-300">{room.host_name}</p>
         </div>
       )}
 
@@ -234,7 +257,7 @@ export default function RoomView() {
 
       {/* Live Transcript */}
       <div className="mt-8">
-        <span className="text-xs font-medium tracking-widest uppercase text-neutral-500">
+        <span className="section-label">
           Live Transcript
         </span>
         <div className="mt-4">
@@ -244,7 +267,7 @@ export default function RoomView() {
 
       {/* Action error */}
       {actionError && (
-        <p className="mt-6 text-sm text-red-600">{actionError}</p>
+        <p className="mt-6 text-sm text-red-400">{actionError}</p>
       )}
 
       {/* Controls */}
@@ -253,7 +276,7 @@ export default function RoomView() {
           <button
             onClick={handleStart}
             disabled={actionLoading}
-            className="bg-neutral-900 text-white text-sm font-medium px-5 py-2.5 hover:bg-neutral-800 transition-colors inline-flex items-center gap-2 disabled:opacity-50"
+            className="btn-primary inline-flex items-center gap-2 disabled:opacity-50"
           >
             <Mic size={16} strokeWidth={1.5} />
             {actionLoading ? 'Starting...' : 'Start Recording'}
@@ -263,14 +286,14 @@ export default function RoomView() {
           <button
             onClick={handleStop}
             disabled={actionLoading}
-            className="bg-neutral-900 text-white text-sm font-medium px-5 py-2.5 hover:bg-neutral-800 transition-colors inline-flex items-center gap-2 disabled:opacity-50"
+            className="bg-red-500 hover:bg-red-400 text-white text-sm font-medium px-5 py-2.5 rounded-lg transition-colors inline-flex items-center gap-2 disabled:opacity-50"
           >
             <Square size={16} strokeWidth={1.5} />
             {actionLoading ? 'Stopping...' : 'Stop Recording'}
           </button>
         )}
         {isProcessing && (
-          <p className="text-sm text-amber-600">
+          <p className="text-sm text-amber-400">
             Processing transcript...
           </p>
         )}

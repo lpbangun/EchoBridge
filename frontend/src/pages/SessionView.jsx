@@ -12,13 +12,27 @@ import {
   contextLabel,
   formatDate,
   formatDurationShort,
-  statusColor,
 } from '../lib/utils';
 import MarkdownPreview from '../components/MarkdownPreview';
 import InterpretationCard from '../components/InterpretationCard';
 import SocketSelector from '../components/SocketSelector';
 
 const TABS = ['Summary', 'Transcript', 'Interpretations'];
+
+/** Dark-adapted status colors for glassmorphism theme */
+function darkStatusColor(status) {
+  const colors = {
+    created: 'text-slate-500',
+    recording: 'text-red-400',
+    transcribing: 'text-amber-400',
+    processing: 'text-amber-400',
+    complete: 'text-green-400',
+    error: 'text-red-400',
+    waiting: 'text-slate-500',
+    closed: 'text-slate-500',
+  };
+  return colors[status] || 'text-slate-500';
+}
 
 export default function SessionView() {
   const navigate = useNavigate();
@@ -55,6 +69,28 @@ export default function SessionView() {
     }
     load();
   }, [id]);
+
+  // Poll for status updates while session is in progress
+  useEffect(() => {
+    if (!session) return;
+    const activeStatuses = ['created', 'transcribing', 'processing'];
+    if (!activeStatuses.includes(session.status)) return;
+
+    const interval = setInterval(async () => {
+      try {
+        const [sess, interps] = await Promise.all([
+          getSession(id),
+          getInterpretations(id),
+        ]);
+        setSession(sess);
+        setInterpretations(Array.isArray(interps) ? interps : []);
+      } catch {
+        // Silently ignore poll failures
+      }
+    }, 5000);
+
+    return () => clearInterval(interval);
+  }, [id, session?.status]);
 
   async function handleSaveTitle() {
     if (!titleDraft.trim()) return;
@@ -95,7 +131,12 @@ export default function SessionView() {
       setShowLensSelector(false);
       setSelectedLens(null);
     } catch (err) {
-      setInterpretError(err.message || 'Interpretation failed.');
+      // Check for API key error (401)
+      if (err.status === 401 || (err.message && err.message.includes('401'))) {
+        setInterpretError('API_KEY_MISSING');
+      } else {
+        setInterpretError(err.message || 'Interpretation failed.');
+      }
     } finally {
       setInterpreting(false);
     }
@@ -105,16 +146,16 @@ export default function SessionView() {
 
   if (loading) {
     return (
-      <div className="max-w-3xl mx-auto px-6 py-16">
-        <p className="text-sm text-neutral-500">Loading...</p>
+      <div className="max-w-3xl mx-auto px-6 py-12">
+        <p className="text-sm text-slate-500">Loading...</p>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="max-w-3xl mx-auto px-6 py-16">
-        <p className="text-sm text-red-600">{error}</p>
+      <div className="max-w-3xl mx-auto px-6 py-12">
+        <p className="text-sm text-red-400">{error}</p>
       </div>
     );
   }
@@ -122,12 +163,12 @@ export default function SessionView() {
   if (!session) return null;
 
   return (
-    <div className="max-w-3xl mx-auto px-6 py-16">
+    <div className="max-w-3xl mx-auto px-6 py-12">
       {/* Header */}
       <div className="flex items-center justify-between">
         <button
           onClick={() => navigate('/')}
-          className="text-neutral-500 hover:text-neutral-700 transition-colors inline-flex items-center gap-2 text-sm font-medium"
+          className="text-slate-400 hover:text-indigo-400 transition-colors inline-flex items-center gap-2 text-sm font-medium"
         >
           <ArrowLeft size={20} strokeWidth={1.5} />
           Back
@@ -140,31 +181,31 @@ export default function SessionView() {
                 value={titleDraft}
                 onChange={(e) => setTitleDraft(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleSaveTitle()}
-                className="text-base px-4 py-2 border border-neutral-200 bg-white focus:border-neutral-900 focus:outline-none transition-colors"
+                className="glass-input text-base px-4 py-2"
                 autoFocus
               />
               <button
                 onClick={handleSaveTitle}
-                className="text-sm font-medium text-neutral-700 hover:text-neutral-900 transition-colors"
+                className="text-sm font-medium text-slate-300 hover:text-indigo-400 transition-colors"
               >
                 Save
               </button>
             </div>
           ) : (
-            <h1 className="text-xl font-bold tracking-tight text-neutral-900">
+            <h1 className="text-xl font-semibold text-slate-100">
               {session.title || 'Untitled Session'}
             </h1>
           )}
           <button
             onClick={() => setEditingTitle(!editingTitle)}
-            className="text-neutral-500 hover:text-neutral-700 transition-colors"
+            className="text-slate-400 hover:text-indigo-400 transition-colors"
             aria-label="Edit title"
           >
             <Pencil size={16} strokeWidth={1.5} />
           </button>
           <button
             onClick={handleExport}
-            className="text-neutral-500 hover:text-neutral-700 transition-colors"
+            className="text-slate-400 hover:text-indigo-400 transition-colors"
             aria-label="Download export"
           >
             <Download size={16} strokeWidth={1.5} />
@@ -173,27 +214,29 @@ export default function SessionView() {
       </div>
 
       {/* Tabs */}
-      <nav className="mt-8 flex border-b border-neutral-200">
-        {TABS.map((tab) => {
-          const label =
-            tab === 'Interpretations'
-              ? `Interpretations (${interpretations.length})`
-              : tab;
-          const isActive = activeTab === tab;
-          return (
-            <button
-              key={tab}
-              onClick={() => setActiveTab(tab)}
-              className={`px-4 py-3 text-sm font-medium transition-colors ${
-                isActive
-                  ? 'text-neutral-900 border-b-2 border-neutral-900'
-                  : 'text-neutral-500 hover:text-neutral-700'
-              }`}
-            >
-              {label}
-            </button>
-          );
-        })}
+      <nav className="mt-8">
+        <div className="glass rounded-xl p-1 inline-flex gap-1">
+          {TABS.map((tab) => {
+            const label =
+              tab === 'Interpretations'
+                ? `Interpretations (${interpretations.length})`
+                : tab;
+            const isActive = activeTab === tab;
+            return (
+              <button
+                key={tab}
+                onClick={() => setActiveTab(tab)}
+                className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
+                  isActive
+                    ? 'bg-indigo-500/20 text-indigo-300'
+                    : 'text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                {label}
+              </button>
+            );
+          })}
+        </div>
       </nav>
 
       {/* Tab content */}
@@ -202,8 +245,8 @@ export default function SessionView() {
         {activeTab === 'Summary' && (
           <div>
             {/* Metadata */}
-            <div className="flex flex-wrap items-center gap-2 text-sm text-neutral-500">
-              <span className="text-xs font-medium tracking-widest uppercase">
+            <div className="flex flex-wrap items-center gap-2 text-sm text-slate-400">
+              <span className="section-label">
                 {contextLabel(session.context)}
               </span>
               <span>&middot;</span>
@@ -217,7 +260,7 @@ export default function SessionView() {
               {session.status && (
                 <>
                   <span>&middot;</span>
-                  <span className={statusColor(session.status)}>
+                  <span className={darkStatusColor(session.status)}>
                     {session.status}
                   </span>
                 </>
@@ -226,7 +269,7 @@ export default function SessionView() {
 
             {/* Room info */}
             {session.room_code && (
-              <p className="mt-2 text-sm text-neutral-500">
+              <p className="mt-2 text-sm text-slate-400">
                 Room {session.room_code}
                 {session.participant_count != null && (
                   <span> &middot; {session.participant_count} participants</span>
@@ -239,11 +282,11 @@ export default function SessionView() {
               {primaryInterpretation ? (
                 <MarkdownPreview content={primaryInterpretation.output_markdown} />
               ) : session.status === 'complete' ? (
-                <p className="text-sm text-neutral-400">
+                <p className="text-sm text-slate-500">
                   No primary interpretation yet.
                 </p>
               ) : (
-                <p className="text-sm text-neutral-400">
+                <p className="text-sm text-slate-500">
                   Session is {session.status}. Interpretation will be available when processing completes.
                 </p>
               )}
@@ -251,11 +294,11 @@ export default function SessionView() {
 
             {/* Tags */}
             {session.tags && session.tags.length > 0 && (
-              <div className="mt-8 pt-8 border-t border-neutral-200 flex flex-wrap gap-2">
+              <div className="mt-8 pt-8 border-t border-white/10 flex flex-wrap gap-2">
                 {session.tags.map((tag) => (
                   <span
                     key={tag}
-                    className="inline-block text-xs font-medium tracking-wide px-2.5 py-1 border border-neutral-200 text-neutral-600"
+                    className="rounded-full px-3 py-1 bg-white/5 border border-white/10 text-xs text-slate-400"
                   >
                     {tag}
                   </span>
@@ -265,7 +308,7 @@ export default function SessionView() {
 
             {/* Export path */}
             {session.export_path && (
-              <p className="mt-4 text-xs text-neutral-400">
+              <p className="mt-4 text-xs text-slate-600">
                 Saved to {session.export_path}
               </p>
             )}
@@ -274,13 +317,15 @@ export default function SessionView() {
 
         {/* Transcript tab */}
         {activeTab === 'Transcript' && (
-          <div className="max-h-[600px] overflow-y-auto">
+          <div>
             {session.transcript ? (
-              <p className="font-mono text-sm text-neutral-600 leading-relaxed whitespace-pre-wrap">
-                {session.transcript}
-              </p>
+              <div className="glass rounded-xl p-6 max-h-[600px] overflow-y-auto">
+                <p className="font-mono text-sm text-slate-300 leading-relaxed whitespace-pre-wrap">
+                  {session.transcript}
+                </p>
+              </div>
             ) : (
-              <p className="text-sm text-neutral-400">
+              <p className="text-sm text-slate-500">
                 No transcript available.
               </p>
             )}
@@ -291,8 +336,8 @@ export default function SessionView() {
         {activeTab === 'Interpretations' && (
           <div>
             {interpretations.length === 0 && (
-              <p className="text-sm text-neutral-400">
-                No interpretations yet.
+              <p className="text-sm text-slate-400">
+                Interpretations are AI-generated notes from your transcript. Click 'New Interpretation' and choose a lens to get started.
               </p>
             )}
 
@@ -311,13 +356,25 @@ export default function SessionView() {
                     onSelect={setSelectedLens}
                   />
                   {interpretError && (
-                    <p className="mt-4 text-sm text-red-600">{interpretError}</p>
+                    interpretError === 'API_KEY_MISSING' ? (
+                      <div className="mt-4 glass rounded-xl p-4 flex items-center gap-3">
+                        <p className="text-sm text-amber-400 flex-1">AI interpretation requires an API key.</p>
+                        <button
+                          onClick={() => navigate('/settings')}
+                          className="btn-secondary text-xs whitespace-nowrap"
+                        >
+                          Go to Settings
+                        </button>
+                      </div>
+                    ) : (
+                      <p className="mt-4 text-sm text-red-400">{interpretError}</p>
+                    )
                   )}
                   <div className="mt-4 flex gap-4">
                     <button
                       onClick={handleInterpret}
                       disabled={!selectedLens || interpreting}
-                      className="bg-neutral-900 text-white text-sm font-medium px-5 py-2.5 hover:bg-neutral-800 transition-colors disabled:opacity-50"
+                      className="btn-primary"
                     >
                       {interpreting ? 'Interpreting...' : 'Run Interpretation'}
                     </button>
@@ -327,7 +384,7 @@ export default function SessionView() {
                         setSelectedLens(null);
                         setInterpretError(null);
                       }}
-                      className="bg-white text-neutral-700 text-sm font-medium px-5 py-2.5 border border-neutral-200 hover:border-neutral-400 transition-colors"
+                      className="btn-secondary"
                     >
                       Cancel
                     </button>
@@ -336,7 +393,7 @@ export default function SessionView() {
               ) : (
                 <button
                   onClick={() => setShowLensSelector(true)}
-                  className="bg-white text-neutral-700 text-sm font-medium px-5 py-2.5 border border-neutral-200 hover:border-neutral-400 transition-colors"
+                  className="btn-secondary"
                 >
                   New Interpretation
                 </button>

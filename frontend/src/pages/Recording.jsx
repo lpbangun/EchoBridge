@@ -108,82 +108,99 @@ export default function Recording() {
         isPaused={isPaused}
       />
 
-      {/* Recording indicator + label */}
-      <div className="flex items-center gap-3">
-        {isRecording && !isPaused && (
-          <span className="relative flex h-3 w-3">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-75" />
-            <span className="relative inline-flex rounded-full h-3 w-3 bg-red-600" />
+      {/* Glass container for recording UI */}
+      <div className="glass rounded-xl p-12 flex flex-col items-center">
+        {/* Recording indicator + label */}
+        <div className="flex items-center gap-3">
+          {isRecording && !isPaused && (
+            <span className="relative flex h-3 w-3">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-75" />
+              <span className="relative inline-flex rounded-full h-3 w-3 bg-red-600 shadow-[0_0_20px_rgba(239,68,68,0.4)]" />
+            </span>
+          )}
+          <span className="text-xs font-medium tracking-widest uppercase text-slate-400">
+            {submitting ? 'Processing' : isPaused ? 'Paused' : 'Recording'}
           </span>
-        )}
-        <span className="text-xs font-medium tracking-widest uppercase text-neutral-500">
-          {submitting ? 'Processing' : isPaused ? 'Paused' : 'Recording'}
-        </span>
-      </div>
+        </div>
 
-      {/* Timer */}
-      <div className="mt-6">
-        <span className="text-2xl font-bold font-mono text-neutral-900">
-          {formatDuration(elapsed)}
-        </span>
-      </div>
+        {/* Timer */}
+        <div className="mt-6">
+          <span className="text-5xl font-bold font-mono text-slate-50">
+            {formatDuration(elapsed)}
+          </span>
+        </div>
 
-      {/* Waveform visualization */}
-      <div className="mt-8 flex items-end gap-0.5 h-16">
-        {bars.map((height, i) => (
-          <div
-            key={i}
-            className="w-1.5 bg-neutral-400 transition-all duration-75"
-            style={{ height: `${height * 64}px` }}
-          />
-        ))}
-      </div>
+        {/* Waveform visualization */}
+        <div className="mt-8 flex items-end gap-0.5 h-16">
+          {bars.map((height, i) => {
+            const centerDist = Math.abs(i - barCount / 2) / (barCount / 2);
+            const isCenterBar = centerDist < 0.4;
+            return (
+              <div
+                key={i}
+                className={`w-1.5 rounded-full transition-all duration-75 ${
+                  isCenterBar ? 'bg-indigo-400' : 'bg-indigo-400/60'
+                }`}
+                style={{ height: `${height * 64}px` }}
+              />
+            );
+          })}
+        </div>
 
-      {/* Controls */}
-      <div className="mt-8 flex items-center gap-4">
-        {!submitting && isRecording && (
-          <>
-            <button
-              onClick={handlePause}
-              className="bg-white text-neutral-700 text-sm font-medium px-5 py-2.5 border border-neutral-200 hover:border-neutral-400 transition-colors inline-flex items-center gap-2"
-            >
-              {isPaused ? (
-                <>
-                  <Play size={16} strokeWidth={1.5} />
-                  Resume
-                </>
-              ) : (
-                <>
-                  <Pause size={16} strokeWidth={1.5} />
-                  Pause
-                </>
-              )}
-            </button>
-            <button
-              onClick={handleStop}
-              className="bg-neutral-900 text-white text-sm font-medium px-5 py-2.5 hover:bg-neutral-800 transition-colors inline-flex items-center gap-2"
-            >
-              <Square size={16} strokeWidth={1.5} />
-              Stop
-            </button>
-          </>
+        {/* Guidance text */}
+        {isRecording && !isPaused && !submitting && (
+          <p className="mt-4 text-xs text-slate-500">Audio is being transcribed using speech recognition.</p>
         )}
-        {submitting && (
-          <p className="text-sm text-neutral-500">Submitting transcript...</p>
-        )}
+
+        {/* Controls */}
+        <div className="mt-8 flex items-center gap-4">
+          {!submitting && isRecording && (
+            <>
+              <button
+                onClick={handlePause}
+                className="btn-secondary inline-flex items-center gap-2"
+              >
+                {isPaused ? (
+                  <>
+                    <Play size={16} strokeWidth={1.5} />
+                    Resume
+                  </>
+                ) : (
+                  <>
+                    <Pause size={16} strokeWidth={1.5} />
+                    Pause
+                  </>
+                )}
+              </button>
+              <button
+                onClick={handleStop}
+                className="bg-red-500 hover:bg-red-400 text-white text-sm font-medium px-5 py-2.5 rounded-lg transition-all duration-200 shadow-lg shadow-red-500/25 hover:shadow-red-400/30 inline-flex items-center gap-2"
+              >
+                <Square size={16} strokeWidth={1.5} />
+                Stop
+              </button>
+            </>
+          )}
+          {submitting && (
+            <div className="flex items-center gap-3">
+              <div className="h-4 w-4 border-2 border-indigo-400 border-t-transparent rounded-full animate-spin" />
+              <p className="text-sm text-slate-400">Saving transcript...</p>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Error */}
       {error && (
-        <p className="mt-4 text-sm text-red-600">{error}</p>
+        <p className="mt-4 text-sm text-red-400">{error}</p>
       )}
 
       {/* Session metadata */}
       <div className="mt-16 text-center">
         {session && (
           <>
-            <p className="text-sm text-neutral-500">
-              <span className="text-xs font-medium tracking-widest uppercase">
+            <p className="text-sm text-slate-500">
+              <span className="section-label">
                 {contextLabel(session.context)}
               </span>
               {session.title && (
@@ -191,7 +208,7 @@ export default function Recording() {
               )}
             </p>
             {session.room_code && (
-              <p className="mt-1 text-sm text-neutral-400">
+              <p className="mt-1 text-sm text-slate-500">
                 Room: {session.room_code}
               </p>
             )}

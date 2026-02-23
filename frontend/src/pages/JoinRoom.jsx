@@ -39,67 +39,74 @@ export default function JoinRoom() {
   }
 
   return (
-    <div className="max-w-3xl mx-auto px-6 py-16">
+    <div className="max-w-3xl mx-auto px-6 py-12">
       {/* Header */}
       <div className="flex items-center justify-between">
         <button
           onClick={() => navigate('/')}
-          className="text-neutral-500 hover:text-neutral-700 transition-colors inline-flex items-center gap-2 text-sm font-medium"
+          className="text-slate-400 hover:text-indigo-400 transition-colors inline-flex items-center gap-2 text-sm font-medium"
         >
           <ArrowLeft size={20} strokeWidth={1.5} />
           Back
         </button>
-        <h1 className="text-xl font-bold tracking-tight text-neutral-900">
+        <h1 className="text-xl font-semibold text-slate-100">
           JOIN ROOM
         </h1>
       </div>
 
+      {/* Description */}
+      <p className="mt-6 text-sm text-slate-400">Enter the room code shared by the host to join a live session.</p>
+
       {/* Form */}
-      <form onSubmit={handleJoin} className="mt-12">
-        {/* Room Code */}
-        <div>
-          <label className="text-xs font-medium tracking-widest uppercase text-neutral-500">
-            Room Code
-          </label>
-          <input
-            type="text"
-            value={code}
-            onChange={(e) => setCode(e.target.value.toUpperCase())}
-            placeholder="ROOM-0000"
-            className="mt-2 w-full text-base px-4 py-3 border border-neutral-200 bg-white placeholder:text-neutral-400 focus:border-neutral-900 focus:outline-none transition-colors"
-            autoFocus
-          />
-        </div>
+      <form onSubmit={handleJoin} className="mt-8">
+        <div className="glass rounded-xl p-8">
+          {/* Room Code */}
+          <div>
+            <label className="section-label">
+              Room Code
+            </label>
+            <input
+              type="text"
+              value={code}
+              onChange={(e) => setCode(e.target.value.toUpperCase())}
+              placeholder="ROOM-0000"
+              className="glass-input w-full text-base px-4 py-3 rounded-xl mt-2 font-mono placeholder:font-mono"
+              autoFocus
+            />
+            <p className="text-xs text-slate-500 mt-1">Ask the person who created the room for this code.</p>
+          </div>
 
-        {/* Name */}
-        <div className="mt-8">
-          <label className="text-xs font-medium tracking-widest uppercase text-neutral-500">
-            Your Name
-          </label>
-          <input
-            type="text"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="Alice"
-            className="mt-2 w-full text-base px-4 py-3 border border-neutral-200 bg-white placeholder:text-neutral-400 focus:border-neutral-900 focus:outline-none transition-colors"
-          />
-        </div>
+          {/* Name */}
+          <div className="mt-8">
+            <label className="section-label">
+              Your Name
+            </label>
+            <input
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Alice"
+              className="glass-input w-full text-base px-4 py-3 rounded-xl mt-2"
+            />
+            <p className="text-xs text-slate-500 mt-1">How you'll appear to other participants.</p>
+          </div>
 
-        {/* Error */}
-        {error && (
-          <p className="mt-8 text-sm text-red-600">{error}</p>
-        )}
+          {/* Error */}
+          {error && (
+            <p className="mt-8 text-sm text-red-400">{error}</p>
+          )}
 
-        {/* Submit */}
-        <div className="mt-12">
-          <button
-            type="submit"
-            disabled={joining}
-            className="bg-neutral-900 text-white text-sm font-medium px-5 py-2.5 hover:bg-neutral-800 transition-colors inline-flex items-center gap-2 disabled:opacity-50"
-          >
-            <Users size={16} strokeWidth={1.5} />
-            {joining ? 'Joining...' : 'Join Room'}
-          </button>
+          {/* Submit */}
+          <div className="mt-8">
+            <button
+              type="submit"
+              disabled={joining}
+              className="btn-primary inline-flex items-center gap-2 disabled:opacity-50"
+            >
+              <Users size={16} strokeWidth={1.5} />
+              {joining ? 'Joining...' : 'Join Room'}
+            </button>
+          </div>
         </div>
       </form>
     </div>
