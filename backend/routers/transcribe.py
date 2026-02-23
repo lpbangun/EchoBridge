@@ -7,9 +7,10 @@ from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 
 from config import settings
 from database import get_db
-from services.stt.whisper import transcribe_file, ACCEPTED_FORMATS
 
 router = APIRouter(prefix="/api/sessions", tags=["transcription"])
+
+ACCEPTED_FORMATS = {".mp3", ".wav", ".m4a", ".webm", ".ogg"}
 
 
 @router.post("/{session_id}/audio")
@@ -49,6 +50,16 @@ async def upload_audio(
         (audio_path, session_id),
     )
     await db.commit()
+
+    # Lazy-import whisper — heavy native deps (ctranslate2) may not be available
+    try:
+        from services.stt.whisper import transcribe_file
+    except ImportError:
+        raise HTTPException(
+            503,
+            "Audio transcription is unavailable — faster-whisper is not installed. "
+            "Use browser speech recognition instead.",
+        )
 
     # Run transcription
     try:
