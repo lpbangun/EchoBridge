@@ -23,9 +23,20 @@ async def lifespan(app: FastAPI):
     sync_svc = init_sync_service(backend)
     sync_svc.start()
 
+    # Start MCP session manager if available
+    mcp_cm = None
+    try:
+        from mcp_server import mcp as mcp_instance
+        mcp_cm = mcp_instance.session_manager.run()
+        await mcp_cm.__aenter__()
+    except ImportError:
+        pass
+
     yield
 
-    # Shutdown: stop sync and close DB
+    # Shutdown: stop MCP, sync, and close DB
+    if mcp_cm:
+        await mcp_cm.__aexit__(None, None, None)
     sync_svc.stop()
     await close_db()
 
@@ -61,6 +72,13 @@ app.include_router(series.router)
 
 # Cloud storage router
 app.include_router(storage.router)
+
+# MCP server (optional — only if mcp package is installed)
+try:
+    from mcp_server import create_mcp_app
+    app.mount("/mcp", create_mcp_app())
+except ImportError:
+    pass
 
 
 @app.get("/api/health")
