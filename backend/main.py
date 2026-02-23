@@ -1,7 +1,9 @@
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
 from database import get_db, close_db
@@ -21,8 +23,7 @@ app = FastAPI(title="EchoBridge", version="0.1.0", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"],
-    allow_credentials=True,
+    allow_origins=["*"],
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -48,3 +49,23 @@ app.include_router(agent.router)
 @app.get("/api/health")
 async def health_check():
     return {"status": "ok", "service": "echobridge"}
+
+
+# Production static file serving — must be LAST so API routes take priority
+_static_dir = Path(__file__).resolve().parent / "static"
+
+if _static_dir.is_dir():
+    # Serve hashed assets (js, css) via StaticFiles for caching headers
+    _assets_dir = _static_dir / "assets"
+    if _assets_dir.is_dir():
+        app.mount("/assets", StaticFiles(directory=str(_assets_dir)), name="static-assets")
+
+    @app.get("/{full_path:path}")
+    async def serve_spa(full_path: str):
+        """SPA catch-all: serve static files or fall back to index.html."""
+        if full_path:
+            file_path = (_static_dir / full_path).resolve()
+            # Serve exact file if it exists and is within static dir
+            if file_path.is_file() and str(file_path).startswith(str(_static_dir)):
+                return FileResponse(str(file_path))
+        return FileResponse(str(_static_dir / "index.html"))

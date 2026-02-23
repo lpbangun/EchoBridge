@@ -1,0 +1,15 @@
+services:
+  echobridge:
+    build: .
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./data:/data
+      - ${OUTPUT_DIR:-./output}:/output
+    env_file:
+      - .env
+    environment:
+      - DATABASE_PATH=/data/echobridge.db
+      - AUDIO_DIR=/data/audio
+      - OUTPUT_DIR=/output
+    restart: unless-stopped
