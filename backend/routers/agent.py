@@ -11,6 +11,11 @@ from services.interpret_service import (
     interpret_with_lens,
     interpret_with_socket,
 )
+from services.chat_service import (
+    add_message,
+    get_conversation,
+    list_conversations,
+)
 from services.search_service import search
 
 router = APIRouter(prefix="/api/v1", tags=["agent-api"])
@@ -281,3 +286,53 @@ async def search_endpoint(
 ):
     results = await search(db, q)
     return {"query": q, "results": results, "total": len(results)}
+
+
+# --- Chat endpoints for agents ---
+
+
+@router.get("/chat/conversations")
+async def agent_list_conversations(
+    session_id: str | None = None,
+    api_key=Depends(verify_api_key),
+    db=Depends(get_db),
+):
+    return await list_conversations(db, session_id=session_id)
+
+
+@router.get("/chat/conversations/{conversation_id}")
+async def agent_get_conversation(
+    conversation_id: str,
+    api_key=Depends(verify_api_key),
+    db=Depends(get_db),
+):
+    conversation = await get_conversation(db, conversation_id)
+    if not conversation:
+        raise HTTPException(404, "Conversation not found")
+    return conversation
+
+
+@router.post("/chat/conversations/{conversation_id}/messages")
+async def agent_send_message(
+    conversation_id: str,
+    body: dict,
+    api_key=Depends(verify_api_key),
+    db=Depends(get_db),
+):
+    """Agent sends a message into a conversation."""
+    conversation = await get_conversation(db, conversation_id)
+    if not conversation:
+        raise HTTPException(404, "Conversation not found")
+
+    content = body.get("content")
+    if not content:
+        raise HTTPException(400, "Message content is required")
+
+    agent_name = api_key.get("name", "agent")
+    message = await add_message(
+        db, conversation_id,
+        role="agent",
+        content=content,
+        source=f"agent:{agent_name}",
+    )
+    return message

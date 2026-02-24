@@ -395,6 +395,50 @@ async def export_markdown(session_id: str, ctx: Context) -> str:
 
 
 # ---------------------------------------------------------------------------
+# Chat tools
+# ---------------------------------------------------------------------------
+
+
+@mcp.tool()
+async def list_conversations(
+    ctx: Context,
+    session_id: str | None = None,
+) -> str:
+    """List chat conversations, optionally filtered by session_id.
+    Pass session_id to see conversations for a specific meeting, or omit for all."""
+    from services.chat_service import list_conversations as _list
+    results = await _list(_db(ctx), session_id=session_id)
+    return json.dumps(results, default=str)
+
+
+@mcp.tool()
+async def get_conversation(conversation_id: str, ctx: Context) -> str:
+    """Get a chat conversation with all its messages."""
+    from services.chat_service import get_conversation as _get
+    result = await _get(_db(ctx), conversation_id)
+    if not result:
+        return json.dumps({"error": "Conversation not found"})
+    return json.dumps(result, default=str)
+
+
+@mcp.tool()
+async def send_chat_message(
+    conversation_id: str,
+    message: str,
+    ctx: Context,
+) -> str:
+    """Send a message into a chat conversation as an agent.
+    The message will appear with role 'agent' in the conversation history."""
+    from services.chat_service import add_message
+    result = await add_message(
+        _db(ctx), conversation_id,
+        role="agent", content=message,
+        source="agent:MCP Client",
+    )
+    return json.dumps(result, default=str)
+
+
+# ---------------------------------------------------------------------------
 # 5 Resources
 # ---------------------------------------------------------------------------
 
