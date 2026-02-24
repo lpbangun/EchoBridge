@@ -170,7 +170,7 @@ export default function NewSession() {
             placeholder={`${contextMetaLabel(context)} name...`}
             className="mt-2 glass-input w-full text-base px-4 py-3 rounded-xl"
           />
-          <p className="text-xs text-slate-500 mt-1">Optional — helps the AI tailor notes to your specific context.</p>
+          <p className="text-xs text-slate-400 mt-1">Optional — helps the AI tailor notes to your specific context.</p>
         </div>
 
         {/* Series selector */}
@@ -178,7 +178,7 @@ export default function NewSession() {
           <label className="section-label">
             Series
           </label>
-          <p className="text-xs text-slate-500 mt-1">Group sessions into a series to build meeting memory across conversations.</p>
+          <p className="text-xs text-slate-400 mt-1">Group sessions into a series to build meeting memory across conversations.</p>
           <div className="mt-2">
             <SeriesSelector value={seriesId} onChange={setSeriesId} />
           </div>
@@ -189,7 +189,7 @@ export default function NewSession() {
           <label className="section-label">
             Model
           </label>
-          <p className="text-xs text-slate-500 mt-1">The AI model used to generate notes. Different models vary in speed and quality.</p>
+          <p className="text-xs text-slate-400 mt-1">The AI model used to generate notes. Different models vary in speed and quality.</p>
           <div className="relative mt-2">
             <select
               value={model}
@@ -203,7 +203,7 @@ export default function NewSession() {
               ))}
             </select>
             <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3">
-              <svg className="h-5 w-5 text-slate-500" viewBox="0 0 20 20" fill="currentColor">
+              <svg className="h-5 w-5 text-slate-400" viewBox="0 0 20 20" fill="currentColor">
                 <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clipRule="evenodd" />
               </svg>
             </div>
@@ -237,7 +237,7 @@ export default function NewSession() {
               <Mic size={16} strokeWidth={1.5} />
               Record Live
             </button>
-            <p className="text-xs text-slate-500 mt-1 text-center">Use your microphone to capture audio in real-time</p>
+            <p className="text-xs text-slate-400 mt-1 text-center">Use your microphone to capture audio in real-time</p>
           </div>
           <div>
             <button
@@ -248,7 +248,7 @@ export default function NewSession() {
               <Upload size={16} strokeWidth={1.5} />
               Upload File
             </button>
-            <p className="text-xs text-slate-500 mt-1 text-center">Upload a pre-recorded audio file (.mp3, .wav, .m4a)</p>
+            <p className="text-xs text-slate-400 mt-1 text-center">Upload a pre-recorded audio file (.mp3, .wav, .m4a)</p>
           </div>
           <div>
             <button
@@ -259,7 +259,7 @@ export default function NewSession() {
               <Users size={16} strokeWidth={1.5} />
               Create Room
             </button>
-            <p className="text-xs text-slate-500 mt-1 text-center">Start a shared session others can join with a code</p>
+            <p className="text-xs text-slate-400 mt-1 text-center">Start a shared session others can join with a code</p>
           </div>
         </div>
       </div>

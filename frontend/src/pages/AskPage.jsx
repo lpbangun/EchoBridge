@@ -64,9 +64,9 @@ export default function AskPage() {
       <div
         className={`${
           showSidebar ? 'w-64 sm:w-72' : 'w-0'
-        } transition-all duration-300 overflow-hidden border-r border-white/10 flex flex-col shrink-0`}
+        } transition-all duration-300 overflow-hidden border-r border-white/15 flex flex-col shrink-0`}
       >
-        <div className="px-4 py-4 border-b border-white/10 flex items-center justify-between">
+        <div className="px-4 py-4 border-b border-white/15 flex items-center justify-between">
           <button
             onClick={() => navigate('/')}
             className="text-slate-400 hover:text-orange-400 transition-colors inline-flex items-center gap-2 text-sm font-medium"
@@ -85,11 +85,11 @@ export default function AskPage() {
 
         <div className="flex-1 overflow-y-auto glass-scrollbar">
           {loading && (
-            <p className="text-xs text-slate-500 px-4 py-3">Loading...</p>
+            <p className="text-xs text-slate-400 px-4 py-3">Loading...</p>
           )}
 
           {!loading && conversations.length === 0 && (
-            <p className="text-xs text-slate-500 px-4 py-3">
+            <p className="text-xs text-slate-400 px-4 py-3">
               No conversations yet. Ask a question to get started.
             </p>
           )}
@@ -110,7 +110,7 @@ export default function AskPage() {
                 <p className="text-sm text-slate-200 truncate">
                   {convo.title || 'Untitled'}
                 </p>
-                <p className="text-xs text-slate-500 mt-0.5">
+                <p className="text-xs text-slate-400 mt-0.5">
                   {new Date(convo.created_at).toLocaleDateString()}
                 </p>
               </button>
@@ -119,7 +119,7 @@ export default function AskPage() {
                   e.stopPropagation();
                   handleDelete(convo.id);
                 }}
-                className="text-slate-500 hover:text-red-400 transition-colors opacity-0 group-hover:opacity-100"
+                className="text-slate-400 hover:text-red-400 transition-colors opacity-0 group-hover:opacity-100"
                 title="Delete conversation"
               >
                 <Trash2 size={14} strokeWidth={1.5} />
@@ -131,7 +131,7 @@ export default function AskPage() {
 
       {/* Main chat area */}
       <div className="flex-1 flex flex-col min-w-0">
-        <div className="px-4 py-3 border-b border-white/10 flex items-center justify-between">
+        <div className="px-4 py-3 border-b border-white/15 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <button
               onClick={() => setShowSidebar(!showSidebar)}
@@ -143,7 +143,7 @@ export default function AskPage() {
               Ask EchoBridge
             </h1>
           </div>
-          <p className="text-xs text-slate-500">
+          <p className="text-xs text-slate-400">
             Cross-meeting AI search
           </p>
         </div>

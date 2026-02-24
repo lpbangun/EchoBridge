@@ -40,13 +40,13 @@ export default function InterpretationCard({ interpretation }) {
           </p>
         </div>
         {expanded ? (
-          <ChevronDown size={20} strokeWidth={1.5} className="text-slate-500 mt-1" />
+          <ChevronDown size={20} strokeWidth={1.5} className="text-slate-400 mt-1" />
         ) : (
-          <ChevronRight size={20} strokeWidth={1.5} className="text-slate-500 mt-1" />
+          <ChevronRight size={20} strokeWidth={1.5} className="text-slate-400 mt-1" />
         )}
       </button>
       {expanded && (
-        <div className="px-4 md:px-6 pb-4 md:pb-6 border-t border-white/10 pt-4">
+        <div className="px-4 md:px-6 pb-4 md:pb-6 border-t border-white/15 pt-4">
           <MarkdownPreview content={interpretation.output_markdown} />
         </div>
       )}

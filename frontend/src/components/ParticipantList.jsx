@@ -13,7 +13,7 @@ export default function ParticipantList({ participants, hostName }) {
         <span className="section-label">
           Participants
         </span>
-        <p className="mt-2 text-sm text-slate-500">No participants yet.</p>
+        <p className="mt-2 text-sm text-slate-400">No participants yet.</p>
       </div>
     );
   }

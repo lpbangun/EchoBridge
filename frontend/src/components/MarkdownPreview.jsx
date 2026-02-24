@@ -6,7 +6,7 @@
 export default function MarkdownPreview({ content }) {
   if (!content) {
     return (
-      <p className="text-sm text-slate-500">No content available.</p>
+      <p className="text-sm text-slate-400">No content available.</p>
     );
   }
 
@@ -43,7 +43,7 @@ export default function MarkdownPreview({ content }) {
           const text = trimmed.slice(6);
           return (
             <div key={i} className="flex items-start gap-2 text-base text-slate-300">
-              <span className={`mt-0.5 ${checked ? 'text-green-400' : 'text-slate-500'}`}>
+              <span className={`mt-0.5 ${checked ? 'text-green-400' : 'text-slate-400'}`}>
                 {checked ? '\u2611' : '\u2610'}
               </span>
               <span>{renderInline(text)}</span>

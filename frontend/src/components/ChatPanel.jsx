@@ -120,7 +120,7 @@ export default function ChatPanel({ sessionId, conversationId: initialConversati
       <div className="flex-1 overflow-y-auto glass-scrollbar px-4 py-4 space-y-4">
         {messages.length === 0 && !sending && (
           <div className="flex flex-col items-center justify-center h-full text-center py-12">
-            <Bot size={32} strokeWidth={1.5} className="text-slate-500 mb-3" />
+            <Bot size={32} strokeWidth={1.5} className="text-slate-400 mb-3" />
             <p className="text-sm text-slate-400">
               {sessionId
                 ? 'Ask a question about this meeting.'
@@ -174,7 +174,7 @@ export default function ChatPanel({ sessionId, conversationId: initialConversati
       )}
 
       {/* Input */}
-      <div className="border-t border-white/10 px-4 py-3">
+      <div className="border-t border-white/15 px-4 py-3">
         <form
           onSubmit={(e) => {
             e.preventDefault();

@@ -166,7 +166,7 @@ export default function RoomView() {
   if (loading) {
     return (
       <div className="max-w-3xl mx-auto px-4 py-6 md:px-6 md:py-12 safe-area-inset">
-        <p className="text-sm text-slate-500">Loading...</p>
+        <p className="text-sm text-slate-400">Loading...</p>
       </div>
     );
   }

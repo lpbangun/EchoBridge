@@ -337,7 +337,7 @@ export default function SettingsPage() {
   if (loading) {
     return (
       <div className="max-w-3xl mx-auto px-4 py-6 md:px-6 md:py-12 safe-area-inset">
-        <p className="text-sm text-slate-500">Loading...</p>
+        <p className="text-sm text-slate-400">Loading...</p>
       </div>
     );
   }
@@ -425,7 +425,7 @@ export default function SettingsPage() {
         </div>
 
         {/* Provider description */}
-        <p className="text-sm text-slate-500 mt-4">{currentProvider.description}</p>
+        <p className="text-sm text-slate-400 mt-4">{currentProvider.description}</p>
 
         {/* API key for selected provider */}
         <label className="block mt-6">
@@ -445,7 +445,7 @@ export default function SettingsPage() {
               API key is set
             </span>
           )}
-          <p className="text-xs text-slate-500 mt-1">
+          <p className="text-xs text-slate-400 mt-1">
             Get your key at{' '}
             <a href={currentProvider.docsUrl} target="_blank" rel="noopener noreferrer" className="text-orange-400 hover:text-orange-300 transition-colors inline-flex items-center gap-1">
               {currentProvider.docsUrl.replace('https://', '').split('/')[0]}
@@ -488,7 +488,7 @@ export default function SettingsPage() {
                 ))}
               </select>
               <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-4">
-                <svg className="h-4 w-4 text-slate-500" viewBox="0 0 20 20" fill="currentColor">
+                <svg className="h-4 w-4 text-slate-400" viewBox="0 0 20 20" fill="currentColor">
                   <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clipRule="evenodd" />
                 </svg>
               </div>
@@ -509,7 +509,7 @@ export default function SettingsPage() {
               placeholder={aiProvider === 'openrouter' ? 'e.g. anthropic/claude-opus-4.6' : 'e.g. gpt-4o'}
               className="glass-input w-full text-base px-4 py-3 rounded-xl mt-2 font-mono text-sm"
             />
-            <p className="text-xs text-slate-500 mt-1">
+            <p className="text-xs text-slate-400 mt-1">
               Paste the exact model ID from your provider's documentation.
             </p>
           </label>
@@ -577,12 +577,12 @@ export default function SettingsPage() {
                 ))}
               </select>
               <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-4">
-                <svg className="h-4 w-4 text-slate-500" viewBox="0 0 20 20" fill="currentColor">
+                <svg className="h-4 w-4 text-slate-400" viewBox="0 0 20 20" fill="currentColor">
                   <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clipRule="evenodd" />
                 </svg>
               </div>
             </div>
-            <p className="text-xs text-slate-500 mt-1">'small' is recommended. Use 'large' for difficult audio or accented speech.</p>
+            <p className="text-xs text-slate-400 mt-1">'small' is recommended. Use 'large' for difficult audio or accented speech.</p>
           </label>
         )}
 
@@ -605,7 +605,7 @@ export default function SettingsPage() {
                   ))}
                 </select>
                 <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-4">
-                  <svg className="h-4 w-4 text-slate-500" viewBox="0 0 20 20" fill="currentColor">
+                  <svg className="h-4 w-4 text-slate-400" viewBox="0 0 20 20" fill="currentColor">
                     <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clipRule="evenodd" />
                   </svg>
                 </div>
@@ -700,7 +700,7 @@ export default function SettingsPage() {
                 placeholder="Leave empty for AWS S3, or enter R2/B2/MinIO URL"
                 className="glass-input w-full text-base px-4 py-3 rounded-xl mt-2"
               />
-              <p className="text-xs text-slate-500 mt-1">
+              <p className="text-xs text-slate-400 mt-1">
                 Only needed for non-AWS providers (e.g. https://&lt;account&gt;.r2.cloudflarestorage.com)
               </p>
             </label>
@@ -832,15 +832,15 @@ export default function SettingsPage() {
                 <div className="grid grid-cols-3 gap-4 text-center">
                   <div>
                     <p className="text-2xl font-semibold text-slate-100">{syncStatus.pending}</p>
-                    <p className="text-xs text-slate-500 mt-1">Pending</p>
+                    <p className="text-xs text-slate-400 mt-1">Pending</p>
                   </div>
                   <div>
                     <p className="text-2xl font-semibold text-green-400">{syncStatus.completed}</p>
-                    <p className="text-xs text-slate-500 mt-1">Uploaded</p>
+                    <p className="text-xs text-slate-400 mt-1">Uploaded</p>
                   </div>
                   <div>
                     <p className="text-2xl font-semibold text-red-400">{syncStatus.failed}</p>
-                    <p className="text-xs text-slate-500 mt-1">Failed</p>
+                    <p className="text-xs text-slate-400 mt-1">Failed</p>
                   </div>
                 </div>
                 {syncStatus.last_error && (
@@ -957,7 +957,7 @@ export default function SettingsPage() {
                 {getConfigSnippet(configTab)}
               </pre>
 
-              <p className="mt-2 text-xs text-slate-500">
+              <p className="mt-2 text-xs text-slate-400">
                 {configTab === 'mcp' && (
                   <>Add this to your MCP client config (e.g. <code className="text-slate-400">~/.claude/settings.json</code> for Claude Code, or Claude Desktop settings).</>
                 )}

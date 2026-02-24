@@ -73,7 +73,7 @@ export default function JoinRoom() {
               className="glass-input w-full text-base px-4 py-3 rounded-xl mt-2 font-mono placeholder:font-mono"
               autoFocus
             />
-            <p className="text-xs text-slate-500 mt-1">Ask the person who created the room for this code.</p>
+            <p className="text-xs text-slate-400 mt-1">Ask the person who created the room for this code.</p>
           </div>
 
           {/* Name */}
@@ -88,7 +88,7 @@ export default function JoinRoom() {
               placeholder="Alice"
               className="glass-input w-full text-base px-4 py-3 rounded-xl mt-2"
             />
-            <p className="text-xs text-slate-500 mt-1">How you'll appear to other participants.</p>
+            <p className="text-xs text-slate-400 mt-1">How you'll appear to other participants.</p>
           </div>
 
           {/* Error */}

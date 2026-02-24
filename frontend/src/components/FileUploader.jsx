@@ -105,10 +105,10 @@ export default function FileUploader({ sessionId, onComplete, onError }) {
         } ${
           dragOver
             ? 'border-orange-400/50 bg-orange-500/10'
-            : 'border-white/10 border-dashed hover:bg-white/[0.08]'
+            : 'border-white/15 border-dashed hover:bg-white/[0.12]'
         }`}
       >
-        <Upload size={20} strokeWidth={1.5} className="mx-auto text-slate-500" />
+        <Upload size={20} strokeWidth={1.5} className="mx-auto text-slate-400" />
 
         {uploading ? (
           <p className="mt-2 text-sm text-slate-300">
@@ -119,7 +119,7 @@ export default function FileUploader({ sessionId, onComplete, onError }) {
             <p className="mt-2 text-sm text-slate-400">
               Drop audio file here or click to browse
             </p>
-            <p className="mt-1 text-xs text-slate-600">
+            <p className="mt-1 text-xs text-slate-500">
               .mp3, .wav, .m4a, .webm, .ogg
             </p>
           </>
@@ -136,7 +136,7 @@ export default function FileUploader({ sessionId, onComplete, onError }) {
 
       {/* Format hint */}
       {!uploading && (
-        <p className="mt-2 text-xs text-slate-500">Supported: MP3, WAV, M4A, WebM, OGG. After upload, the file is transcribed automatically.</p>
+        <p className="mt-2 text-xs text-slate-400">Supported: MP3, WAV, M4A, WebM, OGG. After upload, the file is transcribed automatically.</p>
       )}
 
       {/* Progress bar */}

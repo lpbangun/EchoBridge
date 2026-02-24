@@ -9,10 +9,10 @@ export default {
     extend: {
       colors: {
         glass: {
-          DEFAULT: 'rgba(255, 255, 255, 0.05)',
-          hover: 'rgba(255, 255, 255, 0.08)',
-          border: 'rgba(255, 255, 255, 0.1)',
-          strong: 'rgba(255, 255, 255, 0.12)',
+          DEFAULT: 'rgba(255, 255, 255, 0.08)',
+          hover: 'rgba(255, 255, 255, 0.12)',
+          border: 'rgba(255, 255, 255, 0.15)',
+          strong: 'rgba(255, 255, 255, 0.18)',
         },
       },
       backdropBlur: {

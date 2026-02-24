@@ -93,7 +93,7 @@ export default function SeriesView() {
   if (loading) {
     return (
       <div className="max-w-3xl mx-auto px-4 py-6 md:px-6 md:py-12 safe-area-inset">
-        <p className="text-sm text-slate-500">Loading...</p>
+        <p className="text-sm text-slate-400">Loading...</p>
       </div>
     );
   }
@@ -173,7 +173,7 @@ export default function SeriesView() {
             </button>
             <button
               onClick={() => setEditingDesc(false)}
-              className="text-sm text-slate-500 hover:text-slate-300 transition-colors touch-target"
+              className="text-sm text-slate-400 hover:text-slate-300 transition-colors touch-target"
             >
               Cancel
             </button>
@@ -189,7 +189,7 @@ export default function SeriesView() {
       </div>
 
       {/* Metadata */}
-      <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-slate-500">
+      <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-slate-400">
         <span>{series.session_count} session{series.session_count !== 1 ? 's' : ''}</span>
         <span>&middot;</span>
         <span>Updated {formatDate(series.updated_at)}</span>
@@ -247,7 +247,7 @@ export default function SeriesView() {
               </div>
             ) : (
               <div className="glass rounded-xl p-8 text-center">
-                <p className="text-sm text-slate-500">
+                <p className="text-sm text-slate-400">
                   No memory document yet. Memory builds automatically when you interpret sessions in this series.
                 </p>
               </div>
@@ -259,7 +259,7 @@ export default function SeriesView() {
           <div>
             {sessions.length === 0 ? (
               <div className="glass rounded-xl p-8 text-center">
-                <p className="text-sm text-slate-500">
+                <p className="text-sm text-slate-400">
                   No sessions in this series yet. Create a new session and assign it to this series.
                 </p>
               </div>

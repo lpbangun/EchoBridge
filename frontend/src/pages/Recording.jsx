@@ -172,7 +172,7 @@ export default function Recording() {
 
         {/* Guidance text */}
         {isRecording && !isPaused && !submitting && (
-          <p className="mt-4 text-xs text-slate-500">Audio is being transcribed using speech recognition.</p>
+          <p className="mt-4 text-xs text-slate-400">Audio is being transcribed using speech recognition.</p>
         )}
 
         {/* Offline saved confirmation */}
@@ -238,7 +238,7 @@ export default function Recording() {
       <div className="mt-16 text-center">
         {session && (
           <>
-            <p className="text-sm text-slate-500">
+            <p className="text-sm text-slate-400">
               <span className="section-label">
                 {contextLabel(session.context)}
               </span>
@@ -247,7 +247,7 @@ export default function Recording() {
               )}
             </p>
             {session.room_code && (
-              <p className="mt-1 text-sm text-slate-500">
+              <p className="mt-1 text-sm text-slate-400">
                 Room: {session.room_code}
               </p>
             )}

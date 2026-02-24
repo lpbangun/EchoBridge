@@ -29,7 +29,7 @@ export default function SessionCard({ session, onClick }) {
   return (
     <button
       onClick={() => onClick(session.id)}
-      className="w-full text-left glass rounded-xl p-4 md:p-6 hover:bg-white/[0.08] hover:border-white/20 hover:shadow-glow transition-all duration-200 touch-target"
+      className="w-full text-left glass rounded-xl p-4 md:p-6 hover:bg-white/[0.12] hover:border-white/20 hover:shadow-glow transition-all duration-200 touch-target"
     >
       <span className="section-label">
         {contextLabel(session.context)}
@@ -56,7 +56,7 @@ export default function SessionCard({ session, onClick }) {
           </span>
         )}
         {showStatus && (
-          <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 bg-white/5 text-xs font-medium ${statusStyle.text}`}>
+          <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 bg-white/10 text-xs font-medium ${statusStyle.text}`}>
             <span className={`w-1.5 h-1.5 rounded-full ${statusStyle.dot}`} />
             {status}
           </span>

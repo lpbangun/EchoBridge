@@ -171,7 +171,7 @@ export default function SessionView() {
   if (loading) {
     return (
       <div className="max-w-3xl mx-auto px-4 py-6 md:px-6 md:py-12 safe-area-inset">
-        <p className="text-sm text-slate-500">Loading...</p>
+        <p className="text-sm text-slate-400">Loading...</p>
       </div>
     );
   }
@@ -340,7 +340,7 @@ export default function SessionView() {
                       </select>
                       <button
                         onClick={() => setShowSeriesAdd(false)}
-                        className="text-xs text-slate-500 hover:text-slate-300"
+                        className="text-xs text-slate-400 hover:text-slate-300"
                       >
                         Cancel
                       </button>
@@ -356,7 +356,7 @@ export default function SessionView() {
                         }
                         setShowSeriesAdd(true);
                       }}
-                      className="text-xs text-slate-500 hover:text-orange-400 transition-colors"
+                      className="text-xs text-slate-400 hover:text-orange-400 transition-colors"
                     >
                       + Add to Series
                     </button>
@@ -380,11 +380,11 @@ export default function SessionView() {
               {primaryInterpretation ? (
                 <MarkdownPreview content={primaryInterpretation.output_markdown} />
               ) : session.status === 'complete' ? (
-                <p className="text-sm text-slate-500">
+                <p className="text-sm text-slate-400">
                   No primary interpretation yet.
                 </p>
               ) : (
-                <p className="text-sm text-slate-500">
+                <p className="text-sm text-slate-400">
                   Session is {session.status}. Interpretation will be available when processing completes.
                 </p>
               )}
@@ -392,11 +392,11 @@ export default function SessionView() {
 
             {/* Tags */}
             {session.tags && session.tags.length > 0 && (
-              <div className="mt-8 pt-8 border-t border-white/10 flex flex-wrap gap-2">
+              <div className="mt-8 pt-8 border-t border-white/15 flex flex-wrap gap-2">
                 {session.tags.map((tag) => (
                   <span
                     key={tag}
-                    className="rounded-full px-3 py-1 bg-white/5 border border-white/10 text-xs text-slate-400"
+                    className="rounded-full px-3 py-1 bg-white/10 border border-white/15 text-xs text-slate-400"
                   >
                     {tag}
                   </span>
@@ -406,7 +406,7 @@ export default function SessionView() {
 
             {/* Export path */}
             {session.export_path && (
-              <p className="mt-4 text-xs text-slate-600">
+              <p className="mt-4 text-xs text-slate-500">
                 Saved to {session.export_path}
               </p>
             )}
@@ -423,7 +423,7 @@ export default function SessionView() {
                 </p>
               </div>
             ) : (
-              <p className="text-sm text-slate-500">
+              <p className="text-sm text-slate-400">
                 No transcript available.
               </p>
             )}
@@ -505,8 +505,8 @@ export default function SessionView() {
 
     {/* Chat sidebar */}
     {showChat && (
-      <div className="fixed right-0 top-0 h-full w-full sm:w-[400px] glass-strong z-50 flex flex-col border-l border-white/10">
-        <div className="flex items-center justify-between px-4 py-3 border-b border-white/10">
+      <div className="fixed right-0 top-0 h-full w-full sm:w-[400px] glass-strong z-50 flex flex-col border-l border-white/15">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-white/15">
           <h2 className="text-sm font-medium text-slate-200">Chat</h2>
           <button
             onClick={() => setShowChat(false)}

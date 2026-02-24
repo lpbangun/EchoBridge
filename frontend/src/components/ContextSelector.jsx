@@ -52,13 +52,13 @@ export default function ContextSelector({ selected, onSelect }) {
             className={`glass rounded-xl p-4 md:p-5 text-left transition-all duration-200 touch-target ${
               isSelected
                 ? 'border-orange-400/50 bg-orange-500/10 shadow-glow'
-                : 'border-white/10 hover:bg-white/[0.08] hover:border-white/20'
+                : 'border-white/15 hover:bg-white/[0.12] hover:border-white/20'
             }`}
           >
             <ctx.Icon
               size={20}
               strokeWidth={1.5}
-              className={isSelected ? 'text-orange-400' : 'text-slate-500'}
+              className={isSelected ? 'text-orange-400' : 'text-slate-400'}
             />
             <span
               className={`block mt-2 text-xs font-medium tracking-widest uppercase ${
@@ -67,7 +67,7 @@ export default function ContextSelector({ selected, onSelect }) {
             >
               {ctx.label}
             </span>
-            <span className="block mt-1 text-xs text-slate-500">
+            <span className="block mt-1 text-xs text-slate-400">
               {ctx.description}
             </span>
           </button>
