@@ -3,7 +3,7 @@ from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, Response
 from fastapi.staticfiles import StaticFiles
 
 from database import get_db, close_db
@@ -97,6 +97,18 @@ if _static_dir.is_dir():
     _assets_dir = _static_dir / "assets"
     if _assets_dir.is_dir():
         app.mount("/assets", StaticFiles(directory=str(_assets_dir)), name="static-assets")
+
+    @app.get("/sw.js")
+    async def serve_service_worker():
+        """Serve SW with no-cache so browsers always check for updates."""
+        sw_path = _static_dir / "sw.js"
+        if sw_path.is_file():
+            return FileResponse(
+                str(sw_path),
+                media_type="application/javascript",
+                headers={"Cache-Control": "no-cache, no-store, must-revalidate"},
+            )
+        return Response(status_code=404)
 
     @app.get("/{full_path:path}")
     async def serve_spa(full_path: str):
