@@ -55,26 +55,28 @@ export default function InstallPrompt() {
   if (!deferredPrompt || dismissed) return null;
 
   return (
-    <div className="fixed bottom-4 left-4 right-4 md:left-auto md:right-4 md:w-80 z-50 glass rounded-xl p-4 flex items-center gap-3 shadow-lg shadow-black/20 safe-area-inset">
-      <Download size={20} strokeWidth={1.5} className="text-orange-400 shrink-0" />
-      <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium text-slate-200">Install EchoBridge</p>
-        <p className="text-xs text-slate-400 mt-0.5">Add to your home screen for quick access.</p>
-      </div>
-      <div className="flex items-center gap-2 shrink-0">
-        <button
-          onClick={handleInstall}
-          className="btn-primary text-xs px-3 py-1.5"
-        >
-          Install
-        </button>
-        <button
-          onClick={handleDismiss}
-          className="text-slate-400 hover:text-slate-300 transition-colors touch-target inline-flex items-center justify-center"
-          aria-label="Dismiss"
-        >
-          <X size={16} strokeWidth={1.5} />
-        </button>
+    <div className="fixed bottom-4 inset-x-0 z-50 flex justify-center px-4 safe-area-inset">
+      <div className="glass rounded-xl p-4 w-full max-w-sm flex items-center gap-3 shadow-lg shadow-black/20">
+        <Download size={20} strokeWidth={1.5} className="text-orange-400 shrink-0" />
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-medium text-slate-200">Install EchoBridge</p>
+          <p className="text-xs text-slate-400 mt-0.5">Add to home screen for quick access.</p>
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
+          <button
+            onClick={handleInstall}
+            className="btn-primary text-xs px-3 py-1.5"
+          >
+            Install
+          </button>
+          <button
+            onClick={handleDismiss}
+            className="text-slate-400 hover:text-slate-300 transition-colors touch-target inline-flex items-center justify-center"
+            aria-label="Dismiss"
+          >
+            <X size={16} strokeWidth={1.5} />
+          </button>
+        </div>
       </div>
     </div>
   );
