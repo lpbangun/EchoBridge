@@ -3,7 +3,7 @@ import { contextLabel } from '../lib/utils';
 
 /**
  * Search input with context filter chips below.
- * Glassmorphism dark theme: glass-input for search, translucent chips with indigo accent.
+ * Glassmorphism dark theme: glass-input for search, translucent chips with orange accent.
  */
 
 const FILTERS = [
@@ -48,7 +48,7 @@ export default function SearchBar({ onSearch, onFilterChange, activeFilter }) {
               onClick={() => onFilterChange(filter.id)}
               className={`inline-block text-xs font-medium tracking-wide px-3 py-1.5 rounded-full transition-all duration-200 touch-target whitespace-nowrap ${
                 isActive
-                  ? 'bg-indigo-500/20 border border-indigo-400/50 text-indigo-300'
+                  ? 'bg-orange-500/20 border border-orange-400/50 text-orange-300'
                   : 'bg-white/5 border border-white/10 text-slate-400 hover:bg-white/10 hover:border-white/20'
               }`}
             >

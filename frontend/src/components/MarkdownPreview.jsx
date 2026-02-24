@@ -53,7 +53,7 @@ export default function MarkdownPreview({ content }) {
         if (trimmed.startsWith('- ') || trimmed.startsWith('* ')) {
           return (
             <div key={i} className="flex items-start gap-2 text-base text-slate-300 leading-relaxed">
-              <span className="text-indigo-400 mt-0.5">&bull;</span>
+              <span className="text-orange-400 mt-0.5">&bull;</span>
               <span>{renderInline(trimmed.slice(2))}</span>
             </div>
           );
@@ -62,7 +62,7 @@ export default function MarkdownPreview({ content }) {
           const match = trimmed.match(/^(\d+)\.\s(.*)/);
           return (
             <div key={i} className="flex items-start gap-2 text-base text-slate-300 leading-relaxed">
-              <span className="text-indigo-400 font-medium min-w-[1.5rem]">{match[1]}.</span>
+              <span className="text-orange-400 font-medium min-w-[1.5rem]">{match[1]}.</span>
               <span>{renderInline(match[2])}</span>
             </div>
           );
@@ -119,7 +119,7 @@ function renderInline(text) {
     if (codeMatch) {
       if (codeMatch[1]) parts.push(<span key={key++}>{codeMatch[1]}</span>);
       parts.push(
-        <code key={key++} className="font-mono text-sm bg-white/10 text-indigo-300 px-1.5 py-0.5 rounded">
+        <code key={key++} className="font-mono text-sm bg-white/10 text-orange-300 px-1.5 py-0.5 rounded">
           {codeMatch[2]}
         </code>
       );

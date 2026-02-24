@@ -45,15 +45,15 @@ describe('SearchBar', () => {
       <SearchBar onSearch={onSearch} onFilterChange={onFilterChange} activeFilter="class_lecture" />
     );
     const activeChip = screen.getByText('Class Lecture').closest('button');
-    expect(activeChip.className).toContain('bg-indigo-500/20');
-    expect(activeChip.className).toContain('border-indigo-400/50');
+    expect(activeChip.className).toContain('bg-orange-500/20');
+    expect(activeChip.className).toContain('border-orange-400/50');
   });
 
   it('"All" chip is active when activeFilter is null', () => {
     render(<SearchBar onSearch={onSearch} onFilterChange={onFilterChange} activeFilter={null} />);
     const allChip = screen.getByText('All').closest('button');
-    expect(allChip.className).toContain('bg-indigo-500/20');
-    expect(allChip.className).toContain('border-indigo-400/50');
+    expect(allChip.className).toContain('bg-orange-500/20');
+    expect(allChip.className).toContain('border-orange-400/50');
   });
 
   it('calls onFilterChange with null when "All" chip is clicked', () => {

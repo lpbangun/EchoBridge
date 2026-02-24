@@ -114,7 +114,7 @@ export default function SeriesView() {
       <div className="flex items-center justify-between gap-4">
         <button
           onClick={() => navigate('/')}
-          className="text-slate-400 hover:text-indigo-400 transition-colors inline-flex items-center gap-2 text-sm font-medium touch-target shrink-0"
+          className="text-slate-400 hover:text-orange-400 transition-colors inline-flex items-center gap-2 text-sm font-medium touch-target shrink-0"
         >
           <ArrowLeft size={20} strokeWidth={1.5} />
           <span className="hidden sm:inline">Back</span>
@@ -132,7 +132,7 @@ export default function SeriesView() {
               />
               <button
                 onClick={handleSaveName}
-                className="text-sm font-medium text-slate-300 hover:text-indigo-400 transition-colors touch-target"
+                className="text-sm font-medium text-slate-300 hover:text-orange-400 transition-colors touch-target"
               >
                 Save
               </button>
@@ -144,7 +144,7 @@ export default function SeriesView() {
           )}
           <button
             onClick={() => setEditingName(!editingName)}
-            className="text-slate-400 hover:text-indigo-400 transition-colors touch-target inline-flex items-center justify-center shrink-0"
+            className="text-slate-400 hover:text-orange-400 transition-colors touch-target inline-flex items-center justify-center shrink-0"
             aria-label="Edit name"
           >
             <Pencil size={16} strokeWidth={1.5} />
@@ -167,7 +167,7 @@ export default function SeriesView() {
             />
             <button
               onClick={handleSaveDesc}
-              className="text-sm font-medium text-slate-300 hover:text-indigo-400 transition-colors touch-target"
+              className="text-sm font-medium text-slate-300 hover:text-orange-400 transition-colors touch-target"
             >
               Save
             </button>
@@ -210,7 +210,7 @@ export default function SeriesView() {
                 onClick={() => setActiveTab(tab)}
                 className={`px-3 md:px-4 py-2 text-sm font-medium rounded-lg transition-colors whitespace-nowrap touch-target ${
                   isActive
-                    ? 'bg-indigo-500/20 text-indigo-300'
+                    ? 'bg-orange-500/20 text-orange-300'
                     : 'text-slate-400 hover:text-slate-200'
                 }`}
               >

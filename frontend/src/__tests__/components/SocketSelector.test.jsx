@@ -78,7 +78,7 @@ describe('SocketSelector', () => {
     expect(onSelect).toHaveBeenCalledWith({ lens_type: 'socket', lens_id: 'sock-1' });
   });
 
-  it('selected lens has border-indigo-400/50 class', async () => {
+  it('selected lens has border-orange-400/50 class', async () => {
     listLenses.mockResolvedValue([
       { id: 'action_items', name: 'Action Items' },
       { id: 'summary', name: 'Summary' },
@@ -94,14 +94,14 @@ describe('SocketSelector', () => {
 
     const selectedButton = await screen.findByText('Action Items');
     await waitFor(() => {
-      expect(selectedButton.closest('button').className).toContain('border-indigo-400/50');
+      expect(selectedButton.closest('button').className).toContain('border-orange-400/50');
     });
 
     const unselectedButton = screen.getByText('Summary');
-    expect(unselectedButton.closest('button').className).not.toContain('border-indigo-400/50');
+    expect(unselectedButton.closest('button').className).not.toContain('border-orange-400/50');
   });
 
-  it('selected socket has border-indigo-400/50 class', async () => {
+  it('selected socket has border-orange-400/50 class', async () => {
     listLenses.mockResolvedValue([]);
     listSockets.mockResolvedValue([
       { id: 'sock-1', name: 'My Socket' },
@@ -117,10 +117,10 @@ describe('SocketSelector', () => {
 
     const selectedButton = await screen.findByText('My Socket');
     await waitFor(() => {
-      expect(selectedButton.closest('button').className).toContain('border-indigo-400/50');
+      expect(selectedButton.closest('button').className).toContain('border-orange-400/50');
     });
 
     const unselectedButton = screen.getByText('Other Socket');
-    expect(unselectedButton.closest('button').className).not.toContain('border-indigo-400/50');
+    expect(unselectedButton.closest('button').className).not.toContain('border-orange-400/50');
   });
 });

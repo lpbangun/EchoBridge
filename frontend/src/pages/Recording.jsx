@@ -162,7 +162,7 @@ export default function Recording() {
               <div
                 key={i}
                 className={`w-1.5 rounded-full transition-all duration-75 ${
-                  isCenterBar ? 'bg-indigo-400' : 'bg-indigo-400/60'
+                  isCenterBar ? 'bg-orange-400' : 'bg-orange-400/60'
                 }`}
                 style={{ height: `${height * 64}px` }}
               />
@@ -214,7 +214,7 @@ export default function Recording() {
           )}
           {submitting && (
             <div className="flex items-center gap-3">
-              <div className="h-4 w-4 border-2 border-indigo-400 border-t-transparent rounded-full animate-spin" />
+              <div className="h-4 w-4 border-2 border-orange-400 border-t-transparent rounded-full animate-spin" />
               <p className="text-sm text-slate-400">Saving transcript...</p>
             </div>
           )}

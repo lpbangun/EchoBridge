@@ -65,7 +65,7 @@ export default function SeriesSelector({ value, onChange }) {
         <button
           type="button"
           onClick={() => setShowCreate(!showCreate)}
-          className="text-slate-400 hover:text-indigo-400 transition-colors touch-target inline-flex items-center justify-center"
+          className="text-slate-400 hover:text-orange-400 transition-colors touch-target inline-flex items-center justify-center"
           aria-label={showCreate ? 'Cancel new series' : 'New series'}
         >
           {showCreate ? <X size={20} strokeWidth={1.5} /> : <Plus size={20} strokeWidth={1.5} />}

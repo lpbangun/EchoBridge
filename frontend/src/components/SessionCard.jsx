@@ -51,7 +51,7 @@ export default function SessionCard({ session, onClick }) {
 
       <div className="flex flex-wrap items-center gap-2 mt-3">
         {session.series_name && (
-          <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 bg-indigo-500/10 border border-indigo-400/20 text-xs font-medium text-indigo-300">
+          <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 bg-orange-500/10 border border-orange-400/20 text-xs font-medium text-orange-300">
             {session.series_name}
           </span>
         )}

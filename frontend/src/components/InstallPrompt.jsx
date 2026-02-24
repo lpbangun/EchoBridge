@@ -56,7 +56,7 @@ export default function InstallPrompt() {
 
   return (
     <div className="fixed bottom-4 left-4 right-4 md:left-auto md:right-4 md:w-80 z-50 glass rounded-xl p-4 flex items-center gap-3 shadow-lg shadow-black/20 safe-area-inset">
-      <Download size={20} strokeWidth={1.5} className="text-indigo-400 shrink-0" />
+      <Download size={20} strokeWidth={1.5} className="text-orange-400 shrink-0" />
       <div className="flex-1 min-w-0">
         <p className="text-sm font-medium text-slate-200">Install EchoBridge</p>
         <p className="text-xs text-slate-400 mt-0.5">Add to your home screen for quick access.</p>

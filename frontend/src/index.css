@@ -5,7 +5,7 @@
 @layer base {
   body {
     @apply bg-slate-900 text-slate-50 antialiased;
-    background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #0f172a 100%);
+    background: linear-gradient(135deg, #0f172a 0%, #431407 50%, #0f172a 100%);
     background-attachment: fixed;
     min-height: 100vh;
   }
@@ -52,7 +52,7 @@
   /* Glass input */
   .glass-input {
     @apply bg-white/5 border border-white/10 text-slate-50 placeholder:text-slate-500;
-    @apply focus:border-indigo-400/50 focus:outline-none focus:ring-1 focus:ring-indigo-400/20;
+    @apply focus:border-orange-400/50 focus:outline-none focus:ring-1 focus:ring-orange-400/20;
     @apply transition-all duration-200 rounded-xl;
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
@@ -61,7 +61,7 @@
   /* Glass select */
   .glass-select {
     @apply bg-white/5 border border-white/10 text-slate-50;
-    @apply focus:border-indigo-400/50 focus:outline-none focus:ring-1 focus:ring-indigo-400/20;
+    @apply focus:border-orange-400/50 focus:outline-none focus:ring-1 focus:ring-orange-400/20;
     @apply transition-all duration-200 rounded-xl appearance-none;
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
@@ -73,10 +73,10 @@
 
   /* Primary button */
   .btn-primary {
-    @apply bg-indigo-500 text-white text-sm font-medium px-5 py-2.5 rounded-lg;
-    @apply hover:bg-indigo-400 active:bg-indigo-600;
+    @apply bg-orange-500 text-white text-sm font-medium px-5 py-2.5 rounded-lg;
+    @apply hover:bg-orange-400 active:bg-orange-600;
     @apply transition-all duration-200;
-    @apply shadow-lg shadow-indigo-500/25 hover:shadow-indigo-400/30;
+    @apply shadow-lg shadow-orange-500/25 hover:shadow-orange-400/30;
   }
 
   /* Secondary/ghost button */

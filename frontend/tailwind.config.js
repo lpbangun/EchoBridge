@@ -20,8 +20,8 @@ export default {
       },
       boxShadow: {
         glass: '0 8px 32px rgba(0, 0, 0, 0.2)',
-        glow: '0 0 20px rgba(129, 140, 248, 0.15)',
-        'glow-lg': '0 0 40px rgba(129, 140, 248, 0.2)',
+        glow: '0 0 20px rgba(249, 115, 22, 0.15)',
+        'glow-lg': '0 0 40px rgba(249, 115, 22, 0.2)',
       },
     },
   },

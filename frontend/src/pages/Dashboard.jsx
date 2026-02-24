@@ -91,7 +91,7 @@ export default function Dashboard() {
         <div>
           <h1
             className="text-xl font-bold tracking-tight text-slate-50"
-            style={{ textShadow: '0 0 20px rgba(129, 140, 248, 0.3)' }}
+            style={{ textShadow: '0 0 20px rgba(249, 115, 22, 0.3)' }}
           >
             ECHOBRIDGE
           </h1>
@@ -99,8 +99,16 @@ export default function Dashboard() {
         </div>
         <div className="flex items-center gap-4">
           <button
+            onClick={() => navigate('/ask')}
+            className="text-slate-400 hover:text-orange-400 transition-colors touch-target inline-flex items-center justify-center"
+            aria-label="Ask EchoBridge"
+            title="Ask EchoBridge"
+          >
+            <MessageSquare size={20} strokeWidth={1.5} />
+          </button>
+          <button
             onClick={() => navigate('/settings')}
-            className="text-slate-400 hover:text-indigo-400 transition-colors touch-target inline-flex items-center justify-center"
+            className="text-slate-400 hover:text-orange-400 transition-colors touch-target inline-flex items-center justify-center"
             aria-label="Settings"
           >
             <Settings size={20} strokeWidth={1.5} />
@@ -167,7 +175,7 @@ export default function Dashboard() {
               onClick={() => { setSeriesFilter(null); setContextFilter(null); }}
               className={`text-xs font-medium px-2.5 py-1 rounded-full transition-all duration-200 touch-target ${
                 !seriesFilter
-                  ? 'bg-indigo-500/20 border border-indigo-400/50 text-indigo-300'
+                  ? 'bg-orange-500/20 border border-orange-400/50 text-orange-300'
                   : 'bg-white/5 border border-white/10 text-slate-400 hover:bg-white/10'
               }`}
             >
@@ -179,7 +187,7 @@ export default function Dashboard() {
                   onClick={() => { setSeriesFilter(s.id); setContextFilter(null); setSearchQuery(''); }}
                   className={`text-xs font-medium px-2.5 py-1 rounded-full transition-all duration-200 touch-target ${
                     seriesFilter === s.id
-                      ? 'bg-indigo-500/20 border border-indigo-400/50 text-indigo-300'
+                      ? 'bg-orange-500/20 border border-orange-400/50 text-orange-300'
                       : 'bg-white/5 border border-white/10 text-slate-400 hover:bg-white/10'
                   }`}
                 >
@@ -187,7 +195,7 @@ export default function Dashboard() {
                 </button>
                 <button
                   onClick={() => navigate(`/series/${s.id}`)}
-                  className="text-slate-500 hover:text-indigo-400 transition-colors"
+                  className="text-slate-500 hover:text-orange-400 transition-colors"
                   title="View Memory"
                 >
                   <BookOpen size={12} strokeWidth={1.5} />

@@ -191,7 +191,7 @@ export default function RoomView() {
       <div className="flex items-center justify-between">
         <button
           onClick={() => navigate('/')}
-          className="text-slate-400 hover:text-indigo-400 transition-colors inline-flex items-center gap-2 text-sm font-medium touch-target"
+          className="text-slate-400 hover:text-orange-400 transition-colors inline-flex items-center gap-2 text-sm font-medium touch-target"
         >
           <ArrowLeft size={20} strokeWidth={1.5} />
           Back
@@ -202,7 +202,7 @@ export default function RoomView() {
           </h1>
           <button
             onClick={handleCopyCode}
-            className="text-slate-400 hover:text-indigo-400 transition-colors touch-target inline-flex items-center justify-center"
+            className="text-slate-400 hover:text-orange-400 transition-colors touch-target inline-flex items-center justify-center"
             aria-label="Copy room code"
           >
             <Copy size={16} strokeWidth={1.5} />

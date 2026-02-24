@@ -44,7 +44,7 @@ export default function JoinRoom() {
       <div className="flex items-center justify-between">
         <button
           onClick={() => navigate('/')}
-          className="text-slate-400 hover:text-indigo-400 transition-colors inline-flex items-center gap-2 text-sm font-medium touch-target"
+          className="text-slate-400 hover:text-orange-400 transition-colors inline-flex items-center gap-2 text-sm font-medium touch-target"
         >
           <ArrowLeft size={20} strokeWidth={1.5} />
           Back

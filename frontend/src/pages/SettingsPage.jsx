@@ -331,7 +331,7 @@ export default function SettingsPage() {
       <div className="max-w-3xl mx-auto px-4 py-6 md:px-6 md:py-12 safe-area-inset">
         <button
           onClick={() => navigate(-1)}
-          className="text-slate-400 hover:text-indigo-400 transition-colors inline-flex items-center gap-2 text-sm font-medium touch-target"
+          className="text-slate-400 hover:text-orange-400 transition-colors inline-flex items-center gap-2 text-sm font-medium touch-target"
         >
           <ArrowLeft size={20} strokeWidth={1.5} />
           Back
@@ -350,7 +350,7 @@ export default function SettingsPage() {
       <div className="flex items-center justify-between">
         <button
           onClick={() => navigate(-1)}
-          className="text-slate-400 hover:text-indigo-400 transition-colors inline-flex items-center gap-2 text-sm font-medium touch-target"
+          className="text-slate-400 hover:text-orange-400 transition-colors inline-flex items-center gap-2 text-sm font-medium touch-target"
         >
           <ArrowLeft size={20} strokeWidth={1.5} />
           Back
@@ -396,7 +396,7 @@ export default function SettingsPage() {
               onClick={() => handleProviderChange(provider.id)}
               className={`px-3 md:px-4 py-2 text-sm font-medium rounded-lg transition-colors touch-target whitespace-nowrap ${
                 aiProvider === provider.id
-                  ? 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/40'
+                  ? 'bg-orange-500/20 text-orange-300 border border-orange-500/40'
                   : 'text-slate-400 border border-slate-700 hover:border-slate-500 hover:text-slate-300'
               }`}
             >
@@ -431,7 +431,7 @@ export default function SettingsPage() {
           )}
           <p className="text-xs text-slate-500 mt-1">
             Get your key at{' '}
-            <a href={currentProvider.docsUrl} target="_blank" rel="noopener noreferrer" className="text-indigo-400 hover:text-indigo-300 transition-colors inline-flex items-center gap-1">
+            <a href={currentProvider.docsUrl} target="_blank" rel="noopener noreferrer" className="text-orange-400 hover:text-orange-300 transition-colors inline-flex items-center gap-1">
               {currentProvider.docsUrl.replace('https://', '').split('/')[0]}
               <ExternalLink size={12} />
             </a>
@@ -446,7 +446,7 @@ export default function SettingsPage() {
         </span>
         <p className="text-sm text-slate-400 mt-1">
           Pick a preset or paste any model ID from{' '}
-          <a href={PROVIDER_MODEL_DOCS[aiProvider]} target="_blank" rel="noopener noreferrer" className="text-indigo-400 hover:text-indigo-300 transition-colors inline-flex items-center gap-1">
+          <a href={PROVIDER_MODEL_DOCS[aiProvider]} target="_blank" rel="noopener noreferrer" className="text-orange-400 hover:text-orange-300 transition-colors inline-flex items-center gap-1">
             {currentProvider.name} docs
             <ExternalLink size={12} />
           </a>
@@ -503,7 +503,7 @@ export default function SettingsPage() {
         <button
           type="button"
           onClick={() => setUseCustomModel(!useCustomModel)}
-          className="mt-4 text-sm text-indigo-400 hover:text-indigo-300 transition-colors"
+          className="mt-4 text-sm text-orange-400 hover:text-orange-300 transition-colors"
         >
           {useCustomModel ? 'Use a recommended model instead' : 'Paste a custom model ID instead'}
         </button>
@@ -567,7 +567,7 @@ export default function SettingsPage() {
             type="checkbox"
             checked={autoExport}
             onChange={(e) => setAutoExport(e.target.checked)}
-            className="h-4 w-4 accent-indigo-500"
+            className="h-4 w-4 accent-orange-500"
           />
           <span className="text-sm text-slate-300">
             Auto-export after interpretation
@@ -579,7 +579,7 @@ export default function SettingsPage() {
             type="checkbox"
             checked={includeTranscript}
             onChange={(e) => setIncludeTranscript(e.target.checked)}
-            className="h-4 w-4 accent-indigo-500"
+            className="h-4 w-4 accent-orange-500"
           />
           <span className="text-sm text-slate-300">
             Include transcript in .md export
@@ -602,7 +602,7 @@ export default function SettingsPage() {
             type="checkbox"
             checked={cloudEnabled}
             onChange={(e) => setCloudEnabled(e.target.checked)}
-            className="h-4 w-4 accent-indigo-500"
+            className="h-4 w-4 accent-orange-500"
           />
           <span className="text-sm text-slate-300">
             Enable cloud storage
@@ -705,7 +705,7 @@ export default function SettingsPage() {
                 type="checkbox"
                 checked={cloudSyncAudio}
                 onChange={(e) => setCloudSyncAudio(e.target.checked)}
-                className="h-4 w-4 accent-indigo-500"
+                className="h-4 w-4 accent-orange-500"
               />
               <span className="text-sm text-slate-300">
                 Sync audio recordings
@@ -717,7 +717,7 @@ export default function SettingsPage() {
                 type="checkbox"
                 checked={cloudSyncExports}
                 onChange={(e) => setCloudSyncExports(e.target.checked)}
-                className="h-4 w-4 accent-indigo-500"
+                className="h-4 w-4 accent-orange-500"
               />
               <span className="text-sm text-slate-300">
                 Sync markdown exports
@@ -866,7 +866,7 @@ export default function SettingsPage() {
                     onClick={() => { setConfigTab(tab.id); setCopiedConfig(false); }}
                     className={`px-3 md:px-4 py-2 text-sm font-medium rounded-lg transition-colors touch-target whitespace-nowrap ${
                       configTab === tab.id
-                        ? 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/40'
+                        ? 'bg-orange-500/20 text-orange-300 border border-orange-500/40'
                         : 'text-slate-400 border border-slate-700 hover:border-slate-500 hover:text-slate-300'
                     }`}
                   >

@@ -2,12 +2,12 @@
   <defs>
     <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
       <stop offset="0%" style="stop-color:#0f172a"/>
-      <stop offset="50%" style="stop-color:#1e1b4b"/>
+      <stop offset="50%" style="stop-color:#431407"/>
       <stop offset="100%" style="stop-color:#0f172a"/>
     </linearGradient>
     <linearGradient id="glow" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" style="stop-color:#818cf8"/>
-      <stop offset="100%" style="stop-color:#6366f1"/>
+      <stop offset="0%" style="stop-color:#fb923c"/>
+      <stop offset="100%" style="stop-color:#f97316"/>
     </linearGradient>
   </defs>
   <rect width="512" height="512" rx="96" fill="url(#bg)"/>
@@ -17,11 +17,11 @@
   <line x1="160" y1="260" x2="160" y2="380" stroke="url(#glow)" stroke-width="16" stroke-linecap="round"/>
   <line x1="352" y1="260" x2="352" y2="380" stroke="url(#glow)" stroke-width="16" stroke-linecap="round"/>
   <!-- Sound waves (left) -->
-  <path d="M 80 240 Q 60 256 80 272" stroke="#818cf8" stroke-width="8" fill="none" opacity="0.6" stroke-linecap="round"/>
-  <path d="M 60 220 Q 30 256 60 292" stroke="#818cf8" stroke-width="8" fill="none" opacity="0.4" stroke-linecap="round"/>
+  <path d="M 80 240 Q 60 256 80 272" stroke="#fb923c" stroke-width="8" fill="none" opacity="0.6" stroke-linecap="round"/>
+  <path d="M 60 220 Q 30 256 60 292" stroke="#fb923c" stroke-width="8" fill="none" opacity="0.4" stroke-linecap="round"/>
   <!-- Sound waves (right) -->
-  <path d="M 432 240 Q 452 256 432 272" stroke="#818cf8" stroke-width="8" fill="none" opacity="0.6" stroke-linecap="round"/>
-  <path d="M 452 220 Q 482 256 452 292" stroke="#818cf8" stroke-width="8" fill="none" opacity="0.4" stroke-linecap="round"/>
+  <path d="M 432 240 Q 452 256 432 272" stroke="#fb923c" stroke-width="8" fill="none" opacity="0.6" stroke-linecap="round"/>
+  <path d="M 452 220 Q 482 256 452 292" stroke="#fb923c" stroke-width="8" fill="none" opacity="0.4" stroke-linecap="round"/>
   <!-- Base line -->
   <line x1="80" y1="380" x2="432" y2="380" stroke="url(#glow)" stroke-width="12" stroke-linecap="round"/>
 </svg>

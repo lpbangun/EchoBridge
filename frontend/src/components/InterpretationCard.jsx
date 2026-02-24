@@ -27,7 +27,7 @@ export default function InterpretationCard({ interpretation }) {
               {sourceLabel}
             </span>
             {interpretation.is_primary && (
-              <span className="rounded-full px-2.5 py-0.5 bg-indigo-500/20 text-indigo-300 text-xs">
+              <span className="rounded-full px-2.5 py-0.5 bg-orange-500/20 text-orange-300 text-xs">
                 Primary
               </span>
             )}

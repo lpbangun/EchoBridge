@@ -104,7 +104,7 @@ export default function FileUploader({ sessionId, onComplete, onError }) {
           uploading ? 'cursor-default' : 'cursor-pointer'
         } ${
           dragOver
-            ? 'border-indigo-400/50 bg-indigo-500/10'
+            ? 'border-orange-400/50 bg-orange-500/10'
             : 'border-white/10 border-dashed hover:bg-white/[0.08]'
         }`}
       >
@@ -143,7 +143,7 @@ export default function FileUploader({ sessionId, onComplete, onError }) {
       {uploading && (
         <div className="mt-2 h-1 w-full bg-white/10 rounded-full overflow-hidden">
           <div
-            className="h-1 bg-indigo-400 rounded-full transition-all duration-300"
+            className="h-1 bg-orange-400 rounded-full transition-all duration-300"
             style={{ width: `${Math.min(progress, 100)}%` }}
           />
         </div>
