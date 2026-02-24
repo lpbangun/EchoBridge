@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Pencil, Download } from 'lucide-react';
+import { ArrowLeft, Pencil, Download, MessageSquare, X } from 'lucide-react';
 import {
   getSession,
   getInterpretations,
@@ -9,6 +9,7 @@ import {
   updateSession,
   listSeries,
   addSessionToSeries,
+  getConversations,
 } from '../lib/api';
 import {
   contextLabel,
@@ -18,6 +19,7 @@ import {
 import MarkdownPreview from '../components/MarkdownPreview';
 import InterpretationCard from '../components/InterpretationCard';
 import SocketSelector from '../components/SocketSelector';
+import ChatPanel from '../components/ChatPanel';
 
 const TABS = ['Summary', 'Transcript', 'Interpretations'];
 
@@ -53,6 +55,8 @@ export default function SessionView() {
   const [showSeriesAdd, setShowSeriesAdd] = useState(false);
   const [allSeries, setAllSeries] = useState([]);
   const [addingSeries, setAddingSeries] = useState(false);
+  const [showChat, setShowChat] = useState(false);
+  const [chatConversationId, setChatConversationId] = useState(null);
 
   useEffect(() => {
     async function load() {
@@ -73,6 +77,21 @@ export default function SessionView() {
       }
     }
     load();
+  }, [id]);
+
+  // Load existing chat conversation for this session
+  useEffect(() => {
+    async function loadChat() {
+      try {
+        const convos = await getConversations(id);
+        if (Array.isArray(convos) && convos.length > 0) {
+          setChatConversationId(convos[0].id);
+        }
+      } catch {
+        // No existing conversation
+      }
+    }
+    loadChat();
   }, [id]);
 
   // Poll for status updates while session is in progress
@@ -168,12 +187,14 @@ export default function SessionView() {
   if (!session) return null;
 
   return (
+    <div className="flex min-h-screen">
+    <div className={`flex-1 transition-all duration-300 ${showChat ? 'mr-0 lg:mr-[400px]' : ''}`}>
     <div className="max-w-3xl mx-auto px-4 py-6 md:px-6 md:py-12 safe-area-inset">
       {/* Header */}
       <div className="flex items-center justify-between gap-4">
         <button
           onClick={() => navigate('/')}
-          className="text-slate-400 hover:text-indigo-400 transition-colors inline-flex items-center gap-2 text-sm font-medium touch-target shrink-0"
+          className="text-slate-400 hover:text-orange-400 transition-colors inline-flex items-center gap-2 text-sm font-medium touch-target shrink-0"
         >
           <ArrowLeft size={20} strokeWidth={1.5} />
           <span className="hidden sm:inline">Back</span>
@@ -191,7 +212,7 @@ export default function SessionView() {
               />
               <button
                 onClick={handleSaveTitle}
-                className="text-sm font-medium text-slate-300 hover:text-indigo-400 transition-colors touch-target"
+                className="text-sm font-medium text-slate-300 hover:text-orange-400 transition-colors touch-target"
               >
                 Save
               </button>
@@ -203,17 +224,26 @@ export default function SessionView() {
           )}
           <button
             onClick={() => setEditingTitle(!editingTitle)}
-            className="text-slate-400 hover:text-indigo-400 transition-colors touch-target inline-flex items-center justify-center shrink-0"
+            className="text-slate-400 hover:text-orange-400 transition-colors touch-target inline-flex items-center justify-center shrink-0"
             aria-label="Edit title"
           >
             <Pencil size={16} strokeWidth={1.5} />
           </button>
           <button
             onClick={handleExport}
-            className="text-slate-400 hover:text-indigo-400 transition-colors touch-target inline-flex items-center justify-center shrink-0"
+            className="text-slate-400 hover:text-orange-400 transition-colors touch-target inline-flex items-center justify-center shrink-0"
             aria-label="Download export"
           >
             <Download size={16} strokeWidth={1.5} />
+          </button>
+          <button
+            onClick={() => setShowChat(!showChat)}
+            className={`transition-colors touch-target inline-flex items-center justify-center shrink-0 ${
+              showChat ? 'text-orange-400' : 'text-slate-400 hover:text-orange-400'
+            }`}
+            aria-label="Toggle chat"
+          >
+            <MessageSquare size={16} strokeWidth={1.5} />
           </button>
         </div>
       </div>
@@ -233,7 +263,7 @@ export default function SessionView() {
                 onClick={() => setActiveTab(tab)}
                 className={`px-3 md:px-4 py-2 text-sm font-medium rounded-lg transition-colors whitespace-nowrap touch-target ${
                   isActive
-                    ? 'bg-indigo-500/20 text-indigo-300'
+                    ? 'bg-orange-500/20 text-orange-300'
                     : 'text-slate-400 hover:text-slate-200'
                 }`}
               >
@@ -277,7 +307,7 @@ export default function SessionView() {
               {session.series_id && session.series_name ? (
                 <button
                   onClick={() => navigate(`/series/${session.series_id}`)}
-                  className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 bg-indigo-500/10 border border-indigo-400/20 text-xs font-medium text-indigo-300 hover:bg-indigo-500/20 transition-colors"
+                  className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 bg-orange-500/10 border border-orange-400/20 text-xs font-medium text-orange-300 hover:bg-orange-500/20 transition-colors"
                 >
                   {session.series_name}
                 </button>
@@ -326,7 +356,7 @@ export default function SessionView() {
                         }
                         setShowSeriesAdd(true);
                       }}
-                      className="text-xs text-slate-500 hover:text-indigo-400 transition-colors"
+                      className="text-xs text-slate-500 hover:text-orange-400 transition-colors"
                     >
                       + Add to Series
                     </button>
@@ -470,6 +500,30 @@ export default function SessionView() {
           </div>
         )}
       </div>
+    </div>
+    </div>
+
+    {/* Chat sidebar */}
+    {showChat && (
+      <div className="fixed right-0 top-0 h-full w-full sm:w-[400px] glass-strong z-50 flex flex-col border-l border-white/10">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-white/10">
+          <h2 className="text-sm font-medium text-slate-200">Chat</h2>
+          <button
+            onClick={() => setShowChat(false)}
+            className="text-slate-400 hover:text-slate-200 transition-colors"
+          >
+            <X size={18} strokeWidth={1.5} />
+          </button>
+        </div>
+        <div className="flex-1 min-h-0">
+          <ChatPanel
+            sessionId={id}
+            conversationId={chatConversationId}
+            onConversationCreated={(newId) => setChatConversationId(newId)}
+          />
+        </div>
+      </div>
+    )}
     </div>
   );
 }

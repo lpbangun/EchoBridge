@@ -270,6 +270,37 @@ export async function removeSessionFromSeries(seriesId, sessionId) {
   });
 }
 
+// --- Chat ---
+
+export async function sendChatMessage({ conversationId, message, sessionId, model } = {}) {
+  return request('/chat', {
+    method: 'POST',
+    body: JSON.stringify({
+      conversation_id: conversationId || null,
+      message,
+      session_id: sessionId || null,
+      model: model || null,
+    }),
+  });
+}
+
+export async function getConversations(sessionId) {
+  const params = new URLSearchParams();
+  if (sessionId) params.set('session_id', sessionId);
+  const qs = params.toString();
+  return request(`/chat/conversations${qs ? `?${qs}` : ''}`);
+}
+
+export async function getConversation(id) {
+  return request(`/chat/conversations/${id}`);
+}
+
+export async function deleteConversation(id) {
+  return request(`/chat/conversations/${id}`, {
+    method: 'DELETE',
+  });
+}
+
 // --- Cloud Storage ---
 
 export async function testCloudConnection() {
