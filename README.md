@@ -20,6 +20,29 @@ docker-compose up -d
 
 That's it. The app serves the frontend and API on port 8000. Data persists in `./data/`, exports go to `./output/` (or wherever you set `OUTPUT_DIR`).
 
+## Getting Started
+
+### 1. Set your AI provider
+
+Open the app at `http://localhost:8000` and go to **Settings**. Pick a provider and paste your API key. [OpenRouter](https://openrouter.ai/keys) is recommended — one key gives you access to models from OpenAI, Anthropic, Google, and more.
+
+### 2. Choose your model
+
+Still in Settings, pick a default model from the recommended list or paste any model ID. `anthropic/claude-sonnet-4-20250514` is a good default for fast, high-quality notes.
+
+### 3. Start a session
+
+Click **New Session**, upload an audio file or record live, then pick a **Lens** to interpret the transcript. Your notes appear instantly.
+
+### Core Concepts
+
+| Concept | What it is |
+|---------|-----------|
+| **Lens** | An AI prompt template that interprets your transcript (e.g., Meeting Notes, Action Items, Decision Log) |
+| **Socket** | A structured output format for agent integrations — defines a JSON schema that AI output must follow |
+| **Series** | A group of related sessions that share context, giving the AI memory across meetings |
+| **Room** | A live meeting space where multiple participants join with a code, sharing a real-time transcript |
+
 ## Railway Deploy
 
 1. Fork or push this repo to GitHub

@@ -99,6 +99,14 @@ export default function Dashboard() {
         </div>
         <div className="flex items-center gap-4">
           <button
+            onClick={() => navigate('/guide')}
+            className="text-slate-400 hover:text-orange-400 transition-colors touch-target inline-flex items-center justify-center"
+            aria-label="Guide"
+            title="Getting Started Guide"
+          >
+            <BookOpen size={20} strokeWidth={1.5} />
+          </button>
+          <button
             onClick={() => navigate('/ask')}
             className="text-slate-400 hover:text-orange-400 transition-colors touch-target inline-flex items-center justify-center"
             aria-label="Ask EchoBridge"
@@ -170,13 +178,13 @@ export default function Dashboard() {
         {/* Series filter chips */}
         {seriesList.length > 0 && (
           <div className="mt-3 flex flex-wrap items-center gap-2">
-            <BookOpen size={14} strokeWidth={1.5} className="text-slate-500 shrink-0" />
+            <BookOpen size={14} strokeWidth={1.5} className="text-slate-400 shrink-0" />
             <button
               onClick={() => { setSeriesFilter(null); setContextFilter(null); }}
               className={`text-xs font-medium px-2.5 py-1 rounded-full transition-all duration-200 touch-target ${
                 !seriesFilter
                   ? 'bg-orange-500/20 border border-orange-400/50 text-orange-300'
-                  : 'bg-white/5 border border-white/10 text-slate-400 hover:bg-white/10'
+                  : 'bg-white/10 border border-white/15 text-slate-400 hover:bg-white/[0.14]'
               }`}
             >
               All
@@ -188,14 +196,14 @@ export default function Dashboard() {
                   className={`text-xs font-medium px-2.5 py-1 rounded-full transition-all duration-200 touch-target ${
                     seriesFilter === s.id
                       ? 'bg-orange-500/20 border border-orange-400/50 text-orange-300'
-                      : 'bg-white/5 border border-white/10 text-slate-400 hover:bg-white/10'
+                      : 'bg-white/10 border border-white/15 text-slate-400 hover:bg-white/[0.14]'
                   }`}
                 >
                   {s.name}
                 </button>
                 <button
                   onClick={() => navigate(`/series/${s.id}`)}
-                  className="text-slate-500 hover:text-orange-400 transition-colors"
+                  className="text-slate-400 hover:text-orange-400 transition-colors"
                   title="View Memory"
                 >
                   <BookOpen size={12} strokeWidth={1.5} />
@@ -209,7 +217,7 @@ export default function Dashboard() {
       {/* Session list */}
       <div className="mt-8">
         {loading && (
-          <p className="text-sm text-slate-500">Loading...</p>
+          <p className="text-sm text-slate-400">Loading...</p>
         )}
 
         {error && (
@@ -218,9 +226,9 @@ export default function Dashboard() {
 
         {!loading && !error && sessions.length === 0 && (
           <div className="glass rounded-xl p-8 md:p-12 flex flex-col items-center text-center">
-            <MessageSquare size={40} strokeWidth={1.5} className="text-slate-500 mb-4" />
+            <MessageSquare size={40} strokeWidth={1.5} className="text-slate-400 mb-4" />
             <p className="text-base font-medium text-slate-300">No sessions yet</p>
-            <p className="mt-1 text-sm text-slate-500 max-w-md">
+            <p className="mt-1 text-sm text-slate-400 max-w-md">
               Record a meeting, upload an audio file, or create a live room. EchoBridge transcribes and summarizes everything for you.
             </p>
             <button
