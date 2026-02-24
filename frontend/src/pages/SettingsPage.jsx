@@ -67,6 +67,8 @@ export default function SettingsPage() {
   const [generatedKey, setGeneratedKey] = useState(null);
   const [keyError, setKeyError] = useState(null);
   const [copied, setCopied] = useState(false);
+  const [configTab, setConfigTab] = useState('mcp');
+  const [copiedConfig, setCopiedConfig] = useState(false);
 
   // Cloud storage state
   const [cloudEnabled, setCloudEnabled] = useState(false);
@@ -275,6 +277,42 @@ export default function SettingsPage() {
       await navigator.clipboard.writeText(generatedKey.key);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
+    } catch {
+      setKeyError('Failed to copy. Please select and copy manually.');
+    }
+  }
+
+  function getBaseUrl() {
+    return window.location.origin;
+  }
+
+  function getConfigSnippet(tab) {
+    const baseUrl = getBaseUrl();
+    const key = generatedKey?.key || '';
+    if (tab === 'mcp') {
+      return JSON.stringify({
+        mcpServers: {
+          echobridge: {
+            url: `${baseUrl}/mcp`,
+            headers: {
+              Authorization: `Bearer ${key}`,
+            },
+          },
+        },
+      }, null, 2);
+    }
+    if (tab === 'openclaw') {
+      return `ECHOBRIDGE_API_URL=${baseUrl}\nECHOBRIDGE_API_KEY=${key}`;
+    }
+    // rest
+    return `curl -H "Authorization: Bearer ${key}" \\\n  ${baseUrl}/api/v1/sessions`;
+  }
+
+  async function handleCopyConfig() {
+    try {
+      await navigator.clipboard.writeText(getConfigSnippet(configTab));
+      setCopiedConfig(true);
+      setTimeout(() => setCopiedConfig(false), 2000);
     } catch {
       setKeyError('Failed to copy. Please select and copy manually.');
     }
@@ -754,12 +792,12 @@ export default function SettingsPage() {
         )}
       </div>
 
-      {/* AGENT API KEYS section */}
+      {/* AGENT CONNECTIONS section */}
       <div className="glass rounded-xl p-4 md:p-6 mt-8">
         <span className="text-sm font-semibold text-slate-200 uppercase tracking-wider">
-          Agent API Keys
+          Agent Connections
         </span>
-        <p className="text-sm text-slate-400 mt-1">Let external AI agents connect to EchoBridge programmatically. Generate a key here, then add it to your agent's config.</p>
+        <p className="text-sm text-slate-400 mt-1">Let external AI agents connect to EchoBridge programmatically. Generate a key, then grab the config snippet for your platform.</p>
 
         <label className="block mt-6">
           <span className="section-label">
@@ -809,10 +847,67 @@ export default function SettingsPage() {
               ) : (
                 <>
                   <Copy size={16} strokeWidth={1.5} />
-                  Copy
+                  Copy Key
                 </>
               )}
             </button>
+
+            {/* Tabbed config snippets */}
+            <div className="mt-6 border-t border-slate-700 pt-6">
+              <span className="section-label">Connection Config</span>
+              <div className="flex flex-wrap gap-2 mt-3">
+                {[
+                  { id: 'mcp', label: 'MCP Client' },
+                  { id: 'openclaw', label: 'OpenClaw' },
+                  { id: 'rest', label: 'REST API' },
+                ].map((tab) => (
+                  <button
+                    key={tab.id}
+                    onClick={() => { setConfigTab(tab.id); setCopiedConfig(false); }}
+                    className={`px-3 md:px-4 py-2 text-sm font-medium rounded-lg transition-colors touch-target whitespace-nowrap ${
+                      configTab === tab.id
+                        ? 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/40'
+                        : 'text-slate-400 border border-slate-700 hover:border-slate-500 hover:text-slate-300'
+                    }`}
+                  >
+                    {tab.label}
+                  </button>
+                ))}
+              </div>
+
+              <pre className="mt-4 p-4 bg-slate-900/60 border border-slate-700 rounded-lg font-mono text-sm text-slate-300 overflow-x-auto whitespace-pre-wrap break-all">
+                {getConfigSnippet(configTab)}
+              </pre>
+
+              <p className="mt-2 text-xs text-slate-500">
+                {configTab === 'mcp' && (
+                  <>Add this to your MCP client config (e.g. <code className="text-slate-400">~/.claude/settings.json</code> for Claude Code, or Claude Desktop settings).</>
+                )}
+                {configTab === 'openclaw' && (
+                  <>Add these environment variables to your agent config. The EchoBridge skill file is included in the repo at <code className="text-slate-400">openclaw-skill/echobridge/SKILL.md</code>.</>
+                )}
+                {configTab === 'rest' && (
+                  <>Use this pattern with any HTTP client. Full API: /api/v1/sessions, /api/v1/search, /api/v1/sockets, and more.</>
+                )}
+              </p>
+
+              <button
+                onClick={handleCopyConfig}
+                className="mt-3 btn-secondary inline-flex items-center gap-2 touch-target"
+              >
+                {copiedConfig ? (
+                  <>
+                    <Check size={16} strokeWidth={1.5} />
+                    Copied!
+                  </>
+                ) : (
+                  <>
+                    <Copy size={16} strokeWidth={1.5} />
+                    Copy Config
+                  </>
+                )}
+              </button>
+            </div>
           </div>
         )}
       </div>
