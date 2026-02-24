@@ -197,7 +197,9 @@ class SettingsResponse(BaseModel):
     output_dir: str
     auto_export: bool
     include_transcript_in_md: bool
+    stt_provider: str
     whisper_model: str
+    openai_stt_model: str
     default_model: str
     models: dict[str, str]
     provider_models: dict[str, dict[str, str]]
@@ -224,7 +226,9 @@ class SettingsUpdate(BaseModel):
     output_dir: str | None = None
     auto_export: bool | None = None
     include_transcript_in_md: bool | None = None
+    stt_provider: str | None = None
     whisper_model: str | None = None
+    openai_stt_model: str | None = None
     default_model: str | None = None
     # Cloud storage
     cloud_storage_enabled: bool | None = None

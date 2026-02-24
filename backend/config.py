@@ -21,9 +21,11 @@ class Settings(BaseSettings):
     include_transcript_in_md: bool = True
 
     # STT
+    stt_provider: str = "local"  # "local" (faster-whisper) | "openai"
     whisper_model: str = "small"
     whisper_device: str = "cpu"
     whisper_compute_type: str = "int8"
+    openai_stt_model: str = "whisper-1"  # whisper-1 | gpt-4o-mini-transcribe | gpt-4o-transcribe
 
     # AI
     default_model: str = "anthropic/claude-sonnet-4.6"

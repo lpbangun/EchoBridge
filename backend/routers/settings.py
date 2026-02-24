@@ -31,7 +31,9 @@ def _build_settings_response() -> SettingsResponse:
         output_dir=settings.output_dir,
         auto_export=settings.auto_export,
         include_transcript_in_md=settings.include_transcript_in_md,
+        stt_provider=settings.stt_provider,
         whisper_model=settings.whisper_model,
+        openai_stt_model=settings.openai_stt_model,
         default_model=settings.default_model,
         models=settings.models,
         provider_models=settings.provider_models,
@@ -75,8 +77,12 @@ async def update_settings(body: SettingsUpdate):
         settings.auto_export = body.auto_export
     if body.include_transcript_in_md is not None:
         settings.include_transcript_in_md = body.include_transcript_in_md
+    if body.stt_provider is not None:
+        settings.stt_provider = body.stt_provider
     if body.whisper_model is not None:
         settings.whisper_model = body.whisper_model
+    if body.openai_stt_model is not None:
+        settings.openai_stt_model = body.openai_stt_model
     if body.default_model is not None:
         settings.default_model = body.default_model
     if body.cloud_storage_enabled is not None:

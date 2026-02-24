@@ -51,25 +51,32 @@ async def upload_audio(
     )
     await db.commit()
 
-    # Lazy-import whisper — heavy native deps (ctranslate2) may not be available
-    try:
-        from services.stt.whisper import transcribe_file
-    except ImportError:
-        raise HTTPException(
-            503,
-            "Audio transcription is unavailable — faster-whisper is not installed. "
-            "Use browser speech recognition instead.",
-        )
+    # Determine which STT provider to use
+    use_openai = settings.stt_provider == "openai" and settings.openai_api_key
 
-    # Run transcription
+    if not use_openai:
+        # Lazy-import whisper — heavy native deps (ctranslate2) may not be available
+        try:
+            from services.stt.whisper import transcribe_file as _check_whisper  # noqa: F401
+        except ImportError:
+            raise HTTPException(
+                503,
+                "Audio transcription is unavailable — faster-whisper is not installed. "
+                "Use browser speech recognition instead.",
+            )
+
+    # Run transcription via the STT factory
     try:
+        from services.stt import transcribe_file
+
         result = await transcribe_file(audio_path)
+        provider_name = "openai" if use_openai else "whisper"
         await db.execute(
             """UPDATE sessions
             SET transcript = ?, duration_seconds = ?, status = 'processing',
-                stt_provider = 'whisper'
+                stt_provider = ?
             WHERE id = ?""",
-            (result.text, int(result.duration_seconds), session_id),
+            (result.text, int(result.duration_seconds), provider_name, session_id),
         )
         await db.commit()
         # Enqueue audio for cloud sync if enabled

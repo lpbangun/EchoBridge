@@ -5,6 +5,12 @@ import { getSettings, updateSettings, createApiKey, testCloudConnection, getStor
 
 const WHISPER_MODELS = ['tiny', 'base', 'small', 'medium', 'large'];
 
+const OPENAI_STT_MODELS = [
+  { id: 'whisper-1', name: 'Whisper v2', description: 'Fast, cost-effective' },
+  { id: 'gpt-4o-mini-transcribe', name: 'GPT-4o Mini Transcribe', description: 'Balanced speed and accuracy' },
+  { id: 'gpt-4o-transcribe', name: 'GPT-4o Transcribe', description: 'Highest accuracy' },
+];
+
 const PROVIDERS = [
   { id: 'openrouter', name: 'OpenRouter', keyPrefix: 'sk-or-', docsUrl: 'https://openrouter.ai/keys', description: 'Access 500+ models from all providers through one API key.' },
   { id: 'openai', name: 'OpenAI', keyPrefix: 'sk-', docsUrl: 'https://platform.openai.com/api-keys', description: 'GPT-4o, o3, and other OpenAI models directly.' },
@@ -37,7 +43,9 @@ export default function SettingsPage() {
   const [outputDir, setOutputDir] = useState('');
   const [autoExport, setAutoExport] = useState(false);
   const [includeTranscript, setIncludeTranscript] = useState(false);
+  const [sttProvider, setSttProvider] = useState('local');
   const [whisperModel, setWhisperModel] = useState('small');
+  const [openaiSttModel, setOpenaiSttModel] = useState('whisper-1');
   const [providerModels, setProviderModels] = useState({});
 
   // API keys per provider
@@ -98,7 +106,9 @@ export default function SettingsPage() {
         setOutputDir(data.output_dir || '');
         setAutoExport(data.auto_export || false);
         setIncludeTranscript(data.include_transcript_in_md || false);
+        setSttProvider(data.stt_provider || 'local');
         setWhisperModel(data.whisper_model || 'small');
+        setOpenaiSttModel(data.openai_stt_model || 'whisper-1');
         setProviderModels(data.provider_models || {});
         setApiKeySetFlags({
           openrouter: data.openrouter_api_key_set || false,
@@ -164,8 +174,14 @@ export default function SettingsPage() {
     if (includeTranscript !== (original.include_transcript_in_md || false)) {
       payload.include_transcript_in_md = includeTranscript;
     }
+    if (sttProvider !== (original.stt_provider || 'local')) {
+      payload.stt_provider = sttProvider;
+    }
     if (whisperModel !== (original.whisper_model || 'small')) {
       payload.whisper_model = whisperModel;
+    }
+    if (openaiSttModel !== (original.openai_stt_model || 'whisper-1')) {
+      payload.openai_stt_model = openaiSttModel;
     }
 
     // Cloud storage settings (always send if different from original)
@@ -514,32 +530,94 @@ export default function SettingsPage() {
         <span className="text-sm font-semibold text-slate-200 uppercase tracking-wider">
           Transcription
         </span>
-        <p className="text-sm text-slate-400 mt-1">Controls how audio is converted to text. Larger Whisper models are more accurate but slower.</p>
+        <p className="text-sm text-slate-400 mt-1">Controls how uploaded audio is converted to text. Live recording always uses browser speech recognition.</p>
 
-        <label className="block mt-6">
-          <span className="section-label">
-            Whisper Model
-          </span>
-          <div className="relative mt-2">
-            <select
-              value={whisperModel}
-              onChange={(e) => setWhisperModel(e.target.value)}
-              className="glass-select w-full text-base px-4 py-3 rounded-xl appearance-none"
+        {/* Provider toggle */}
+        <div className="mt-6">
+          <span className="section-label">Provider</span>
+          <div className="flex gap-2 mt-2">
+            <button
+              onClick={() => setSttProvider('local')}
+              className={`px-3 md:px-4 py-2 text-sm font-medium rounded-lg transition-colors touch-target whitespace-nowrap ${
+                sttProvider === 'local'
+                  ? 'bg-orange-500/20 text-orange-300 border border-orange-500/40'
+                  : 'text-slate-400 border border-slate-700 hover:border-slate-500 hover:text-slate-300'
+              }`}
             >
-              {WHISPER_MODELS.map((m) => (
-                <option key={m} value={m}>
-                  {m}
-                </option>
-              ))}
-            </select>
-            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-4">
-              <svg className="h-4 w-4 text-slate-500" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clipRule="evenodd" />
-              </svg>
-            </div>
+              Local (Whisper)
+            </button>
+            <button
+              onClick={() => setSttProvider('openai')}
+              className={`px-3 md:px-4 py-2 text-sm font-medium rounded-lg transition-colors touch-target whitespace-nowrap ${
+                sttProvider === 'openai'
+                  ? 'bg-orange-500/20 text-orange-300 border border-orange-500/40'
+                  : 'text-slate-400 border border-slate-700 hover:border-slate-500 hover:text-slate-300'
+              }`}
+            >
+              Cloud (OpenAI)
+            </button>
           </div>
-          <p className="text-xs text-slate-500 mt-1">'small' is recommended. Use 'large' for difficult audio or accented speech.</p>
-        </label>
+        </div>
+
+        {sttProvider === 'local' && (
+          <label className="block mt-6">
+            <span className="section-label">
+              Whisper Model
+            </span>
+            <div className="relative mt-2">
+              <select
+                value={whisperModel}
+                onChange={(e) => setWhisperModel(e.target.value)}
+                className="glass-select w-full text-base px-4 py-3 rounded-xl appearance-none"
+              >
+                {WHISPER_MODELS.map((m) => (
+                  <option key={m} value={m}>
+                    {m}
+                  </option>
+                ))}
+              </select>
+              <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-4">
+                <svg className="h-4 w-4 text-slate-500" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clipRule="evenodd" />
+                </svg>
+              </div>
+            </div>
+            <p className="text-xs text-slate-500 mt-1">'small' is recommended. Use 'large' for difficult audio or accented speech.</p>
+          </label>
+        )}
+
+        {sttProvider === 'openai' && (
+          <>
+            <label className="block mt-6">
+              <span className="section-label">
+                OpenAI STT Model
+              </span>
+              <div className="relative mt-2">
+                <select
+                  value={openaiSttModel}
+                  onChange={(e) => setOpenaiSttModel(e.target.value)}
+                  className="glass-select w-full text-base px-4 py-3 rounded-xl appearance-none"
+                >
+                  {OPENAI_STT_MODELS.map((m) => (
+                    <option key={m.id} value={m.id}>
+                      {m.name} — {m.description}
+                    </option>
+                  ))}
+                </select>
+                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-4">
+                  <svg className="h-4 w-4 text-slate-500" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clipRule="evenodd" />
+                  </svg>
+                </div>
+              </div>
+            </label>
+            {!apiKeySetFlags.openai && !apiKeys.openai && (
+              <p className="mt-3 text-sm text-amber-400">
+                Requires an OpenAI API key — set one in the AI Provider section above.
+              </p>
+            )}
+          </>
+        )}
       </div>
 
       {/* EXPORT section */}
