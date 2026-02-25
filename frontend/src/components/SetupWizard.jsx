@@ -83,12 +83,11 @@ export default function SetupWizard({ onComplete }) {
       <div className="w-full max-w-lg">
         {/* Logo */}
         <h1
-          className="text-2xl font-bold tracking-tight text-slate-50 text-center mb-2"
-          style={{ textShadow: '0 0 20px rgba(249, 115, 22, 0.3)' }}
+          className="text-2xl font-bold tracking-tight text-white text-center mb-2"
         >
           ECHOBRIDGE
         </h1>
-        <p className="text-sm text-slate-400 text-center mb-8">
+        <p className="text-sm text-zinc-400 text-center mb-8">
           Let's get you set up in 3 quick steps.
         </p>
 
@@ -98,29 +97,29 @@ export default function SetupWizard({ onComplete }) {
             <div key={i} className="flex items-center gap-2">
               <div className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${
                 i < step ? 'bg-green-500/20 border border-green-500/40' :
-                i === step ? 'bg-orange-500/20 border border-orange-500/40' :
-                'bg-white/10 border border-white/15'
+                i === step ? 'bg-accent-muted border border-accent-border' :
+                'bg-zinc-800 border border-border'
               }`}>
                 {i < step ? (
                   <Check size={16} strokeWidth={2} className="text-green-400" />
                 ) : (
-                  <s.icon size={16} strokeWidth={1.5} className={i === step ? 'text-orange-400' : 'text-slate-500'} />
+                  <s.icon size={16} strokeWidth={1.5} className={i === step ? 'text-accent' : 'text-zinc-500'} />
                 )}
               </div>
               {i < steps.length - 1 && (
-                <div className={`w-8 h-px ${i < step ? 'bg-green-500/40' : 'bg-white/15'}`} />
+                <div className={`w-8 h-px ${i < step ? 'bg-green-500/40' : 'bg-border'}`} />
               )}
             </div>
           ))}
         </div>
 
         {/* Step content */}
-        <div className="glass rounded-xl p-6">
+        <div className="card p-6">
           {/* Step 0: Transcription */}
           {step === 0 && (
             <div>
-              <h2 className="text-base font-semibold text-slate-200">How should audio be transcribed?</h2>
-              <p className="text-sm text-slate-400 mt-1">Choose how uploaded audio files are converted to text.</p>
+              <h2 className="text-base font-semibold text-zinc-200">How should audio be transcribed?</h2>
+              <p className="text-sm text-zinc-400 mt-1">Choose how uploaded audio files are converted to text.</p>
 
               <div className="mt-6 space-y-3">
                 {STT_OPTIONS.map((opt) => (
@@ -129,19 +128,19 @@ export default function SetupWizard({ onComplete }) {
                     onClick={() => setSttProvider(opt.id)}
                     className={`w-full text-left p-4 rounded-lg border transition-all ${
                       sttProvider === opt.id
-                        ? 'border-orange-500/40 bg-orange-500/10'
-                        : 'border-white/15 bg-white/5 hover:bg-white/10'
+                        ? 'border-accent-border bg-accent-muted'
+                        : 'border-border bg-zinc-800/50 hover:bg-zinc-800'
                     }`}
                   >
                     <div className="flex items-center justify-between">
-                      <span className="text-sm font-medium text-slate-200">{opt.name}</span>
+                      <span className="text-sm font-medium text-zinc-200">{opt.name}</span>
                       {opt.recommended && (
-                        <span className="text-[10px] font-semibold uppercase tracking-wider text-orange-400 bg-orange-500/10 px-2 py-0.5 rounded-full">
+                        <span className="text-[10px] font-semibold uppercase tracking-wider text-accent bg-accent-muted px-2 py-0.5 rounded-full">
                           Recommended
                         </span>
                       )}
                     </div>
-                    <p className="text-xs text-slate-400 mt-1">{opt.description}</p>
+                    <p className="text-xs text-zinc-400 mt-1">{opt.description}</p>
                   </button>
                 ))}
               </div>
@@ -154,11 +153,11 @@ export default function SetupWizard({ onComplete }) {
                     value={deepgramKey}
                     onChange={(e) => setDeepgramKey(e.target.value)}
                     placeholder="Enter your Deepgram key"
-                    className="glass-input w-full text-sm px-4 py-2.5 rounded-lg mt-2"
+                    className="eb-input w-full text-sm px-4 py-2.5 rounded-lg mt-2"
                   />
-                  <p className="text-xs text-slate-400 mt-1">
+                  <p className="text-xs text-zinc-400 mt-1">
                     Get a free key at{' '}
-                    <a href="https://console.deepgram.com" target="_blank" rel="noopener noreferrer" className="text-orange-400 hover:text-orange-300 inline-flex items-center gap-1">
+                    <a href="https://console.deepgram.com" target="_blank" rel="noopener noreferrer" className="text-accent hover:text-accent-hover inline-flex items-center gap-1">
                       console.deepgram.com <ExternalLink size={10} />
                     </a>
                   </p>
@@ -173,7 +172,7 @@ export default function SetupWizard({ onComplete }) {
                     value={openaiKeyForStt}
                     onChange={(e) => setOpenaiKeyForStt(e.target.value)}
                     placeholder="sk-..."
-                    className="glass-input w-full text-sm px-4 py-2.5 rounded-lg mt-2"
+                    className="eb-input w-full text-sm px-4 py-2.5 rounded-lg mt-2"
                   />
                 </label>
               )}
@@ -183,8 +182,8 @@ export default function SetupWizard({ onComplete }) {
           {/* Step 1: AI Provider */}
           {step === 1 && (
             <div>
-              <h2 className="text-base font-semibold text-slate-200">Which AI provider should generate notes?</h2>
-              <p className="text-sm text-slate-400 mt-1">Your transcript is sent to this provider for interpretation.</p>
+              <h2 className="text-base font-semibold text-zinc-200">Which AI provider should generate notes?</h2>
+              <p className="text-sm text-zinc-400 mt-1">Your transcript is sent to this provider for interpretation.</p>
 
               <div className="mt-6 space-y-3">
                 {AI_PROVIDERS.map((prov) => (
@@ -198,19 +197,19 @@ export default function SetupWizard({ onComplete }) {
                     }}
                     className={`w-full text-left p-4 rounded-lg border transition-all ${
                       aiProvider === prov.id
-                        ? 'border-orange-500/40 bg-orange-500/10'
-                        : 'border-white/15 bg-white/5 hover:bg-white/10'
+                        ? 'border-accent-border bg-accent-muted'
+                        : 'border-border bg-zinc-800/50 hover:bg-zinc-800'
                     }`}
                   >
                     <div className="flex items-center justify-between">
-                      <span className="text-sm font-medium text-slate-200">{prov.name}</span>
+                      <span className="text-sm font-medium text-zinc-200">{prov.name}</span>
                       {prov.recommended && (
-                        <span className="text-[10px] font-semibold uppercase tracking-wider text-orange-400 bg-orange-500/10 px-2 py-0.5 rounded-full">
+                        <span className="text-[10px] font-semibold uppercase tracking-wider text-accent bg-accent-muted px-2 py-0.5 rounded-full">
                           Recommended
                         </span>
                       )}
                     </div>
-                    <p className="text-xs text-slate-400 mt-1">{prov.description}</p>
+                    <p className="text-xs text-zinc-400 mt-1">{prov.description}</p>
                   </button>
                 ))}
               </div>
@@ -224,15 +223,15 @@ export default function SetupWizard({ onComplete }) {
                   value={aiKey}
                   onChange={(e) => setAiKey(e.target.value)}
                   placeholder={`${AI_PROVIDERS.find(p => p.id === aiProvider)?.keyPrefix || ''}...`}
-                  className="glass-input w-full text-sm px-4 py-2.5 rounded-lg mt-2"
+                  className="eb-input w-full text-sm px-4 py-2.5 rounded-lg mt-2"
                 />
-                <p className="text-xs text-slate-400 mt-1">
+                <p className="text-xs text-zinc-400 mt-1">
                   Get your key at{' '}
                   <a
                     href={AI_PROVIDERS.find(p => p.id === aiProvider)?.docsUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-orange-400 hover:text-orange-300 inline-flex items-center gap-1"
+                    className="text-accent hover:text-accent-hover inline-flex items-center gap-1"
                   >
                     {AI_PROVIDERS.find(p => p.id === aiProvider)?.docsUrl.replace('https://', '').split('/')[0]}
                     <ExternalLink size={10} />
@@ -245,8 +244,8 @@ export default function SetupWizard({ onComplete }) {
           {/* Step 2: Agent Bridge */}
           {step === 2 && (
             <div>
-              <h2 className="text-base font-semibold text-slate-200">Where should meeting notes be saved?</h2>
-              <p className="text-sm text-slate-400 mt-1">
+              <h2 className="text-base font-semibold text-zinc-200">Where should meeting notes be saved?</h2>
+              <p className="text-sm text-zinc-400 mt-1">
                 Point this to any folder. Works great with Obsidian, Notion sync folders, or a directory your AI agent watches.
               </p>
 
@@ -257,14 +256,14 @@ export default function SetupWizard({ onComplete }) {
                   value={outputDir}
                   onChange={(e) => setOutputDir(e.target.value)}
                   placeholder="~/Downloads/EchoBridge"
-                  className="glass-input w-full text-sm px-4 py-2.5 rounded-lg mt-2"
+                  className="eb-input w-full text-sm px-4 py-2.5 rounded-lg mt-2"
                 />
-                <p className="text-xs text-slate-400 mt-1">
-                  Tip: If using OpenClaw locally, point this to a folder in your agent's <code className="text-slate-400">extraPaths</code>.
+                <p className="text-xs text-zinc-400 mt-1">
+                  Tip: If using OpenClaw locally, point this to a folder in your agent's <code className="text-zinc-400">extraPaths</code>.
                 </p>
-                <p className="text-xs text-slate-400 mt-2">
+                <p className="text-xs text-zinc-400 mt-2">
                   Remote agent? It connects via API instead — generate a key in{' '}
-                  <span className="text-slate-300">Settings → Agent Connections</span> after setup.
+                  <span className="text-zinc-300">Settings → Agent Connections</span> after setup.
                 </p>
               </label>
             </div>
@@ -282,14 +281,14 @@ export default function SetupWizard({ onComplete }) {
                 {step > 0 && (
                   <button
                     onClick={() => setStep(step - 1)}
-                    className="text-sm text-slate-400 hover:text-slate-200 transition-colors"
+                    className="text-sm text-zinc-400 hover:text-zinc-200 transition-colors"
                   >
                     Back
                   </button>
                 )}
                 <button
                   onClick={onComplete}
-                  className="text-sm text-slate-500 hover:text-slate-300 transition-colors"
+                  className="text-sm text-zinc-500 hover:text-zinc-300 transition-colors"
                 >
                   Skip setup
                 </button>

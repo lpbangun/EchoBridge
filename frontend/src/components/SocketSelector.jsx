@@ -23,7 +23,7 @@ export default function SocketSelector({ onSelect, value }) {
   }, []);
 
   if (loading) {
-    return <p className="text-sm text-slate-400">Loading...</p>;
+    return <p className="text-sm text-zinc-400">Loading...</p>;
   }
 
   return (
@@ -33,7 +33,7 @@ export default function SocketSelector({ onSelect, value }) {
           <span className="section-label">
             Preset Lenses
           </span>
-          <p className="text-xs text-slate-400 mt-1">Lenses shape how the AI reads your transcript. Each produces a different type of output.</p>
+          <p className="text-xs text-zinc-400 mt-1">Lenses shape how the AI reads your transcript. Each produces a different type of output.</p>
           <div className="mt-2 grid gap-2">
             {lenses.map((lens) => {
               const isSelected = value?.lens_type === 'preset' && value?.lens_id === lens.id;
@@ -41,13 +41,13 @@ export default function SocketSelector({ onSelect, value }) {
                 <button
                   key={lens.id}
                   onClick={() => onSelect({ lens_type: 'preset', lens_id: lens.id })}
-                  className={`glass rounded-xl w-full text-left px-4 py-3 transition-all duration-200 touch-target ${
+                  className={`card w-full text-left px-4 py-3 transition-all duration-200 touch-target ${
                     isSelected
-                      ? 'border-orange-400/50 bg-orange-500/10 text-slate-100'
-                      : 'border-white/15 text-slate-400 hover:bg-white/[0.12] hover:border-white/20'
+                      ? 'border-accent-border bg-accent-muted text-white'
+                      : 'border-border text-zinc-400 hover:bg-zinc-800 hover:border-border-hover'
                   }`}
                 >
-                  <span className={`font-medium ${isSelected ? 'text-slate-100' : 'text-slate-200'}`}>
+                  <span className={`font-medium ${isSelected ? 'text-white' : 'text-zinc-200'}`}>
                     {lens.name || lens.id}
                   </span>
                 </button>
@@ -61,7 +61,7 @@ export default function SocketSelector({ onSelect, value }) {
           <span className="section-label">
             Sockets
           </span>
-          <p className="text-xs text-slate-400 mt-1">Custom templates you've created for specific analysis needs.</p>
+          <p className="text-xs text-zinc-400 mt-1">Custom templates you've created for specific analysis needs.</p>
           <div className="mt-2 grid gap-2">
             {sockets.map((socket) => {
               const isSelected = value?.lens_type === 'socket' && value?.lens_id === socket.id;
@@ -69,17 +69,17 @@ export default function SocketSelector({ onSelect, value }) {
                 <button
                   key={socket.id}
                   onClick={() => onSelect({ lens_type: 'socket', lens_id: socket.id })}
-                  className={`glass rounded-xl w-full text-left px-4 py-3 transition-all duration-200 touch-target ${
+                  className={`card w-full text-left px-4 py-3 transition-all duration-200 touch-target ${
                     isSelected
-                      ? 'border-orange-400/50 bg-orange-500/10 text-slate-100'
-                      : 'border-white/15 text-slate-400 hover:bg-white/[0.12] hover:border-white/20'
+                      ? 'border-accent-border bg-accent-muted text-white'
+                      : 'border-border text-zinc-400 hover:bg-zinc-800 hover:border-border-hover'
                   }`}
                 >
-                  <span className={`font-medium ${isSelected ? 'text-slate-100' : 'text-slate-200'}`}>
+                  <span className={`font-medium ${isSelected ? 'text-white' : 'text-zinc-200'}`}>
                     {socket.name}
                   </span>
                   {socket.description && (
-                    <span className="block mt-0.5 text-slate-400">{socket.description}</span>
+                    <span className="block mt-0.5 text-zinc-400">{socket.description}</span>
                   )}
                 </button>
               );

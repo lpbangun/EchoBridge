@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Pencil, RefreshCw } from 'lucide-react';
+import { Pencil, RefreshCw } from 'lucide-react';
 import {
   getSeries,
   updateSeries,
@@ -92,15 +92,15 @@ export default function SeriesView() {
 
   if (loading) {
     return (
-      <div className="max-w-3xl mx-auto px-4 py-6 md:px-6 md:py-12 safe-area-inset">
-        <p className="text-sm text-slate-400">Loading...</p>
+      <div className="max-w-4xl mx-auto px-6 py-8">
+        <p className="text-sm text-zinc-400">Loading...</p>
       </div>
     );
   }
 
   if (error && !series) {
     return (
-      <div className="max-w-3xl mx-auto px-4 py-6 md:px-6 md:py-12 safe-area-inset">
+      <div className="max-w-4xl mx-auto px-6 py-8">
         <p className="text-sm text-red-400">{error}</p>
       </div>
     );
@@ -109,16 +109,9 @@ export default function SeriesView() {
   if (!series) return null;
 
   return (
-    <div className="max-w-3xl mx-auto px-4 py-6 md:px-6 md:py-12 safe-area-inset">
+    <div className="max-w-4xl mx-auto px-6 py-8">
       {/* Header */}
       <div className="flex items-center justify-between gap-4">
-        <button
-          onClick={() => navigate('/')}
-          className="text-slate-400 hover:text-orange-400 transition-colors inline-flex items-center gap-2 text-sm font-medium touch-target shrink-0"
-        >
-          <ArrowLeft size={20} strokeWidth={1.5} />
-          <span className="hidden sm:inline">Back</span>
-        </button>
         <div className="flex items-center gap-2 min-w-0">
           {editingName ? (
             <div className="flex items-center gap-2 min-w-0">
@@ -127,24 +120,24 @@ export default function SeriesView() {
                 value={nameDraft}
                 onChange={(e) => setNameDraft(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleSaveName()}
-                className="glass-input text-base px-4 py-2 min-w-0"
+                className="eb-input text-base px-4 py-2 min-w-0"
                 autoFocus
               />
               <button
                 onClick={handleSaveName}
-                className="text-sm font-medium text-slate-300 hover:text-orange-400 transition-colors touch-target"
+                className="text-sm font-medium text-zinc-300 hover:text-accent transition-colors touch-target"
               >
                 Save
               </button>
             </div>
           ) : (
-            <h1 className="text-lg md:text-xl font-semibold text-slate-100 truncate">
+            <h1 className="font-display text-lg md:text-xl font-bold text-white truncate">
               {series.name}
             </h1>
           )}
           <button
             onClick={() => setEditingName(!editingName)}
-            className="text-slate-400 hover:text-orange-400 transition-colors touch-target inline-flex items-center justify-center shrink-0"
+            className="text-zinc-400 hover:text-accent transition-colors touch-target inline-flex items-center justify-center shrink-0"
             aria-label="Edit name"
           >
             <Pencil size={16} strokeWidth={1.5} />
@@ -162,25 +155,25 @@ export default function SeriesView() {
               onChange={(e) => setDescDraft(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleSaveDesc()}
               placeholder="Series description..."
-              className="glass-input flex-1 text-sm px-3 py-2"
+              className="eb-input flex-1 text-sm px-3 py-2"
               autoFocus
             />
             <button
               onClick={handleSaveDesc}
-              className="text-sm font-medium text-slate-300 hover:text-orange-400 transition-colors touch-target"
+              className="text-sm font-medium text-zinc-300 hover:text-accent transition-colors touch-target"
             >
               Save
             </button>
             <button
               onClick={() => setEditingDesc(false)}
-              className="text-sm text-slate-400 hover:text-slate-300 transition-colors touch-target"
+              className="text-sm text-zinc-400 hover:text-zinc-300 transition-colors touch-target"
             >
               Cancel
             </button>
           </div>
         ) : (
           <p
-            className="text-sm text-slate-400 cursor-pointer hover:text-slate-300 transition-colors"
+            className="text-sm text-zinc-400 cursor-pointer hover:text-zinc-300 transition-colors"
             onClick={() => setEditingDesc(true)}
           >
             {series.description || 'Add a description...'}
@@ -189,7 +182,7 @@ export default function SeriesView() {
       </div>
 
       {/* Metadata */}
-      <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-slate-400">
+      <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-zinc-400">
         <span>{series.session_count} session{series.session_count !== 1 ? 's' : ''}</span>
         <span>&middot;</span>
         <span>Updated {formatDate(series.updated_at)}</span>
@@ -197,7 +190,7 @@ export default function SeriesView() {
 
       {/* Tabs */}
       <nav className="mt-8">
-        <div className="glass rounded-xl p-1 inline-flex gap-1">
+        <div className="inline-flex gap-4 border-b border-border">
           {TABS.map((tab) => {
             const label =
               tab === 'Sessions'
@@ -208,10 +201,10 @@ export default function SeriesView() {
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
-                className={`px-3 md:px-4 py-2 text-sm font-medium rounded-lg transition-colors whitespace-nowrap touch-target ${
+                className={`px-1 pb-2 text-sm transition-colors whitespace-nowrap touch-target ${
                   isActive
-                    ? 'bg-orange-500/20 text-orange-300'
-                    : 'text-slate-400 hover:text-slate-200'
+                    ? 'text-accent border-b-2 border-accent font-medium'
+                    : 'text-zinc-500 hover:text-zinc-300'
                 }`}
               >
                 {label}
@@ -242,12 +235,12 @@ export default function SeriesView() {
             )}
 
             {series.memory_document ? (
-              <div className="glass rounded-xl p-4 md:p-6">
+              <div className="card-lg p-4 md:p-6">
                 <MarkdownPreview content={series.memory_document} />
               </div>
             ) : (
-              <div className="glass rounded-xl p-8 text-center">
-                <p className="text-sm text-slate-400">
+              <div className="card-lg p-8 text-center">
+                <p className="text-sm text-zinc-400">
                   No memory document yet. Memory builds automatically when you interpret sessions in this series.
                 </p>
               </div>
@@ -258,8 +251,8 @@ export default function SeriesView() {
         {activeTab === 'Sessions' && (
           <div>
             {sessions.length === 0 ? (
-              <div className="glass rounded-xl p-8 text-center">
-                <p className="text-sm text-slate-400">
+              <div className="card-lg p-8 text-center">
+                <p className="text-sm text-zinc-400">
                   No sessions in this series yet. Create a new session and assign it to this series.
                 </p>
               </div>

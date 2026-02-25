@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Upload, Users } from 'lucide-react';
+import { Upload, Users } from 'lucide-react';
 import { createSession, getSettings, createRoom, uploadAudio } from '../lib/api';
 import { contextMetaLabel } from '../lib/utils';
 import ContextSelector from '../components/ContextSelector';
@@ -86,25 +86,18 @@ export default function NewSession() {
   }
 
   return (
-    <div className="max-w-3xl mx-auto px-4 py-6 md:px-6 md:py-12 safe-area-inset">
+    <div className="max-w-4xl mx-auto px-6 py-8 safe-area-inset">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <button
-          onClick={() => navigate('/')}
-          className="text-slate-400 hover:text-orange-400 transition-colors inline-flex items-center gap-2 text-sm font-medium touch-target"
-        >
-          <ArrowLeft size={20} strokeWidth={1.5} />
-          Back
-        </button>
-        <h1 className="text-lg md:text-xl font-semibold text-slate-100">
+        <h1 className="font-display text-xl font-bold text-white">
           UPLOAD / ROOM
         </h1>
       </div>
 
-      <p className="mt-6 text-sm text-slate-400">Upload a pre-recorded audio file or start a collaborative room.</p>
+      <p className="mt-6 text-sm text-zinc-400">Upload a pre-recorded audio file or start a collaborative room.</p>
 
-      {/* Glass form container */}
-      <div className="mt-8 glass rounded-xl p-4 md:p-8">
+      {/* Form container */}
+      <div className="mt-8 card-lg p-6 md:p-8">
         {/* Session Type */}
         <div>
           <span className="section-label">
@@ -125,7 +118,7 @@ export default function NewSession() {
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             placeholder="Session title..."
-            className="mt-2 glass-input w-full text-base px-4 py-3 rounded-xl"
+            className="mt-2 eb-input w-full text-base px-4 py-3"
           />
         </div>
 
@@ -139,9 +132,9 @@ export default function NewSession() {
             value={contextMeta}
             onChange={(e) => setContextMeta(e.target.value)}
             placeholder={`${contextMetaLabel(context)} name...`}
-            className="mt-2 glass-input w-full text-base px-4 py-3 rounded-xl"
+            className="mt-2 eb-input w-full text-base px-4 py-3"
           />
-          <p className="text-xs text-slate-400 mt-1">Optional — helps the AI tailor notes to your specific context.</p>
+          <p className="text-xs text-zinc-400 mt-1">Optional — helps the AI tailor notes to your specific context.</p>
         </div>
 
         {/* Series selector */}
@@ -149,7 +142,7 @@ export default function NewSession() {
           <label className="section-label">
             Series
           </label>
-          <p className="text-xs text-slate-400 mt-1">Group sessions into a series to build meeting memory across conversations.</p>
+          <p className="text-xs text-zinc-400 mt-1">Group sessions into a series to build meeting memory across conversations.</p>
           <div className="mt-2">
             <SeriesSelector value={seriesId} onChange={setSeriesId} />
           </div>
@@ -182,7 +175,7 @@ export default function NewSession() {
               <Upload size={16} strokeWidth={1.5} />
               Upload File
             </button>
-            <p className="text-xs text-slate-400 mt-1 text-center">Upload a pre-recorded audio file (.mp3, .wav, .m4a)</p>
+            <p className="text-xs text-zinc-400 mt-1 text-center">Upload a pre-recorded audio file (.mp3, .wav, .m4a)</p>
           </div>
           <div>
             <button
@@ -193,7 +186,7 @@ export default function NewSession() {
               <Users size={16} strokeWidth={1.5} />
               Create Room
             </button>
-            <p className="text-xs text-slate-400 mt-1 text-center">Start a shared session others can join with a code</p>
+            <p className="text-xs text-zinc-400 mt-1 text-center">Start a shared session others can join with a code</p>
           </div>
         </div>
       </div>

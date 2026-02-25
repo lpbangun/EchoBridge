@@ -1,11 +1,9 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Plus, Trash2, MessageSquare } from 'lucide-react';
+import { Plus, Trash2, MessageSquare } from 'lucide-react';
 import { getConversations, deleteConversation } from '../lib/api';
 import ChatPanel from '../components/ChatPanel';
 
 export default function AskPage() {
-  const navigate = useNavigate();
   const [conversations, setConversations] = useState([]);
   const [activeConversationId, setActiveConversationId] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -64,32 +62,26 @@ export default function AskPage() {
       <div
         className={`${
           showSidebar ? 'w-64 sm:w-72' : 'w-0'
-        } transition-all duration-300 overflow-hidden border-r border-white/15 flex flex-col shrink-0`}
+        } transition-all duration-300 overflow-hidden bg-surface-dark border-r border-border flex flex-col shrink-0`}
       >
-        <div className="px-4 py-4 border-b border-white/15 flex items-center justify-between">
-          <button
-            onClick={() => navigate('/')}
-            className="text-slate-400 hover:text-orange-400 transition-colors inline-flex items-center gap-2 text-sm font-medium"
-          >
-            <ArrowLeft size={16} strokeWidth={1.5} />
-            Back
-          </button>
+        <div className="px-4 py-4 border-b border-border flex items-center justify-between">
+          <span className="font-display text-sm font-bold text-white">Conversations</span>
           <button
             onClick={handleNewConversation}
-            className="text-slate-400 hover:text-orange-400 transition-colors"
+            className="text-zinc-400 hover:text-accent transition-colors"
             title="New conversation"
           >
             <Plus size={18} strokeWidth={1.5} />
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto glass-scrollbar">
+        <div className="flex-1 overflow-y-auto eb-scrollbar">
           {loading && (
-            <p className="text-xs text-slate-400 px-4 py-3">Loading...</p>
+            <p className="text-xs text-zinc-400 px-4 py-3">Loading...</p>
           )}
 
           {!loading && conversations.length === 0 && (
-            <p className="text-xs text-slate-400 px-4 py-3">
+            <p className="text-xs text-zinc-400 px-4 py-3">
               No conversations yet. Ask a question to get started.
             </p>
           )}
@@ -97,20 +89,20 @@ export default function AskPage() {
           {conversations.map((convo) => (
             <div
               key={convo.id}
-              className={`group flex items-center gap-2 px-4 py-3 cursor-pointer transition-colors border-b border-white/5 ${
+              className={`group flex items-center gap-2 px-4 py-3 cursor-pointer transition-colors border-b border-border ${
                 activeConversationId === convo.id
-                  ? 'bg-orange-500/10 border-l-2 border-l-orange-400'
-                  : 'hover:bg-white/5'
+                  ? 'bg-accent-muted border-l-2 border-l-accent'
+                  : 'hover:bg-zinc-800/50'
               }`}
             >
               <button
                 onClick={() => setActiveConversationId(convo.id)}
                 className="flex-1 text-left min-w-0"
               >
-                <p className="text-sm text-slate-200 truncate">
+                <p className="text-sm text-zinc-200 truncate">
                   {convo.title || 'Untitled'}
                 </p>
-                <p className="text-xs text-slate-400 mt-0.5">
+                <p className="text-xs text-zinc-400 mt-0.5">
                   {new Date(convo.created_at).toLocaleDateString()}
                 </p>
               </button>
@@ -119,7 +111,7 @@ export default function AskPage() {
                   e.stopPropagation();
                   handleDelete(convo.id);
                 }}
-                className="text-slate-400 hover:text-red-400 transition-colors opacity-0 group-hover:opacity-100"
+                className="text-zinc-400 hover:text-red-400 transition-colors opacity-0 group-hover:opacity-100"
                 title="Delete conversation"
               >
                 <Trash2 size={14} strokeWidth={1.5} />
@@ -131,19 +123,19 @@ export default function AskPage() {
 
       {/* Main chat area */}
       <div className="flex-1 flex flex-col min-w-0">
-        <div className="px-4 py-3 border-b border-white/15 flex items-center justify-between">
+        <div className="px-4 py-3 border-b border-border flex items-center justify-between">
           <div className="flex items-center gap-3">
             <button
               onClick={() => setShowSidebar(!showSidebar)}
-              className="text-slate-400 hover:text-slate-200 transition-colors lg:hidden"
+              className="text-zinc-400 hover:text-zinc-200 transition-colors lg:hidden"
             >
               <MessageSquare size={18} strokeWidth={1.5} />
             </button>
-            <h1 className="text-base font-medium text-slate-100">
+            <h1 className="font-display text-base font-bold text-white">
               Ask EchoBridge
             </h1>
           </div>
-          <p className="text-xs text-slate-400">
+          <p className="text-xs text-zinc-400">
             Cross-meeting AI search
           </p>
         </div>

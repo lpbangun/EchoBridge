@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Copy, Key, Check, ExternalLink, Cloud, RefreshCw } from 'lucide-react';
+import { Copy, Key, Check, ExternalLink, Cloud, RefreshCw } from 'lucide-react';
 import { getSettings, updateSettings, createApiKey, testCloudConnection, getStorageStatus } from '../lib/api';
 
 const WHISPER_MODELS = ['tiny', 'base', 'small', 'medium', 'large'];
@@ -33,8 +32,6 @@ const PROVIDER_MODEL_DOCS = {
 };
 
 export default function SettingsPage() {
-  const navigate = useNavigate();
-
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState(null);
 
@@ -363,22 +360,15 @@ curl -H "Authorization: Bearer $ECHOBRIDGE_API_KEY" \\
 
   if (loading) {
     return (
-      <div className="max-w-3xl mx-auto px-4 py-6 md:px-6 md:py-12 safe-area-inset">
-        <p className="text-sm text-slate-400">Loading...</p>
+      <div className="max-w-4xl mx-auto px-6 py-8">
+        <p className="text-sm text-zinc-400">Loading...</p>
       </div>
     );
   }
 
   if (fetchError) {
     return (
-      <div className="max-w-3xl mx-auto px-4 py-6 md:px-6 md:py-12 safe-area-inset">
-        <button
-          onClick={() => navigate(-1)}
-          className="text-slate-400 hover:text-orange-400 transition-colors inline-flex items-center gap-2 text-sm font-medium touch-target"
-        >
-          <ArrowLeft size={20} strokeWidth={1.5} />
-          Back
-        </button>
+      <div className="max-w-4xl mx-auto px-6 py-8">
         <p className="mt-8 text-sm text-red-400">{fetchError}</p>
       </div>
     );
@@ -388,27 +378,18 @@ curl -H "Authorization: Bearer $ECHOBRIDGE_API_KEY" \\
   const currentModels = providerModels[aiProvider] || {};
 
   return (
-    <div className="max-w-3xl mx-auto px-4 py-6 md:px-6 md:py-12 safe-area-inset">
+    <div className="max-w-4xl mx-auto px-6 py-8">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <button
-          onClick={() => navigate(-1)}
-          className="text-slate-400 hover:text-orange-400 transition-colors inline-flex items-center gap-2 text-sm font-medium touch-target"
-        >
-          <ArrowLeft size={20} strokeWidth={1.5} />
-          Back
-        </button>
-        <h1 className="text-lg md:text-xl font-semibold text-slate-100">
-          SETTINGS
-        </h1>
-      </div>
+      <h1 className="font-display text-xl font-bold text-white">
+        SETTINGS
+      </h1>
 
       {/* DISPLAY section */}
-      <div className="glass rounded-xl p-4 md:p-6 mt-8">
-        <span className="text-sm font-semibold text-slate-200 uppercase tracking-wider">
+      <div className="card-lg p-4 md:p-6 mt-8">
+        <span className="text-sm font-semibold text-zinc-200 uppercase tracking-wider">
           Display
         </span>
-        <p className="text-sm text-slate-400 mt-1">How you appear in rooms and exports.</p>
+        <p className="text-sm text-zinc-400 mt-1">How you appear in rooms and exports.</p>
 
         <label className="block mt-6">
           <span className="section-label">
@@ -419,17 +400,17 @@ curl -H "Authorization: Bearer $ECHOBRIDGE_API_KEY" \\
             value={userDisplayName}
             onChange={(e) => setUserDisplayName(e.target.value)}
             placeholder="Your name"
-            className="glass-input w-full text-base px-4 py-3 rounded-xl mt-2"
+            className="eb-input w-full text-base px-4 py-3 rounded-xl mt-2"
           />
         </label>
       </div>
 
       {/* AI PROVIDER section */}
-      <div className="glass rounded-xl p-4 md:p-6 mt-8">
-        <span className="text-sm font-semibold text-slate-200 uppercase tracking-wider">
+      <div className="card-lg p-4 md:p-6 mt-8">
+        <span className="text-sm font-semibold text-zinc-200 uppercase tracking-wider">
           AI Provider
         </span>
-        <p className="text-sm text-slate-400 mt-1">Choose where to send AI requests. Each provider requires its own API key.</p>
+        <p className="text-sm text-zinc-400 mt-1">Choose where to send AI requests. Each provider requires its own API key.</p>
 
         {/* Provider tabs */}
         <div className="flex flex-wrap gap-2 mt-6 overflow-x-auto">
@@ -439,8 +420,8 @@ curl -H "Authorization: Bearer $ECHOBRIDGE_API_KEY" \\
               onClick={() => handleProviderChange(provider.id)}
               className={`px-3 md:px-4 py-2 text-sm font-medium rounded-lg transition-colors touch-target whitespace-nowrap ${
                 aiProvider === provider.id
-                  ? 'bg-orange-500/20 text-orange-300 border border-orange-500/40'
-                  : 'text-slate-400 border border-slate-700 hover:border-slate-500 hover:text-slate-300'
+                  ? 'bg-accent-muted text-accent border border-accent-border'
+                  : 'text-zinc-400 border border-zinc-700 hover:border-zinc-500 hover:text-zinc-300'
               }`}
             >
               {provider.name}
@@ -452,7 +433,7 @@ curl -H "Authorization: Bearer $ECHOBRIDGE_API_KEY" \\
         </div>
 
         {/* Provider description */}
-        <p className="text-sm text-slate-400 mt-4">{currentProvider.description}</p>
+        <p className="text-sm text-zinc-400 mt-4">{currentProvider.description}</p>
 
         {/* API key for selected provider */}
         <label className="block mt-6">
@@ -464,7 +445,7 @@ curl -H "Authorization: Bearer $ECHOBRIDGE_API_KEY" \\
             value={apiKeys[aiProvider]}
             onChange={(e) => setApiKeys({ ...apiKeys, [aiProvider]: e.target.value })}
             placeholder={apiKeySetFlags[aiProvider] ? '••••••••' : `${currentProvider.keyPrefix}...`}
-            className="glass-input w-full text-base px-4 py-3 rounded-xl mt-2"
+            className="eb-input w-full text-base px-4 py-3 rounded-xl mt-2"
           />
           {apiKeySetFlags[aiProvider] && !apiKeys[aiProvider] && (
             <span className="mt-2 inline-flex items-center gap-1.5 text-sm text-green-400">
@@ -472,9 +453,9 @@ curl -H "Authorization: Bearer $ECHOBRIDGE_API_KEY" \\
               API key is set
             </span>
           )}
-          <p className="text-xs text-slate-400 mt-1">
+          <p className="text-xs text-zinc-400 mt-1">
             Get your key at{' '}
-            <a href={currentProvider.docsUrl} target="_blank" rel="noopener noreferrer" className="text-orange-400 hover:text-orange-300 transition-colors inline-flex items-center gap-1">
+            <a href={currentProvider.docsUrl} target="_blank" rel="noopener noreferrer" className="text-accent hover:text-accent-hover transition-colors inline-flex items-center gap-1">
               {currentProvider.docsUrl.replace('https://', '').split('/')[0]}
               <ExternalLink size={12} />
             </a>
@@ -483,13 +464,13 @@ curl -H "Authorization: Bearer $ECHOBRIDGE_API_KEY" \\
       </div>
 
       {/* MODEL section */}
-      <div className="glass rounded-xl p-4 md:p-6 mt-8">
-        <span className="text-sm font-semibold text-slate-200 uppercase tracking-wider">
+      <div className="card-lg p-4 md:p-6 mt-8">
+        <span className="text-sm font-semibold text-zinc-200 uppercase tracking-wider">
           Default Model
         </span>
-        <p className="text-sm text-slate-400 mt-1">
+        <p className="text-sm text-zinc-400 mt-1">
           Pick a preset or paste any model ID from{' '}
-          <a href={PROVIDER_MODEL_DOCS[aiProvider]} target="_blank" rel="noopener noreferrer" className="text-orange-400 hover:text-orange-300 transition-colors inline-flex items-center gap-1">
+          <a href={PROVIDER_MODEL_DOCS[aiProvider]} target="_blank" rel="noopener noreferrer" className="text-accent hover:text-accent-hover transition-colors inline-flex items-center gap-1">
             {currentProvider.name} docs
             <ExternalLink size={12} />
           </a>
@@ -505,7 +486,7 @@ curl -H "Authorization: Bearer $ECHOBRIDGE_API_KEY" \\
               <select
                 value={defaultModel}
                 onChange={(e) => setDefaultModel(e.target.value)}
-                className="glass-select w-full text-base px-4 py-3 rounded-xl appearance-none"
+                className="eb-select w-full text-base px-4 py-3 rounded-xl appearance-none"
               >
                 <option value="">Select a model</option>
                 {Object.entries(currentModels).map(([id, name]) => (
@@ -515,7 +496,7 @@ curl -H "Authorization: Bearer $ECHOBRIDGE_API_KEY" \\
                 ))}
               </select>
               <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-4">
-                <svg className="h-4 w-4 text-slate-400" viewBox="0 0 20 20" fill="currentColor">
+                <svg className="h-4 w-4 text-zinc-400" viewBox="0 0 20 20" fill="currentColor">
                   <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clipRule="evenodd" />
                 </svg>
               </div>
@@ -534,9 +515,9 @@ curl -H "Authorization: Bearer $ECHOBRIDGE_API_KEY" \\
               value={customModelId}
               onChange={(e) => setCustomModelId(e.target.value)}
               placeholder={aiProvider === 'openrouter' ? 'e.g. anthropic/claude-opus-4.6' : 'e.g. gpt-4o'}
-              className="glass-input w-full text-base px-4 py-3 rounded-xl mt-2 font-mono text-sm"
+              className="eb-input w-full text-base px-4 py-3 rounded-xl mt-2 font-mono text-sm"
             />
-            <p className="text-xs text-slate-400 mt-1">
+            <p className="text-xs text-zinc-400 mt-1">
               Paste the exact model ID from your provider's documentation.
             </p>
           </label>
@@ -546,18 +527,18 @@ curl -H "Authorization: Bearer $ECHOBRIDGE_API_KEY" \\
         <button
           type="button"
           onClick={() => setUseCustomModel(!useCustomModel)}
-          className="mt-4 text-sm text-orange-400 hover:text-orange-300 transition-colors"
+          className="mt-4 text-sm text-accent hover:text-accent-hover transition-colors"
         >
           {useCustomModel ? 'Use a recommended model instead' : 'Paste a custom model ID instead'}
         </button>
       </div>
 
       {/* TRANSCRIPTION section */}
-      <div className="glass rounded-xl p-4 md:p-6 mt-8">
-        <span className="text-sm font-semibold text-slate-200 uppercase tracking-wider">
+      <div className="card-lg p-4 md:p-6 mt-8">
+        <span className="text-sm font-semibold text-zinc-200 uppercase tracking-wider">
           Transcription
         </span>
-        <p className="text-sm text-slate-400 mt-1">Controls how uploaded audio is converted to text. Live recording always uses browser speech recognition.</p>
+        <p className="text-sm text-zinc-400 mt-1">Controls how uploaded audio is converted to text. Live recording always uses browser speech recognition.</p>
 
         {/* Provider toggle */}
         <div className="mt-6">
@@ -567,8 +548,8 @@ curl -H "Authorization: Bearer $ECHOBRIDGE_API_KEY" \\
               onClick={() => setSttProvider('local')}
               className={`px-3 md:px-4 py-2 text-sm font-medium rounded-lg transition-colors touch-target whitespace-nowrap ${
                 sttProvider === 'local'
-                  ? 'bg-orange-500/20 text-orange-300 border border-orange-500/40'
-                  : 'text-slate-400 border border-slate-700 hover:border-slate-500 hover:text-slate-300'
+                  ? 'bg-accent-muted text-accent border border-accent-border'
+                  : 'text-zinc-400 border border-zinc-700 hover:border-zinc-500 hover:text-zinc-300'
               }`}
             >
               Local (Whisper)
@@ -577,8 +558,8 @@ curl -H "Authorization: Bearer $ECHOBRIDGE_API_KEY" \\
               onClick={() => setSttProvider('openai')}
               className={`px-3 md:px-4 py-2 text-sm font-medium rounded-lg transition-colors touch-target whitespace-nowrap ${
                 sttProvider === 'openai'
-                  ? 'bg-orange-500/20 text-orange-300 border border-orange-500/40'
-                  : 'text-slate-400 border border-slate-700 hover:border-slate-500 hover:text-slate-300'
+                  ? 'bg-accent-muted text-accent border border-accent-border'
+                  : 'text-zinc-400 border border-zinc-700 hover:border-zinc-500 hover:text-zinc-300'
               }`}
             >
               Cloud (OpenAI)
@@ -587,8 +568,8 @@ curl -H "Authorization: Bearer $ECHOBRIDGE_API_KEY" \\
               onClick={() => setSttProvider('deepgram')}
               className={`px-3 md:px-4 py-2 text-sm font-medium rounded-lg transition-colors touch-target whitespace-nowrap ${
                 sttProvider === 'deepgram'
-                  ? 'bg-orange-500/20 text-orange-300 border border-orange-500/40'
-                  : 'text-slate-400 border border-slate-700 hover:border-slate-500 hover:text-slate-300'
+                  ? 'bg-accent-muted text-accent border border-accent-border'
+                  : 'text-zinc-400 border border-zinc-700 hover:border-zinc-500 hover:text-zinc-300'
               }`}
             >
               Deepgram
@@ -605,7 +586,7 @@ curl -H "Authorization: Bearer $ECHOBRIDGE_API_KEY" \\
               <select
                 value={whisperModel}
                 onChange={(e) => setWhisperModel(e.target.value)}
-                className="glass-select w-full text-base px-4 py-3 rounded-xl appearance-none"
+                className="eb-select w-full text-base px-4 py-3 rounded-xl appearance-none"
               >
                 {WHISPER_MODELS.map((m) => (
                   <option key={m} value={m}>
@@ -614,12 +595,12 @@ curl -H "Authorization: Bearer $ECHOBRIDGE_API_KEY" \\
                 ))}
               </select>
               <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-4">
-                <svg className="h-4 w-4 text-slate-400" viewBox="0 0 20 20" fill="currentColor">
+                <svg className="h-4 w-4 text-zinc-400" viewBox="0 0 20 20" fill="currentColor">
                   <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clipRule="evenodd" />
                 </svg>
               </div>
             </div>
-            <p className="text-xs text-slate-400 mt-1">'small' is recommended. Use 'large' for difficult audio or accented speech.</p>
+            <p className="text-xs text-zinc-400 mt-1">'small' is recommended. Use 'large' for difficult audio or accented speech.</p>
           </label>
         )}
 
@@ -633,7 +614,7 @@ curl -H "Authorization: Bearer $ECHOBRIDGE_API_KEY" \\
                 <select
                   value={openaiSttModel}
                   onChange={(e) => setOpenaiSttModel(e.target.value)}
-                  className="glass-select w-full text-base px-4 py-3 rounded-xl appearance-none"
+                  className="eb-select w-full text-base px-4 py-3 rounded-xl appearance-none"
                 >
                   {OPENAI_STT_MODELS.map((m) => (
                     <option key={m.id} value={m.id}>
@@ -642,7 +623,7 @@ curl -H "Authorization: Bearer $ECHOBRIDGE_API_KEY" \\
                   ))}
                 </select>
                 <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-4">
-                  <svg className="h-4 w-4 text-slate-400" viewBox="0 0 20 20" fill="currentColor">
+                  <svg className="h-4 w-4 text-zinc-400" viewBox="0 0 20 20" fill="currentColor">
                     <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clipRule="evenodd" />
                   </svg>
                 </div>
@@ -664,7 +645,7 @@ curl -H "Authorization: Bearer $ECHOBRIDGE_API_KEY" \\
                 <select
                   value={deepgramModel}
                   onChange={(e) => setDeepgramModel(e.target.value)}
-                  className="glass-select w-full text-base px-4 py-3 rounded-xl appearance-none"
+                  className="eb-select w-full text-base px-4 py-3 rounded-xl appearance-none"
                 >
                   {DEEPGRAM_MODELS.map((m) => (
                     <option key={m.id} value={m.id}>
@@ -673,7 +654,7 @@ curl -H "Authorization: Bearer $ECHOBRIDGE_API_KEY" \\
                   ))}
                 </select>
                 <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-4">
-                  <svg className="h-4 w-4 text-slate-400" viewBox="0 0 20 20" fill="currentColor">
+                  <svg className="h-4 w-4 text-zinc-400" viewBox="0 0 20 20" fill="currentColor">
                     <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clipRule="evenodd" />
                   </svg>
                 </div>
@@ -686,7 +667,7 @@ curl -H "Authorization: Bearer $ECHOBRIDGE_API_KEY" \\
                 value={deepgramKey}
                 onChange={(e) => setDeepgramKey(e.target.value)}
                 placeholder={deepgramKeySet ? '••••••••' : 'Enter Deepgram API key'}
-                className="glass-input w-full text-base px-4 py-3 rounded-xl mt-2"
+                className="eb-input w-full text-base px-4 py-3 rounded-xl mt-2"
               />
               {deepgramKeySet && !deepgramKey && (
                 <span className="mt-2 inline-flex items-center gap-1.5 text-sm text-green-400">
@@ -694,9 +675,9 @@ curl -H "Authorization: Bearer $ECHOBRIDGE_API_KEY" \\
                   API key is set
                 </span>
               )}
-              <p className="text-xs text-slate-400 mt-1">
+              <p className="text-xs text-zinc-400 mt-1">
                 Get your key at{' '}
-                <a href="https://console.deepgram.com" target="_blank" rel="noopener noreferrer" className="text-orange-400 hover:text-orange-300 transition-colors inline-flex items-center gap-1">
+                <a href="https://console.deepgram.com" target="_blank" rel="noopener noreferrer" className="text-accent hover:text-accent-hover transition-colors inline-flex items-center gap-1">
                   console.deepgram.com
                   <ExternalLink size={12} />
                 </a>
@@ -708,11 +689,11 @@ curl -H "Authorization: Bearer $ECHOBRIDGE_API_KEY" \\
       </div>
 
       {/* EXPORT section */}
-      <div className="glass rounded-xl p-4 md:p-6 mt-8">
-        <span className="text-sm font-semibold text-slate-200 uppercase tracking-wider">
+      <div className="card-lg p-4 md:p-6 mt-8">
+        <span className="text-sm font-semibold text-zinc-200 uppercase tracking-wider">
           Export
         </span>
-        <p className="text-sm text-slate-400 mt-1">Interpretations can be exported as Markdown (.md) files — great for Obsidian, Notion, or any notes app.</p>
+        <p className="text-sm text-zinc-400 mt-1">Interpretations can be exported as Markdown (.md) files — great for Obsidian, Notion, or any notes app.</p>
 
         <label className="block mt-6">
           <span className="section-label">
@@ -723,7 +704,7 @@ curl -H "Authorization: Bearer $ECHOBRIDGE_API_KEY" \\
             value={outputDir}
             onChange={(e) => setOutputDir(e.target.value)}
             placeholder="~/Downloads/EchoBridge"
-            className="glass-input w-full text-base px-4 py-3 rounded-xl mt-2"
+            className="eb-input w-full text-base px-4 py-3 rounded-xl mt-2"
           />
         </label>
 
@@ -732,9 +713,9 @@ curl -H "Authorization: Bearer $ECHOBRIDGE_API_KEY" \\
             type="checkbox"
             checked={autoExport}
             onChange={(e) => setAutoExport(e.target.checked)}
-            className="h-4 w-4 accent-orange-500"
+            className="h-4 w-4 accent-lime-400"
           />
-          <span className="text-sm text-slate-300">
+          <span className="text-sm text-zinc-300">
             Auto-export after interpretation
           </span>
         </label>
@@ -744,32 +725,32 @@ curl -H "Authorization: Bearer $ECHOBRIDGE_API_KEY" \\
             type="checkbox"
             checked={includeTranscript}
             onChange={(e) => setIncludeTranscript(e.target.checked)}
-            className="h-4 w-4 accent-orange-500"
+            className="h-4 w-4 accent-lime-400"
           />
-          <span className="text-sm text-slate-300">
+          <span className="text-sm text-zinc-300">
             Include transcript in .md export
           </span>
         </label>
       </div>
 
       {/* CLOUD STORAGE section */}
-      <div className="glass rounded-xl p-4 md:p-6 mt-8">
+      <div className="card-lg p-4 md:p-6 mt-8">
         <div className="flex items-center gap-2">
-          <Cloud size={18} strokeWidth={1.5} className="text-slate-400" />
-          <span className="text-sm font-semibold text-slate-200 uppercase tracking-wider">
+          <Cloud size={18} strokeWidth={1.5} className="text-zinc-400" />
+          <span className="text-sm font-semibold text-zinc-200 uppercase tracking-wider">
             Cloud Storage
           </span>
         </div>
-        <p className="text-sm text-slate-400 mt-1">Back up audio and exports to S3-compatible storage (AWS S3, Cloudflare R2, Backblaze B2, MinIO).</p>
+        <p className="text-sm text-zinc-400 mt-1">Back up audio and exports to S3-compatible storage (AWS S3, Cloudflare R2, Backblaze B2, MinIO).</p>
 
         <label className="mt-6 flex items-center gap-3 cursor-pointer">
           <input
             type="checkbox"
             checked={cloudEnabled}
             onChange={(e) => setCloudEnabled(e.target.checked)}
-            className="h-4 w-4 accent-orange-500"
+            className="h-4 w-4 accent-lime-400"
           />
-          <span className="text-sm text-slate-300">
+          <span className="text-sm text-zinc-300">
             Enable cloud storage
           </span>
         </label>
@@ -785,9 +766,9 @@ curl -H "Authorization: Bearer $ECHOBRIDGE_API_KEY" \\
                 value={s3Endpoint}
                 onChange={(e) => setS3Endpoint(e.target.value)}
                 placeholder="Leave empty for AWS S3, or enter R2/B2/MinIO URL"
-                className="glass-input w-full text-base px-4 py-3 rounded-xl mt-2"
+                className="eb-input w-full text-base px-4 py-3 rounded-xl mt-2"
               />
-              <p className="text-xs text-slate-400 mt-1">
+              <p className="text-xs text-zinc-400 mt-1">
                 Only needed for non-AWS providers (e.g. https://&lt;account&gt;.r2.cloudflarestorage.com)
               </p>
             </label>
@@ -801,7 +782,7 @@ curl -H "Authorization: Bearer $ECHOBRIDGE_API_KEY" \\
                 value={s3AccessKey}
                 onChange={(e) => setS3AccessKey(e.target.value)}
                 placeholder="AKIAIOSFODNN7EXAMPLE"
-                className="glass-input w-full text-base px-4 py-3 rounded-xl mt-2 font-mono text-sm"
+                className="eb-input w-full text-base px-4 py-3 rounded-xl mt-2 font-mono text-sm"
               />
             </label>
 
@@ -814,7 +795,7 @@ curl -H "Authorization: Bearer $ECHOBRIDGE_API_KEY" \\
                 value={s3SecretKey}
                 onChange={(e) => setS3SecretKey(e.target.value)}
                 placeholder={s3SecretConfigured ? '••••••••' : 'wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY'}
-                className="glass-input w-full text-base px-4 py-3 rounded-xl mt-2 font-mono text-sm"
+                className="eb-input w-full text-base px-4 py-3 rounded-xl mt-2 font-mono text-sm"
               />
               {s3SecretConfigured && !s3SecretKey && (
                 <span className="mt-2 inline-flex items-center gap-1.5 text-sm text-green-400">
@@ -833,7 +814,7 @@ curl -H "Authorization: Bearer $ECHOBRIDGE_API_KEY" \\
                 value={s3Bucket}
                 onChange={(e) => setS3Bucket(e.target.value)}
                 placeholder="my-echobridge-bucket"
-                className="glass-input w-full text-base px-4 py-3 rounded-xl mt-2"
+                className="eb-input w-full text-base px-4 py-3 rounded-xl mt-2"
               />
             </label>
 
@@ -847,7 +828,7 @@ curl -H "Authorization: Bearer $ECHOBRIDGE_API_KEY" \\
                   value={s3Region}
                   onChange={(e) => setS3Region(e.target.value)}
                   placeholder="auto"
-                  className="glass-input w-full text-base px-4 py-3 rounded-xl mt-2"
+                  className="eb-input w-full text-base px-4 py-3 rounded-xl mt-2"
                 />
               </label>
 
@@ -860,7 +841,7 @@ curl -H "Authorization: Bearer $ECHOBRIDGE_API_KEY" \\
                   value={s3Prefix}
                   onChange={(e) => setS3Prefix(e.target.value)}
                   placeholder="echobridge/"
-                  className="glass-input w-full text-base px-4 py-3 rounded-xl mt-2"
+                  className="eb-input w-full text-base px-4 py-3 rounded-xl mt-2"
                 />
               </label>
             </div>
@@ -870,9 +851,9 @@ curl -H "Authorization: Bearer $ECHOBRIDGE_API_KEY" \\
                 type="checkbox"
                 checked={cloudSyncAudio}
                 onChange={(e) => setCloudSyncAudio(e.target.checked)}
-                className="h-4 w-4 accent-orange-500"
+                className="h-4 w-4 accent-lime-400"
               />
-              <span className="text-sm text-slate-300">
+              <span className="text-sm text-zinc-300">
                 Sync audio recordings
               </span>
             </label>
@@ -882,9 +863,9 @@ curl -H "Authorization: Bearer $ECHOBRIDGE_API_KEY" \\
                 type="checkbox"
                 checked={cloudSyncExports}
                 onChange={(e) => setCloudSyncExports(e.target.checked)}
-                className="h-4 w-4 accent-orange-500"
+                className="h-4 w-4 accent-lime-400"
               />
-              <span className="text-sm text-slate-300">
+              <span className="text-sm text-zinc-300">
                 Sync markdown exports
               </span>
             </label>
@@ -915,19 +896,19 @@ curl -H "Authorization: Bearer $ECHOBRIDGE_API_KEY" \\
             )}
 
             {syncStatus && (
-              <div className="glass-strong rounded-xl p-4 mt-4">
+              <div className="bg-surface-dark border border-border rounded-xl p-4 mt-4">
                 <div className="grid grid-cols-3 gap-4 text-center">
                   <div>
-                    <p className="text-2xl font-semibold text-slate-100">{syncStatus.pending}</p>
-                    <p className="text-xs text-slate-400 mt-1">Pending</p>
+                    <p className="text-2xl font-semibold text-white">{syncStatus.pending}</p>
+                    <p className="text-xs text-zinc-400 mt-1">Pending</p>
                   </div>
                   <div>
                     <p className="text-2xl font-semibold text-green-400">{syncStatus.completed}</p>
-                    <p className="text-xs text-slate-400 mt-1">Uploaded</p>
+                    <p className="text-xs text-zinc-400 mt-1">Uploaded</p>
                   </div>
                   <div>
                     <p className="text-2xl font-semibold text-red-400">{syncStatus.failed}</p>
-                    <p className="text-xs text-slate-400 mt-1">Failed</p>
+                    <p className="text-xs text-zinc-400 mt-1">Failed</p>
                   </div>
                 </div>
                 {syncStatus.last_error && (
@@ -958,11 +939,11 @@ curl -H "Authorization: Bearer $ECHOBRIDGE_API_KEY" \\
       </div>
 
       {/* AGENT CONNECTIONS section */}
-      <div className="glass rounded-xl p-4 md:p-6 mt-8">
-        <span className="text-sm font-semibold text-slate-200 uppercase tracking-wider">
+      <div className="card-lg p-4 md:p-6 mt-8">
+        <span className="text-sm font-semibold text-zinc-200 uppercase tracking-wider">
           Agent Connections
         </span>
-        <p className="text-sm text-slate-400 mt-1">Let external AI agents connect to EchoBridge programmatically. Generate a key, then grab the config snippet for your platform.</p>
+        <p className="text-sm text-zinc-400 mt-1">Let external AI agents connect to EchoBridge programmatically. Generate a key, then grab the config snippet for your platform.</p>
 
         <label className="block mt-6">
           <span className="section-label">
@@ -973,7 +954,7 @@ curl -H "Authorization: Bearer $ECHOBRIDGE_API_KEY" \\
             value={keyName}
             onChange={(e) => setKeyName(e.target.value)}
             placeholder="my-agent"
-            className="glass-input w-full text-base px-4 py-3 rounded-xl mt-2"
+            className="eb-input w-full text-base px-4 py-3 rounded-xl mt-2"
           />
         </label>
 
@@ -993,11 +974,11 @@ curl -H "Authorization: Bearer $ECHOBRIDGE_API_KEY" \\
         )}
 
         {generatedKey && (
-          <div className="glass-strong rounded-xl p-4 md:p-6 mt-6">
+          <div className="bg-surface-dark border border-border rounded-xl p-4 md:p-6 mt-6">
             <p className="text-sm text-amber-400 font-medium">
               Copy now — this key will not be shown again
             </p>
-            <p className="mt-3 font-mono text-sm text-slate-300 break-all">
+            <p className="mt-3 font-mono text-sm text-zinc-300 break-all">
               {generatedKey.key}
             </p>
             <button
@@ -1018,7 +999,7 @@ curl -H "Authorization: Bearer $ECHOBRIDGE_API_KEY" \\
             </button>
 
             {/* Tabbed config snippets */}
-            <div className="mt-6 border-t border-slate-700 pt-6">
+            <div className="mt-6 border-t border-zinc-700 pt-6">
               <span className="section-label">Connection Config</span>
               <div className="flex flex-wrap gap-2 mt-3">
                 {[
@@ -1031,8 +1012,8 @@ curl -H "Authorization: Bearer $ECHOBRIDGE_API_KEY" \\
                     onClick={() => { setConfigTab(tab.id); setCopiedConfig(false); }}
                     className={`px-3 md:px-4 py-2 text-sm font-medium rounded-lg transition-colors touch-target whitespace-nowrap ${
                       configTab === tab.id
-                        ? 'bg-orange-500/20 text-orange-300 border border-orange-500/40'
-                        : 'text-slate-400 border border-slate-700 hover:border-slate-500 hover:text-slate-300'
+                        ? 'bg-accent-muted text-accent border border-accent-border'
+                        : 'text-zinc-400 border border-zinc-700 hover:border-zinc-500 hover:text-zinc-300'
                     }`}
                   >
                     {tab.label}
@@ -1040,13 +1021,13 @@ curl -H "Authorization: Bearer $ECHOBRIDGE_API_KEY" \\
                 ))}
               </div>
 
-              <pre className="mt-4 p-4 bg-slate-900/60 border border-slate-700 rounded-lg font-mono text-sm text-slate-300 overflow-x-auto whitespace-pre-wrap break-all">
+              <pre className="mt-4 p-4 bg-zinc-900/60 border border-zinc-700 rounded-lg font-mono text-sm text-zinc-300 overflow-x-auto whitespace-pre-wrap break-all">
                 {getConfigSnippet(configTab)}
               </pre>
 
-              <p className="mt-2 text-xs text-slate-400">
+              <p className="mt-2 text-xs text-zinc-400">
                 {configTab === 'mcp' && (
-                  <>Add this to your MCP client config (e.g. <code className="text-slate-400">~/.claude/settings.json</code> for Claude Code, or Claude Desktop settings).</>
+                  <>Add this to your MCP client config (e.g. <code className="text-zinc-400">~/.claude/settings.json</code> for Claude Code, or Claude Desktop settings).</>
                 )}
                 {configTab === 'openclaw' && (
                   <>Run these commands on your agent's machine. Step 2 auto-downloads the SKILL.md via the API. Step 3 verifies the connection.</>

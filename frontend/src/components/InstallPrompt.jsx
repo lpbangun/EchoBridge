@@ -56,11 +56,11 @@ export default function InstallPrompt() {
 
   return (
     <div className="fixed bottom-4 inset-x-0 z-50 flex justify-center px-4 safe-area-inset">
-      <div className="glass rounded-xl p-4 w-full max-w-sm flex items-center gap-3 shadow-lg shadow-black/20">
-        <Download size={20} strokeWidth={1.5} className="text-orange-400 shrink-0" />
+      <div className="card p-4 w-full max-w-sm flex items-center gap-3 shadow-lg shadow-black/20">
+        <Download size={20} strokeWidth={1.5} className="text-accent shrink-0" />
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-medium text-slate-200">Install EchoBridge</p>
-          <p className="text-xs text-slate-400 mt-0.5">Add to home screen for quick access.</p>
+          <p className="text-sm font-medium text-zinc-200">Install EchoBridge</p>
+          <p className="text-xs text-zinc-400 mt-0.5">Add to home screen for quick access.</p>
         </div>
         <div className="flex items-center gap-2 shrink-0">
           <button
@@ -71,7 +71,7 @@ export default function InstallPrompt() {
           </button>
           <button
             onClick={handleDismiss}
-            className="text-slate-400 hover:text-slate-300 transition-colors touch-target inline-flex items-center justify-center"
+            className="text-zinc-400 hover:text-zinc-300 transition-colors touch-target inline-flex items-center justify-center"
             aria-label="Dismiss"
           >
             <X size={16} strokeWidth={1.5} />

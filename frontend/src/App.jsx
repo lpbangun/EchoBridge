@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { getSettings, updateSettings } from './lib/api';
+import AppLayout from './components/AppLayout';
 import Dashboard from './pages/Dashboard';
 import NewSession from './pages/NewSession';
 import Recording from './pages/Recording';
@@ -11,11 +12,18 @@ import SettingsPage from './pages/SettingsPage';
 import SeriesView from './pages/SeriesView';
 import AskPage from './pages/AskPage';
 import GuidePage from './pages/GuidePage';
+import RecordingsPage from './pages/RecordingsPage';
+import SeriesListPage from './pages/SeriesListPage';
+import RoomsPage from './pages/RoomsPage';
 import OfflineBanner from './components/OfflineBanner';
 import InstallPrompt from './components/InstallPrompt';
 import SetupWizard from './components/SetupWizard';
 import WelcomeLanding from './components/WelcomeLanding';
 import { initSyncManager } from './lib/syncManager';
+
+function LayoutRoute({ children }) {
+  return <AppLayout>{children}</AppLayout>;
+}
 
 export default function App() {
   const [showLanding, setShowLanding] = useState(false);
@@ -53,8 +61,8 @@ export default function App() {
 
   if (!settingsLoaded) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="h-6 w-6 border-2 border-orange-400 border-t-transparent rounded-full animate-spin" />
+      <div className="min-h-screen flex items-center justify-center bg-surface-darker">
+        <div className="h-6 w-6 border-2 border-accent border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
@@ -76,16 +84,22 @@ export default function App() {
     <BrowserRouter>
       <OfflineBanner />
       <Routes>
-        <Route path="/" element={<Dashboard />} />
-        <Route path="/new" element={<NewSession />} />
+        {/* Full-screen routes (no sidebar) */}
         <Route path="/recording/:sessionId" element={<Recording />} />
-        <Route path="/session/:id" element={<SessionView />} />
-        <Route path="/room/:code" element={<RoomView />} />
-        <Route path="/join" element={<JoinRoom />} />
-        <Route path="/series/:id" element={<SeriesView />} />
-        <Route path="/ask" element={<AskPage />} />
-        <Route path="/guide" element={<GuidePage />} />
-        <Route path="/settings" element={<SettingsPage />} />
+
+        {/* Layout routes (sidebar + top bar) */}
+        <Route path="/" element={<LayoutRoute><Dashboard /></LayoutRoute>} />
+        <Route path="/new" element={<LayoutRoute><NewSession /></LayoutRoute>} />
+        <Route path="/session/:id" element={<LayoutRoute><SessionView /></LayoutRoute>} />
+        <Route path="/room/:code" element={<LayoutRoute><RoomView /></LayoutRoute>} />
+        <Route path="/join" element={<LayoutRoute><JoinRoom /></LayoutRoute>} />
+        <Route path="/recordings" element={<LayoutRoute><RecordingsPage /></LayoutRoute>} />
+        <Route path="/series" element={<LayoutRoute><SeriesListPage /></LayoutRoute>} />
+        <Route path="/series/:id" element={<LayoutRoute><SeriesView /></LayoutRoute>} />
+        <Route path="/rooms" element={<LayoutRoute><RoomsPage /></LayoutRoute>} />
+        <Route path="/ask" element={<LayoutRoute><AskPage /></LayoutRoute>} />
+        <Route path="/guide" element={<LayoutRoute><GuidePage /></LayoutRoute>} />
+        <Route path="/settings" element={<LayoutRoute><SettingsPage /></LayoutRoute>} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
       <InstallPrompt />

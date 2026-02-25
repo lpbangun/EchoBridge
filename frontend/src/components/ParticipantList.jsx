@@ -13,7 +13,7 @@ export default function ParticipantList({ participants, hostName }) {
         <span className="section-label">
           Participants
         </span>
-        <p className="mt-2 text-sm text-slate-400">No participants yet.</p>
+        <p className="mt-2 text-sm text-zinc-400">No participants yet.</p>
       </div>
     );
   }
@@ -27,16 +27,16 @@ export default function ParticipantList({ participants, hostName }) {
         {participants.map((p, i) => (
           <span
             key={i}
-            className="glass rounded-full px-3 py-1.5 inline-flex items-center gap-2 text-sm text-slate-300 touch-target"
+            className="bg-zinc-800 border border-border rounded-full px-3 py-1.5 inline-flex items-center gap-2 text-sm text-zinc-300 touch-target"
           >
             {p.participant_type === 'agent' ? (
-              <Bot size={14} strokeWidth={1.5} className="text-orange-400" />
+              <Bot size={14} strokeWidth={1.5} className="text-accent" />
             ) : (
-              <Users size={14} strokeWidth={1.5} className="text-slate-400" />
+              <Users size={14} strokeWidth={1.5} className="text-zinc-400" />
             )}
             {p.name}
             {p.name === hostName && (
-              <span className="text-xs text-orange-400">(host)</span>
+              <span className="text-xs text-accent">(host)</span>
             )}
           </span>
         ))}

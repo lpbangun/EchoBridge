@@ -23,25 +23,24 @@ export default function WelcomeLanding({ onGetStarted, onSkip }) {
     <div className="min-h-screen flex items-center justify-center px-4 safe-area-inset">
       <div className="w-full max-w-lg text-center">
         <h1
-          className="text-3xl font-bold tracking-tight text-slate-50 mb-3"
-          style={{ textShadow: '0 0 20px rgba(249, 115, 22, 0.3)' }}
+          className="text-3xl font-bold tracking-tight text-white mb-3"
         >
           ECHOBRIDGE
         </h1>
-        <p className="text-base text-slate-300 mb-10">
+        <p className="text-base text-zinc-300 mb-10">
           Turn meetings into structured, AI-powered notes.
         </p>
 
-        <div className="glass rounded-xl p-6 text-left">
+        <div className="card-lg p-6 text-left">
           <div className="space-y-5">
             {FEATURES.map((feat) => (
               <div key={feat.label} className="flex items-start gap-4">
-                <div className="w-10 h-10 rounded-lg bg-orange-500/10 border border-orange-500/30 flex items-center justify-center flex-shrink-0">
-                  <feat.icon size={18} strokeWidth={1.5} className="text-orange-400" />
+                <div className="w-10 h-10 rounded-lg bg-accent-muted border border-accent-border flex items-center justify-center flex-shrink-0">
+                  <feat.icon size={18} strokeWidth={1.5} className="text-accent" />
                 </div>
                 <div>
-                  <h3 className="text-sm font-semibold text-slate-200">{feat.label}</h3>
-                  <p className="text-xs text-slate-400 mt-0.5">{feat.description}</p>
+                  <h3 className="text-sm font-semibold text-zinc-200">{feat.label}</h3>
+                  <p className="text-xs text-zinc-400 mt-0.5">{feat.description}</p>
                 </div>
               </div>
             ))}
@@ -56,7 +55,7 @@ export default function WelcomeLanding({ onGetStarted, onSkip }) {
 
           <button
             onClick={onSkip}
-            className="w-full mt-3 text-sm text-slate-500 hover:text-slate-300 transition-colors"
+            className="w-full mt-3 text-sm text-zinc-500 hover:text-zinc-300 transition-colors"
           >
             I've used EchoBridge before
           </button>

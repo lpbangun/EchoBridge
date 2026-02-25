@@ -16,23 +16,23 @@ export default function InterpretationCard({ interpretation }) {
     : 'Custom lens';
 
   return (
-    <div className="glass rounded-xl overflow-hidden transition-all duration-200 hover:border-white/20">
+    <div className="card overflow-hidden transition-all duration-200 hover:border-border-hover">
       <button
         onClick={() => setExpanded(!expanded)}
         className="w-full text-left p-4 md:p-6 flex items-start justify-between touch-target"
       >
         <div>
           <div className="flex items-center gap-2">
-            <span className="text-base font-medium text-slate-100">
+            <span className="text-base font-medium text-white">
               {sourceLabel}
             </span>
             {interpretation.is_primary && (
-              <span className="rounded-full px-2.5 py-0.5 bg-orange-500/20 text-orange-300 text-xs">
+              <span className="rounded-full px-2.5 py-0.5 bg-accent-muted text-accent text-xs">
                 Primary
               </span>
             )}
           </div>
-          <p className="mt-1 text-sm text-slate-400">
+          <p className="mt-1 text-sm text-zinc-400">
             {lensLabel}
             {interpretation.model && (
               <span> &middot; {interpretation.model}</span>
@@ -40,13 +40,13 @@ export default function InterpretationCard({ interpretation }) {
           </p>
         </div>
         {expanded ? (
-          <ChevronDown size={20} strokeWidth={1.5} className="text-slate-400 mt-1" />
+          <ChevronDown size={20} strokeWidth={1.5} className="text-zinc-400 mt-1" />
         ) : (
-          <ChevronRight size={20} strokeWidth={1.5} className="text-slate-400 mt-1" />
+          <ChevronRight size={20} strokeWidth={1.5} className="text-zinc-400 mt-1" />
         )}
       </button>
       {expanded && (
-        <div className="px-4 md:px-6 pb-4 md:pb-6 border-t border-white/15 pt-4">
+        <div className="px-4 md:px-6 pb-4 md:pb-6 border-t border-border pt-4">
           <MarkdownPreview content={interpretation.output_markdown} />
         </div>
       )}

@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { Pause, Square, Play, WifiOff, ArrowLeft } from 'lucide-react';
 import { getSession, submitTranscript } from '../lib/api';
 import { formatDuration, contextLabel } from '../lib/utils';
@@ -10,6 +10,8 @@ import useOnlineStatus from '../hooks/useOnlineStatus';
 export default function Recording() {
   const navigate = useNavigate();
   const { sessionId } = useParams();
+  const [searchParams] = useSearchParams();
+  const isAppendMode = searchParams.get('mode') === 'append';
   const isOnline = useOnlineStatus();
   const [session, setSession] = useState(null);
   const [isRecording, setIsRecording] = useState(false);
@@ -79,14 +81,17 @@ export default function Recording() {
         source.connect(analyser);
         analyserRef.current = analyser;
 
-        const dataArray = new Uint8Array(analyser.frequencyBinCount);
+        const dataArray = new Uint8Array(analyser.fftSize);
         function updateLevel() {
           if (cancelled) return;
-          analyser.getByteFrequencyData(dataArray);
-          let sum = 0;
-          for (let i = 0; i < dataArray.length; i++) sum += dataArray[i];
-          const avg = sum / dataArray.length / 255;
-          setAudioLevel(avg);
+          analyser.getByteTimeDomainData(dataArray);
+          let sumSq = 0;
+          for (let i = 0; i < dataArray.length; i++) {
+            const d = (dataArray[i] - 128) / 128;
+            sumSq += d * d;
+          }
+          const rms = Math.sqrt(sumSq / dataArray.length);
+          setAudioLevel(Math.min(1, rms * 3));
           animFrameRef.current = requestAnimationFrame(updateLevel);
         }
         updateLevel();
@@ -178,6 +183,7 @@ export default function Recording() {
           sessionId,
           transcript: currentTranscript,
           durationSeconds: elapsed,
+          append: isAppendMode,
         });
         setSavedOffline(true);
         setSubmitting(false);
@@ -195,7 +201,7 @@ export default function Recording() {
     }
 
     try {
-      await submitTranscript(sessionId, currentTranscript, elapsed);
+      await submitTranscript(sessionId, currentTranscript, elapsed, isAppendMode);
       navigate(`/session/${sessionId}`);
     } catch (err) {
       setError(err.message || 'Failed to submit transcript.');
@@ -214,12 +220,12 @@ export default function Recording() {
   });
 
   return (
-    <div className="w-full min-h-screen flex flex-col items-center justify-center px-4 md:px-6 safe-area-inset">
+    <div className="w-full min-h-screen bg-[#0A0A0A] flex flex-col items-center justify-center px-4 md:px-6 safe-area-inset">
       {/* Back / Cancel button */}
       <div className="fixed top-4 left-4 z-10 safe-area-inset">
         <button
           onClick={handleCancel}
-          className="text-slate-400 hover:text-slate-200 transition-colors inline-flex items-center gap-2 touch-target"
+          className="text-zinc-400 hover:text-zinc-200 transition-colors inline-flex items-center gap-2 touch-target"
           disabled={submitting}
         >
           <ArrowLeft size={20} strokeWidth={1.5} />
@@ -227,8 +233,8 @@ export default function Recording() {
         </button>
       </div>
 
-      {/* Glass container for recording UI */}
-      <div className="glass rounded-xl p-6 md:p-12 flex flex-col items-center w-full max-w-lg">
+      {/* Card container for recording UI */}
+      <div className="card-lg p-6 md:p-12 flex flex-col items-center w-full max-w-lg">
         {/* Recording indicator + label */}
         <div className="flex items-center gap-3">
           {isRecording && !isPaused && (
@@ -237,14 +243,14 @@ export default function Recording() {
               <span className="relative inline-flex rounded-full h-3 w-3 bg-red-600 shadow-[0_0_20px_rgba(239,68,68,0.4)]" />
             </span>
           )}
-          <span className="text-xs font-medium tracking-widest uppercase text-slate-400">
+          <span className="text-xs font-medium tracking-widest uppercase text-zinc-400">
             {submitting ? 'Generating notes' : isPaused ? 'Paused' : 'Recording'}
           </span>
         </div>
 
         {/* Timer */}
         <div className="mt-6">
-          <span className="text-3xl md:text-5xl font-bold font-mono text-slate-50">
+          <span className="text-3xl md:text-5xl font-bold font-mono text-white">
             {formatDuration(elapsed)}
           </span>
         </div>
@@ -258,7 +264,7 @@ export default function Recording() {
               <div
                 key={i}
                 className={`w-1.5 rounded-full transition-all duration-75 ${
-                  isCenterBar ? 'bg-orange-400' : 'bg-orange-400/60'
+                  isCenterBar ? 'bg-[#C4F82A]' : 'bg-[#C4F82A]/60'
                 }`}
                 style={{ height: `${height * 64}px` }}
               />
@@ -268,7 +274,7 @@ export default function Recording() {
 
         {/* Guidance text */}
         {isRecording && !isPaused && !submitting && (
-          <p className="mt-4 text-xs text-slate-400">Audio is being transcribed using speech recognition.</p>
+          <p className="mt-4 text-xs text-zinc-400">Audio is being transcribed using speech recognition.</p>
         )}
 
         {/* Offline saved confirmation */}
@@ -310,8 +316,8 @@ export default function Recording() {
           )}
           {submitting && (
             <div className="flex items-center gap-3">
-              <div className="h-4 w-4 border-2 border-orange-400 border-t-transparent rounded-full animate-spin" />
-              <p className="text-sm text-slate-400">Saving transcript...</p>
+              <div className="h-4 w-4 border-2 border-accent border-t-transparent rounded-full animate-spin" />
+              <p className="text-sm text-zinc-400">Saving transcript...</p>
             </div>
           )}
           {savedOffline && (
@@ -345,7 +351,7 @@ export default function Recording() {
       <div className="mt-16 text-center">
         {session && (
           <>
-            <p className="text-sm text-slate-400">
+            <p className="text-sm text-zinc-400">
               <span className="section-label">
                 {contextLabel(session.context)}
               </span>
@@ -354,7 +360,7 @@ export default function Recording() {
               )}
             </p>
             {session.room_code && (
-              <p className="mt-1 text-sm text-slate-400">
+              <p className="mt-1 text-sm text-zinc-400">
                 Room: {session.room_code}
               </p>
             )}

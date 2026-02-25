@@ -3,25 +3,31 @@ export default {
   content: ['./index.html', './src/**/*.{js,jsx}'],
   theme: {
     fontFamily: {
-      sans: ['Outfit', 'system-ui', 'sans-serif'],
-      mono: ['JetBrains Mono', 'Menlo', 'Monaco', 'Consolas', 'monospace'],
+      display: ['Space Grotesk', 'system-ui', 'sans-serif'],
+      sans: ['Manrope', 'system-ui', 'sans-serif'],
+      mono: ['Space Mono', 'Menlo', 'Monaco', 'Consolas', 'monospace'],
     },
     extend: {
       colors: {
-        glass: {
-          DEFAULT: 'rgba(255, 255, 255, 0.08)',
-          hover: 'rgba(255, 255, 255, 0.12)',
-          border: 'rgba(255, 255, 255, 0.15)',
-          strong: 'rgba(255, 255, 255, 0.18)',
+        surface: {
+          DEFAULT: '#18181B',
+          dark: '#111111',
+          darker: '#0A0A0A',
+        },
+        border: {
+          DEFAULT: '#27272A',
+          hover: '#3F3F46',
+        },
+        accent: {
+          DEFAULT: '#C4F82A',
+          hover: '#D4FF4A',
+          muted: 'rgba(196, 248, 42, 0.08)',
+          border: 'rgba(196, 248, 42, 0.25)',
         },
       },
-      backdropBlur: {
-        glass: '20px',
-      },
       boxShadow: {
-        glass: '0 8px 32px rgba(0, 0, 0, 0.2)',
-        glow: '0 0 20px rgba(249, 115, 22, 0.15)',
-        'glow-lg': '0 0 40px rgba(249, 115, 22, 0.2)',
+        glow: '0 0 20px rgba(196, 248, 42, 0.12)',
+        'glow-lg': '0 0 40px rgba(196, 248, 42, 0.18)',
       },
     },
   },

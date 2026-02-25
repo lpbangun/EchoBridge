@@ -142,7 +142,7 @@ export default function AudioRecorder({ onTranscriptChunk, onRecordingComplete }
       </div>
 
       {/* Timer */}
-      <div className="mt-6 font-mono text-3xl md:text-4xl font-bold text-slate-50">
+      <div className="mt-6 font-mono text-3xl md:text-4xl font-bold text-white">
         {formatDuration(elapsedSeconds)}
       </div>
 

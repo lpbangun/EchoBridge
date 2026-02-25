@@ -3,7 +3,7 @@ import { BookOpen, Rocket, FlaskConical, Lightbulb, Mic } from 'lucide-react';
 /**
  * Grid of 5 session type cards for selecting a context.
  * Layout: grid-cols-3 gap-4 (3 on first row, 2 on second).
- * Glassmorphism design: glass cards with orange accent on selection.
+ * Dark zinc/lime design: card components with accent on selection.
  */
 
 const CONTEXTS = [
@@ -49,25 +49,25 @@ export default function ContextSelector({ selected, onSelect }) {
             key={ctx.id}
             type="button"
             onClick={() => onSelect(ctx.id)}
-            className={`glass rounded-xl p-4 md:p-5 text-left transition-all duration-200 touch-target ${
+            className={`card p-4 md:p-5 text-left transition-all duration-200 touch-target ${
               isSelected
-                ? 'border-orange-400/50 bg-orange-500/10 shadow-glow'
-                : 'border-white/15 hover:bg-white/[0.12] hover:border-white/20'
+                ? 'border-accent-border bg-accent-muted shadow-glow'
+                : 'border-border hover:bg-zinc-800 hover:border-border-hover'
             }`}
           >
             <ctx.Icon
               size={20}
               strokeWidth={1.5}
-              className={isSelected ? 'text-orange-400' : 'text-slate-400'}
+              className={isSelected ? 'text-accent' : 'text-zinc-400'}
             />
             <span
               className={`block mt-2 text-xs font-medium tracking-widest uppercase ${
-                isSelected ? 'text-slate-100' : 'text-slate-300'
+                isSelected ? 'text-white' : 'text-zinc-300'
               }`}
             >
               {ctx.label}
             </span>
-            <span className="block mt-1 text-xs text-slate-400">
+            <span className="block mt-1 text-xs text-zinc-400">
               {ctx.description}
             </span>
           </button>

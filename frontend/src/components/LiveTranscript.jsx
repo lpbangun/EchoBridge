@@ -14,9 +14,9 @@ export default function LiveTranscript({ chunks, fullTranscript }) {
   }, [chunks, fullTranscript]);
 
   return (
-    <div className="glass rounded-xl p-4 md:p-6 min-h-[200px] max-h-[480px] overflow-y-auto glass-scrollbar">
+    <div className="card p-4 md:p-6 min-h-[200px] max-h-[480px] overflow-y-auto eb-scrollbar">
       {fullTranscript ? (
-        <p className="font-mono text-sm text-slate-300 leading-relaxed whitespace-pre-wrap">
+        <p className="font-mono text-sm text-zinc-300 leading-relaxed whitespace-pre-wrap">
           {fullTranscript}
         </p>
       ) : chunks && chunks.length > 0 ? (
@@ -25,7 +25,7 @@ export default function LiveTranscript({ chunks, fullTranscript }) {
             <span
               key={i}
               className={`font-mono text-sm leading-relaxed ${
-                chunk.is_final ? 'text-slate-300' : 'text-slate-500'
+                chunk.is_final ? 'text-zinc-300' : 'text-zinc-500'
               }`}
             >
               {chunk.text}{' '}
@@ -33,7 +33,7 @@ export default function LiveTranscript({ chunks, fullTranscript }) {
           ))}
         </div>
       ) : (
-        <p className="text-sm text-slate-500">Waiting for transcript...</p>
+        <p className="text-sm text-zinc-500">Waiting for transcript...</p>
       )}
       <div ref={bottomRef} />
     </div>

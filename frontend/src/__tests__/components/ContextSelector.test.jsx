@@ -39,16 +39,16 @@ describe('ContextSelector', () => {
     render(<ContextSelector selected="research_discussion" onSelect={onSelect} />);
 
     const selectedButton = screen.getByText('Research Discussion').closest('button');
-    expect(selectedButton.className).toContain('border-orange-400/50');
-    expect(selectedButton.className).toContain('bg-orange-500/10');
+    expect(selectedButton.className).toContain('border-accent-border');
+    expect(selectedButton.className).toContain('bg-accent-muted');
   });
 
   it('does not apply selected styling to unselected contexts', () => {
     render(<ContextSelector selected="research_discussion" onSelect={onSelect} />);
 
     const unselectedButton = screen.getByText('Class Lecture').closest('button');
-    expect(unselectedButton.className).not.toContain('border-orange-400/50');
-    expect(unselectedButton.className).toContain('border-white/10');
+    expect(unselectedButton.className).not.toContain('border-accent-border');
+    expect(unselectedButton.className).toContain('border-border');
   });
 
   it('renders descriptions for each context', () => {

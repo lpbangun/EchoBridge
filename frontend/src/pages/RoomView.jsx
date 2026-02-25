@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Users, Mic, Square, Copy } from 'lucide-react';
+import { Users, Mic, Square, Copy } from 'lucide-react';
 import { getRoom, startRoom, stopRoom } from '../lib/api';
 import { statusColor } from '../lib/utils';
 import { createWebSocket } from '../lib/websocket';
@@ -157,23 +157,23 @@ export default function RoomView() {
       case 'processing':
         return 'text-amber-400';
       case 'closed':
-        return 'text-slate-500';
+        return 'text-zinc-500';
       default:
-        return 'text-slate-400';
+        return 'text-zinc-400';
     }
   }
 
   if (loading) {
     return (
-      <div className="max-w-3xl mx-auto px-4 py-6 md:px-6 md:py-12 safe-area-inset">
-        <p className="text-sm text-slate-400">Loading...</p>
+      <div className="max-w-4xl mx-auto px-6 py-8 safe-area-inset">
+        <p className="text-sm text-zinc-400">Loading...</p>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="max-w-3xl mx-auto px-4 py-6 md:px-6 md:py-12 safe-area-inset">
+      <div className="max-w-4xl mx-auto px-6 py-8 safe-area-inset">
         <p className="text-sm text-red-400">{error}</p>
       </div>
     );
@@ -186,23 +186,16 @@ export default function RoomView() {
   const isProcessing = room.status === 'processing';
 
   return (
-    <div className="max-w-3xl mx-auto px-4 py-6 md:px-6 md:py-12 safe-area-inset">
+    <div className="max-w-4xl mx-auto px-6 py-8 safe-area-inset">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <button
-          onClick={() => navigate('/')}
-          className="text-slate-400 hover:text-orange-400 transition-colors inline-flex items-center gap-2 text-sm font-medium touch-target"
-        >
-          <ArrowLeft size={20} strokeWidth={1.5} />
-          Back
-        </button>
         <div className="inline-flex items-center gap-2">
-          <h1 className="text-lg md:text-xl font-semibold font-mono text-slate-100">
+          <h1 className="text-lg md:text-xl font-semibold font-mono text-white">
             {code}
           </h1>
           <button
             onClick={handleCopyCode}
-            className="text-slate-400 hover:text-orange-400 transition-colors touch-target inline-flex items-center justify-center"
+            className="text-zinc-400 hover:text-accent transition-colors touch-target inline-flex items-center justify-center"
             aria-label="Copy room code"
           >
             <Copy size={16} strokeWidth={1.5} />
@@ -215,10 +208,10 @@ export default function RoomView() {
 
       {/* Sharing hint */}
       {isWaiting && (
-        <p className="mt-6 text-sm text-slate-400">Share this code with others so they can join. Recording begins when you start it.</p>
+        <p className="mt-6 text-sm text-zinc-400">Share this code with others so they can join. Recording begins when you start it.</p>
       )}
       {isRecording && (
-        <p className="mt-6 text-sm text-slate-400">Everyone in the room shares a live transcript.</p>
+        <p className="mt-6 text-sm text-zinc-400">Everyone in the room shares a live transcript.</p>
       )}
 
       {/* Status */}
@@ -243,7 +236,7 @@ export default function RoomView() {
           <span className="section-label">
             Host
           </span>
-          <p className="mt-1 text-sm text-slate-300">{room.host_name}</p>
+          <p className="mt-1 text-sm text-zinc-300">{room.host_name}</p>
         </div>
       )}
 

@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Pencil, Download, MessageSquare, X } from 'lucide-react';
+import { Pencil, Download, MessageSquare, X, Mic, Check } from 'lucide-react';
 import {
   getSession,
   getInterpretations,
   interpretSession,
   exportMarkdown,
   updateSession,
+  updateInterpretation,
   listSeries,
   addSessionToSeries,
   getConversations,
@@ -23,19 +24,19 @@ import ChatPanel from '../components/ChatPanel';
 
 const TABS = ['Summary', 'Transcript', 'Interpretations'];
 
-/** Dark-adapted status colors for glassmorphism theme */
+/** Dark zinc/lime status colors */
 function darkStatusColor(status) {
   const colors = {
-    created: 'text-slate-500',
+    created: 'text-zinc-500',
     recording: 'text-red-400',
     transcribing: 'text-amber-400',
     processing: 'text-amber-400',
     complete: 'text-green-400',
     error: 'text-red-400',
-    waiting: 'text-slate-500',
-    closed: 'text-slate-500',
+    waiting: 'text-zinc-500',
+    closed: 'text-zinc-500',
   };
-  return colors[status] || 'text-slate-500';
+  return colors[status] || 'text-zinc-500';
 }
 
 /** Friendly status labels */
@@ -66,6 +67,9 @@ export default function SessionView() {
   const [addingSeries, setAddingSeries] = useState(false);
   const [showChat, setShowChat] = useState(false);
   const [chatConversationId, setChatConversationId] = useState(null);
+  const [editingInterpretation, setEditingInterpretation] = useState(false);
+  const [noteDraft, setNoteDraft] = useState('');
+  const [savingNote, setSavingNote] = useState(false);
 
   useEffect(() => {
     async function load() {
@@ -179,15 +183,15 @@ export default function SessionView() {
 
   if (loading) {
     return (
-      <div className="max-w-3xl mx-auto px-4 py-6 md:px-6 md:py-12 safe-area-inset">
-        <p className="text-sm text-slate-400">Loading...</p>
+      <div className="max-w-4xl mx-auto px-6 py-8 safe-area-inset">
+        <p className="text-sm text-zinc-400">Loading...</p>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="max-w-3xl mx-auto px-4 py-6 md:px-6 md:py-12 safe-area-inset">
+      <div className="max-w-4xl mx-auto px-6 py-8 safe-area-inset">
         <p className="text-sm text-red-400">{error}</p>
       </div>
     );
@@ -198,16 +202,9 @@ export default function SessionView() {
   return (
     <div className="flex min-h-screen">
     <div className={`flex-1 transition-all duration-300 ${showChat ? 'mr-0 lg:mr-[400px]' : ''}`}>
-    <div className="max-w-3xl mx-auto px-4 py-6 md:px-6 md:py-12 safe-area-inset">
+    <div className="max-w-4xl mx-auto px-6 py-8 safe-area-inset">
       {/* Header */}
       <div className="flex items-center justify-between gap-4">
-        <button
-          onClick={() => navigate('/')}
-          className="text-slate-400 hover:text-orange-400 transition-colors inline-flex items-center gap-2 text-sm font-medium touch-target shrink-0"
-        >
-          <ArrowLeft size={20} strokeWidth={1.5} />
-          <span className="hidden sm:inline">Back</span>
-        </button>
         <div className="flex items-center gap-2 md:gap-4 min-w-0">
           {editingTitle ? (
             <div className="flex items-center gap-2 min-w-0">
@@ -216,31 +213,31 @@ export default function SessionView() {
                 value={titleDraft}
                 onChange={(e) => setTitleDraft(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleSaveTitle()}
-                className="glass-input text-base px-4 py-2 min-w-0"
+                className="eb-input text-base px-4 py-2 min-w-0"
                 autoFocus
               />
               <button
                 onClick={handleSaveTitle}
-                className="text-sm font-medium text-slate-300 hover:text-orange-400 transition-colors touch-target"
+                className="text-sm font-medium text-zinc-300 hover:text-accent transition-colors touch-target"
               >
                 Save
               </button>
             </div>
           ) : (
-            <h1 className="text-lg md:text-xl font-semibold text-slate-100 truncate">
+            <h1 className="font-display text-lg md:text-xl font-bold text-white truncate">
               {session.title || 'Untitled Session'}
             </h1>
           )}
           <button
             onClick={() => setEditingTitle(!editingTitle)}
-            className="text-slate-400 hover:text-orange-400 transition-colors touch-target inline-flex items-center justify-center shrink-0"
+            className="text-zinc-400 hover:text-accent transition-colors touch-target inline-flex items-center justify-center shrink-0"
             aria-label="Edit title"
           >
             <Pencil size={16} strokeWidth={1.5} />
           </button>
           <button
             onClick={handleExport}
-            className="text-slate-400 hover:text-orange-400 transition-colors touch-target inline-flex items-center justify-center shrink-0"
+            className="text-zinc-400 hover:text-accent transition-colors touch-target inline-flex items-center justify-center shrink-0"
             aria-label="Download export"
           >
             <Download size={16} strokeWidth={1.5} />
@@ -248,7 +245,7 @@ export default function SessionView() {
           <button
             onClick={() => setShowChat(!showChat)}
             className={`transition-colors touch-target inline-flex items-center justify-center shrink-0 ${
-              showChat ? 'text-orange-400' : 'text-slate-400 hover:text-orange-400'
+              showChat ? 'text-accent' : 'text-zinc-400 hover:text-accent'
             }`}
             aria-label="Toggle chat"
           >
@@ -259,7 +256,7 @@ export default function SessionView() {
 
       {/* Tabs */}
       <nav className="mt-8">
-        <div className="glass rounded-xl p-1 inline-flex gap-1 overflow-x-auto max-w-full">
+        <div className="inline-flex gap-6 border-b border-border">
           {TABS.map((tab) => {
             const label =
               tab === 'Interpretations'
@@ -270,10 +267,10 @@ export default function SessionView() {
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
-                className={`px-3 md:px-4 py-2 text-sm font-medium rounded-lg transition-colors whitespace-nowrap touch-target ${
+                className={`pb-2 text-sm transition-colors whitespace-nowrap touch-target ${
                   isActive
-                    ? 'bg-orange-500/20 text-orange-300'
-                    : 'text-slate-400 hover:text-slate-200'
+                    ? 'text-accent border-b-2 border-accent font-medium'
+                    : 'text-zinc-500 hover:text-zinc-300'
                 }`}
               >
                 {label}
@@ -289,7 +286,7 @@ export default function SessionView() {
         {activeTab === 'Summary' && (
           <div>
             {/* Metadata */}
-            <div className="flex flex-wrap items-center gap-2 text-sm text-slate-400">
+            <div className="flex flex-wrap items-center gap-2 text-sm text-zinc-400">
               <span className="section-label">
                 {contextLabel(session.context)}
               </span>
@@ -316,7 +313,7 @@ export default function SessionView() {
               {session.series_id && session.series_name ? (
                 <button
                   onClick={() => navigate(`/series/${session.series_id}`)}
-                  className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 bg-orange-500/10 border border-orange-400/20 text-xs font-medium text-orange-300 hover:bg-orange-500/20 transition-colors"
+                  className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 bg-accent-muted border border-accent-border text-xs font-medium text-accent hover:bg-accent-muted transition-colors"
                 >
                   {session.series_name}
                 </button>
@@ -340,7 +337,7 @@ export default function SessionView() {
                           }
                         }}
                         disabled={addingSeries}
-                        className="glass-select text-xs px-2 py-1 rounded-lg"
+                        className="eb-select text-xs px-2 py-1"
                       >
                         <option value="">Select series...</option>
                         {allSeries.map((s) => (
@@ -349,7 +346,7 @@ export default function SessionView() {
                       </select>
                       <button
                         onClick={() => setShowSeriesAdd(false)}
-                        className="text-xs text-slate-400 hover:text-slate-300"
+                        className="text-xs text-zinc-400 hover:text-zinc-300"
                       >
                         Cancel
                       </button>
@@ -365,7 +362,7 @@ export default function SessionView() {
                         }
                         setShowSeriesAdd(true);
                       }}
-                      className="text-xs text-slate-400 hover:text-orange-400 transition-colors"
+                      className="text-xs text-zinc-400 hover:text-accent transition-colors"
                     >
                       + Add to Series
                     </button>
@@ -376,7 +373,7 @@ export default function SessionView() {
 
             {/* Room info */}
             {session.room_code && (
-              <p className="mt-2 text-sm text-slate-400">
+              <p className="mt-2 text-sm text-zinc-400">
                 Room {session.room_code}
                 {session.participant_count != null && (
                   <span> &middot; {session.participant_count} participants</span>
@@ -387,38 +384,102 @@ export default function SessionView() {
             {/* Primary interpretation content */}
             <div className="mt-8">
               {primaryInterpretation ? (
-                <MarkdownPreview content={primaryInterpretation.output_markdown} />
+                <div>
+                  <div className="flex items-center justify-between mb-4">
+                    <span className="text-xs font-medium tracking-widest uppercase text-zinc-400">Notes</span>
+                    <div className="flex items-center gap-2">
+                      {editingInterpretation ? (
+                        <>
+                          <button
+                            onClick={async () => {
+                              setSavingNote(true);
+                              try {
+                                const updated = await updateInterpretation(
+                                  id,
+                                  primaryInterpretation.id,
+                                  { output_markdown: noteDraft }
+                                );
+                                setInterpretations((prev) =>
+                                  prev.map((i) => i.id === updated.id ? updated : i)
+                                );
+                                setEditingInterpretation(false);
+                              } catch {
+                                // Silently fail save
+                              } finally {
+                                setSavingNote(false);
+                              }
+                            }}
+                            disabled={savingNote}
+                            className="text-sm text-green-400 hover:text-green-300 transition-colors inline-flex items-center gap-1 touch-target"
+                          >
+                            <Check size={14} strokeWidth={1.5} />
+                            {savingNote ? 'Saving...' : 'Save'}
+                          </button>
+                          <button
+                            onClick={() => {
+                              setEditingInterpretation(false);
+                              setNoteDraft('');
+                            }}
+                            className="text-sm text-zinc-400 hover:text-zinc-300 transition-colors touch-target"
+                          >
+                            Cancel
+                          </button>
+                        </>
+                      ) : (
+                        <button
+                          onClick={() => {
+                            setNoteDraft(primaryInterpretation.output_markdown);
+                            setEditingInterpretation(true);
+                          }}
+                          className="text-sm text-zinc-400 hover:text-accent transition-colors inline-flex items-center gap-1 touch-target"
+                        >
+                          <Pencil size={14} strokeWidth={1.5} />
+                          Edit
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                  {editingInterpretation ? (
+                    <textarea
+                      value={noteDraft}
+                      onChange={(e) => setNoteDraft(e.target.value)}
+                      className="eb-input w-full font-mono text-sm leading-relaxed min-h-[400px] p-4 resize-y"
+                    />
+                  ) : (
+                    <MarkdownPreview content={primaryInterpretation.output_markdown} />
+                  )}
+                </div>
               ) : session.status === 'processing' && !primaryInterpretation ? (
                 <div className="space-y-4">
-                  <div className="flex items-center gap-3 text-slate-400">
-                    <div className="h-4 w-4 border-2 border-orange-400 border-t-transparent rounded-full animate-spin" />
+                  <div className="flex items-center gap-3 text-zinc-400">
+                    <div className="h-4 w-4 border-2 border-accent border-t-transparent rounded-full animate-spin" />
                     <span className="text-sm">Generating notes...</span>
                   </div>
                   {/* Skeleton lines */}
                   <div className="space-y-3 mt-6">
-                    <div className="h-4 bg-white/10 rounded-lg w-3/4 animate-pulse" />
-                    <div className="h-4 bg-white/10 rounded-lg w-full animate-pulse" />
-                    <div className="h-4 bg-white/10 rounded-lg w-5/6 animate-pulse" />
-                    <div className="h-4 bg-white/10 rounded-lg w-2/3 animate-pulse" />
+                    <div className="h-4 bg-zinc-800 rounded-lg w-3/4 animate-pulse" />
+                    <div className="h-4 bg-zinc-800 rounded-lg w-full animate-pulse" />
+                    <div className="h-4 bg-zinc-800 rounded-lg w-5/6 animate-pulse" />
+                    <div className="h-4 bg-zinc-800 rounded-lg w-2/3 animate-pulse" />
                   </div>
                 </div>
               ) : session.status === 'transcribing' ? (
                 <div className="space-y-4">
-                  <div className="flex items-center gap-3 text-slate-400">
-                    <div className="h-4 w-4 border-2 border-orange-400 border-t-transparent rounded-full animate-spin" />
+                  <div className="flex items-center gap-3 text-zinc-400">
+                    <div className="h-4 w-4 border-2 border-accent border-t-transparent rounded-full animate-spin" />
                     <span className="text-sm">Transcribing...</span>
                   </div>
                   {/* Skeleton lines */}
                   <div className="space-y-3 mt-6">
-                    <div className="h-4 bg-white/10 rounded-lg w-3/4 animate-pulse" />
-                    <div className="h-4 bg-white/10 rounded-lg w-full animate-pulse" />
-                    <div className="h-4 bg-white/10 rounded-lg w-5/6 animate-pulse" />
-                    <div className="h-4 bg-white/10 rounded-lg w-2/3 animate-pulse" />
+                    <div className="h-4 bg-zinc-800 rounded-lg w-3/4 animate-pulse" />
+                    <div className="h-4 bg-zinc-800 rounded-lg w-full animate-pulse" />
+                    <div className="h-4 bg-zinc-800 rounded-lg w-5/6 animate-pulse" />
+                    <div className="h-4 bg-zinc-800 rounded-lg w-2/3 animate-pulse" />
                   </div>
                 </div>
               ) : session.status === 'complete' ? (
                 <div className="text-center py-8">
-                  <p className="text-sm text-slate-400">No auto-generated notes available.</p>
+                  <p className="text-sm text-zinc-400">No auto-generated notes available.</p>
                   <button
                     onClick={() => setActiveTab('Interpretations')}
                     className="btn-secondary mt-4 text-sm"
@@ -427,19 +488,32 @@ export default function SessionView() {
                   </button>
                 </div>
               ) : (
-                <p className="text-sm text-slate-400">
+                <p className="text-sm text-zinc-400">
                   Session is {friendlyStatusLabel(session.status).toLowerCase()}. Interpretation will be available when processing completes.
                 </p>
               )}
             </div>
 
+            {/* Continue Recording */}
+            {session.status === 'complete' && (
+              <div className="mt-8 pt-8 border-t border-border">
+                <button
+                  onClick={() => navigate(`/recording/${session.id}?mode=append`)}
+                  className="btn-secondary inline-flex items-center gap-2 text-sm"
+                >
+                  <Mic size={16} strokeWidth={1.5} />
+                  Continue Recording
+                </button>
+              </div>
+            )}
+
             {/* Tags */}
             {session.tags && session.tags.length > 0 && (
-              <div className="mt-8 pt-8 border-t border-white/15 flex flex-wrap gap-2">
+              <div className="mt-8 pt-8 border-t border-border flex flex-wrap gap-2">
                 {session.tags.map((tag) => (
                   <span
                     key={tag}
-                    className="rounded-full px-3 py-1 bg-white/10 border border-white/15 text-xs text-slate-400"
+                    className="rounded-full px-3 py-1 bg-zinc-800 border border-border text-xs text-zinc-400"
                   >
                     {tag}
                   </span>
@@ -449,7 +523,7 @@ export default function SessionView() {
 
             {/* Export path */}
             {session.export_path && (
-              <p className="mt-4 text-xs text-slate-500">
+              <p className="mt-4 text-xs text-zinc-500">
                 Saved to {session.export_path}
               </p>
             )}
@@ -460,13 +534,13 @@ export default function SessionView() {
         {activeTab === 'Transcript' && (
           <div>
             {session.transcript ? (
-              <div className="glass rounded-xl p-4 md:p-6 max-h-[600px] overflow-y-auto">
-                <p className="font-mono text-sm text-slate-300 leading-relaxed whitespace-pre-wrap">
+              <div className="card p-4 md:p-6 max-h-[600px] overflow-y-auto">
+                <p className="font-mono text-sm text-zinc-300 leading-relaxed whitespace-pre-wrap">
                   {session.transcript}
                 </p>
               </div>
             ) : (
-              <p className="text-sm text-slate-400">
+              <p className="text-sm text-zinc-400">
                 No transcript available.
               </p>
             )}
@@ -477,7 +551,7 @@ export default function SessionView() {
         {activeTab === 'Interpretations' && (
           <div>
             {interpretations.length === 0 && (
-              <p className="text-sm text-slate-400">
+              <p className="text-sm text-zinc-400">
                 Interpretations are AI-generated notes from your transcript. Click '+ Run custom interpretation' and choose a lens to get started.
               </p>
             )}
@@ -498,7 +572,7 @@ export default function SessionView() {
                   />
                   {interpretError && (
                     interpretError === 'API_KEY_MISSING' ? (
-                      <div className="mt-4 glass rounded-xl p-4 flex items-center gap-3">
+                      <div className="mt-4 card p-4 flex items-center gap-3">
                         <p className="text-sm text-amber-400 flex-1">AI interpretation requires an API key.</p>
                         <button
                           onClick={() => navigate('/settings')}
@@ -534,7 +608,7 @@ export default function SessionView() {
               ) : (
                 <button
                   onClick={() => setShowLensSelector(true)}
-                  className="text-sm text-slate-400 hover:text-orange-400 transition-colors"
+                  className="text-sm text-zinc-400 hover:text-accent transition-colors"
                 >
                   + Run custom interpretation
                 </button>
@@ -548,12 +622,12 @@ export default function SessionView() {
 
     {/* Chat sidebar */}
     {showChat && (
-      <div className="fixed right-0 top-0 h-full w-full sm:w-[400px] glass-strong z-50 flex flex-col border-l border-white/15">
-        <div className="flex items-center justify-between px-4 py-3 border-b border-white/15">
-          <h2 className="text-sm font-medium text-slate-200">Chat</h2>
+      <div className="fixed right-0 top-0 h-full w-full sm:w-[400px] bg-surface-dark border border-border z-50 flex flex-col border-l border-border">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+          <h2 className="text-sm font-medium text-zinc-200">Chat</h2>
           <button
             onClick={() => setShowChat(false)}
-            className="text-slate-400 hover:text-slate-200 transition-colors"
+            className="text-zinc-400 hover:text-zinc-200 transition-colors"
           >
             <X size={18} strokeWidth={1.5} />
           </button>

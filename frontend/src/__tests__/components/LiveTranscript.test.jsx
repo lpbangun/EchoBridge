@@ -34,7 +34,7 @@ describe('LiveTranscript', () => {
     expect(screen.getByText(/how are you/)).toBeInTheDocument();
   });
 
-  it('applies text-slate-300 to final chunks and text-slate-500 to non-final', () => {
+  it('applies text-zinc-300 to final chunks and text-zinc-500 to non-final', () => {
     const chunks = [
       { text: 'Final chunk', is_final: true, timestamp_ms: 1000 },
       { text: 'Pending chunk', is_final: false, timestamp_ms: 2000 },
@@ -44,8 +44,8 @@ describe('LiveTranscript', () => {
     const finalEl = screen.getByText(/Final chunk/);
     const pendingEl = screen.getByText(/Pending chunk/);
 
-    expect(finalEl.className).toContain('text-slate-300');
-    expect(pendingEl.className).toContain('text-slate-500');
+    expect(finalEl.className).toContain('text-zinc-300');
+    expect(pendingEl.className).toContain('text-zinc-500');
   });
 
   it('fullTranscript takes priority over chunks', () => {

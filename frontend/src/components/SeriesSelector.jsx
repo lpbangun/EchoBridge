@@ -37,7 +37,7 @@ export default function SeriesSelector({ value, onChange }) {
   }
 
   if (loading) {
-    return <p className="text-sm text-slate-500">Loading series...</p>;
+    return <p className="text-sm text-zinc-500">Loading series...</p>;
   }
 
   return (
@@ -47,7 +47,7 @@ export default function SeriesSelector({ value, onChange }) {
           <select
             value={value || ''}
             onChange={(e) => onChange(e.target.value || null)}
-            className="glass-select w-full text-base px-4 py-3 rounded-xl pr-10"
+            className="eb-select w-full text-base px-4 py-3 rounded-xl pr-10"
           >
             <option value="">None (standalone session)</option>
             {seriesList.map((s) => (
@@ -57,7 +57,7 @@ export default function SeriesSelector({ value, onChange }) {
             ))}
           </select>
           <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3">
-            <svg className="h-5 w-5 text-slate-500" viewBox="0 0 20 20" fill="currentColor">
+            <svg className="h-5 w-5 text-zinc-500" viewBox="0 0 20 20" fill="currentColor">
               <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clipRule="evenodd" />
             </svg>
           </div>
@@ -65,7 +65,7 @@ export default function SeriesSelector({ value, onChange }) {
         <button
           type="button"
           onClick={() => setShowCreate(!showCreate)}
-          className="text-slate-400 hover:text-orange-400 transition-colors touch-target inline-flex items-center justify-center"
+          className="text-zinc-400 hover:text-accent transition-colors touch-target inline-flex items-center justify-center"
           aria-label={showCreate ? 'Cancel new series' : 'New series'}
         >
           {showCreate ? <X size={20} strokeWidth={1.5} /> : <Plus size={20} strokeWidth={1.5} />}
@@ -80,7 +80,7 @@ export default function SeriesSelector({ value, onChange }) {
             onChange={(e) => setNewName(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleCreate()}
             placeholder="New series name..."
-            className="glass-input flex-1 text-sm px-3 py-2 rounded-lg"
+            className="eb-input flex-1 text-sm px-3 py-2 rounded-lg"
             autoFocus
           />
           <button

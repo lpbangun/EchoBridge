@@ -6,7 +6,7 @@ import MarkdownPreview from './MarkdownPreview';
 function RoleBadge({ role, source }) {
   if (role === 'user') {
     return (
-      <span className="inline-flex items-center gap-1 text-xs font-medium text-slate-400">
+      <span className="inline-flex items-center gap-1 text-xs font-medium text-zinc-400">
         <User size={12} strokeWidth={1.5} />
         You
       </span>
@@ -22,7 +22,7 @@ function RoleBadge({ role, source }) {
     );
   }
   return (
-    <span className="inline-flex items-center gap-1 text-xs font-medium text-orange-400">
+    <span className="inline-flex items-center gap-1 text-xs font-medium text-accent">
       <Bot size={12} strokeWidth={1.5} />
       EchoBridge
     </span>
@@ -117,11 +117,11 @@ export default function ChatPanel({ sessionId, conversationId: initialConversati
   return (
     <div className="flex flex-col h-full">
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto glass-scrollbar px-4 py-4 space-y-4">
+      <div className="flex-1 overflow-y-auto eb-scrollbar px-4 py-4 space-y-4">
         {messages.length === 0 && !sending && (
           <div className="flex flex-col items-center justify-center h-full text-center py-12">
-            <Bot size={32} strokeWidth={1.5} className="text-slate-400 mb-3" />
-            <p className="text-sm text-slate-400">
+            <Bot size={32} strokeWidth={1.5} className="text-zinc-400 mb-3" />
+            <p className="text-sm text-zinc-400">
               {sessionId
                 ? 'Ask a question about this meeting.'
                 : 'Ask a question across all your meetings.'}
@@ -140,10 +140,10 @@ export default function ChatPanel({ sessionId, conversationId: initialConversati
             <div
               className={`max-w-[85%] rounded-xl px-4 py-3 text-sm ${
                 msg.role === 'user'
-                  ? 'bg-orange-500/20 border border-orange-400/20 text-slate-100'
+                  ? 'bg-accent-muted border border-accent-border text-white'
                   : msg.role === 'agent'
-                  ? 'bg-purple-500/10 border border-purple-400/20 text-slate-200'
-                  : 'glass text-slate-200'
+                  ? 'bg-purple-500/10 border border-purple-400/20 text-zinc-200'
+                  : 'card text-zinc-200'
               }`}
             >
               {msg.role === 'user' ? (
@@ -157,8 +157,8 @@ export default function ChatPanel({ sessionId, conversationId: initialConversati
 
         {sending && (
           <div className="flex items-start gap-2">
-            <div className="glass rounded-xl px-4 py-3">
-              <Loader2 size={16} strokeWidth={1.5} className="animate-spin text-orange-400" />
+            <div className="card px-4 py-3">
+              <Loader2 size={16} strokeWidth={1.5} className="animate-spin text-accent" />
             </div>
           </div>
         )}
@@ -174,7 +174,7 @@ export default function ChatPanel({ sessionId, conversationId: initialConversati
       )}
 
       {/* Input */}
-      <div className="border-t border-white/15 px-4 py-3">
+      <div className="border-t border-border px-4 py-3">
         <form
           onSubmit={(e) => {
             e.preventDefault();
@@ -188,7 +188,7 @@ export default function ChatPanel({ sessionId, conversationId: initialConversati
             value={input}
             onChange={(e) => setInput(e.target.value)}
             placeholder={sessionId ? 'Ask about this meeting...' : 'Ask across all meetings...'}
-            className="glass-input flex-1 px-4 py-2.5 text-sm"
+            className="eb-input flex-1 px-4 py-2.5 text-sm"
             disabled={sending}
           />
           <button

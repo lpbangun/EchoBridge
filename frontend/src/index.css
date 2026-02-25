@@ -4,23 +4,8 @@
 
 @layer base {
   body {
-    @apply bg-slate-900 text-slate-50 antialiased;
-    background: linear-gradient(135deg, #0f172a 0%, #431407 50%, #0f172a 100%);
-    background-attachment: fixed;
+    @apply bg-surface-darker text-white antialiased;
     min-height: 100vh;
-  }
-
-  /* Subtle noise texture overlay */
-  body::before {
-    content: '';
-    position: fixed;
-    inset: 0;
-    z-index: 0;
-    pointer-events: none;
-    opacity: 0.03;
-    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
-    background-repeat: repeat;
-    background-size: 256px 256px;
   }
 
   #root {
@@ -30,80 +15,79 @@
 }
 
 @layer components {
-  /* Glass card */
-  .glass {
-    background: rgba(255, 255, 255, 0.08);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-    border: 1px solid rgba(255, 255, 255, 0.15);
+  /* Card */
+  .card {
+    @apply bg-surface border border-border rounded-[14px];
   }
 
-  .glass-hover:hover {
-    background: rgba(255, 255, 255, 0.08);
+  .card-lg {
+    @apply bg-surface border border-border rounded-[16px];
   }
 
-  .glass-strong {
-    background: rgba(255, 255, 255, 0.12);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-    border: 1px solid rgba(255, 255, 255, 0.18);
+  .card-active {
+    @apply bg-surface border border-accent-border rounded-[14px] shadow-glow;
   }
 
-  /* Glass input */
-  .glass-input {
-    @apply bg-white/10 border border-white/15 text-slate-50 placeholder:text-slate-400;
-    @apply focus:border-orange-400/60 focus:outline-none focus:ring-1 focus:ring-orange-400/20;
-    @apply transition-all duration-200 rounded-xl;
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
+  /* Inputs */
+  .eb-input {
+    @apply bg-surface border border-border text-white placeholder:text-zinc-500;
+    @apply focus:border-accent/60 focus:outline-none focus:ring-1 focus:ring-accent/20;
+    @apply transition-all duration-200 rounded-[10px];
   }
 
-  /* Glass select */
-  .glass-select {
-    @apply bg-white/10 border border-white/15 text-slate-50;
-    @apply focus:border-orange-400/60 focus:outline-none focus:ring-1 focus:ring-orange-400/20;
-    @apply transition-all duration-200 rounded-xl appearance-none;
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
+  .eb-select {
+    @apply bg-surface border border-border text-white;
+    @apply focus:border-accent/60 focus:outline-none focus:ring-1 focus:ring-accent/20;
+    @apply transition-all duration-200 rounded-[10px] appearance-none;
   }
 
-  .glass-select option {
-    @apply bg-slate-800 text-slate-50;
+  .eb-select option {
+    @apply bg-zinc-900 text-white;
   }
 
   /* Primary button */
   .btn-primary {
-    @apply bg-orange-500 text-white text-sm font-medium px-5 py-2.5 rounded-lg;
-    @apply hover:bg-orange-400 active:bg-orange-600;
+    @apply bg-accent text-zinc-900 text-sm font-display font-bold px-5 py-2.5 rounded-[10px];
+    @apply hover:bg-accent-hover active:brightness-90;
     @apply transition-all duration-200;
-    @apply shadow-lg shadow-orange-500/25 hover:shadow-orange-400/30;
   }
 
   /* Secondary/ghost button */
   .btn-secondary {
-    @apply bg-white/5 text-slate-300 text-sm font-medium px-5 py-2.5 rounded-lg;
-    @apply border border-white/10 hover:bg-white/10 hover:text-slate-100;
+    @apply bg-surface text-zinc-300 text-sm font-sans font-medium px-5 py-2.5 rounded-[10px];
+    @apply border border-border hover:bg-zinc-800 hover:text-white;
     @apply transition-all duration-200;
   }
 
   /* Section label */
   .section-label {
-    @apply text-xs font-medium tracking-widest uppercase text-slate-400;
+    @apply font-mono text-[10px] uppercase tracking-[1px] text-zinc-500;
+  }
+
+  /* Filter chips */
+  .chip-active {
+    @apply bg-accent text-zinc-900 text-xs font-sans font-semibold px-3 py-1.5 rounded-full;
+  }
+
+  .chip-inactive {
+    @apply bg-transparent text-zinc-400 text-xs font-sans font-medium px-3 py-1.5 rounded-full;
+    @apply border border-border hover:border-zinc-500 hover:text-zinc-300;
+    @apply transition-all duration-200;
   }
 
   /* Scrollbar styling for dark theme */
-  .glass-scrollbar::-webkit-scrollbar {
-    width: 6px;
+  .eb-scrollbar::-webkit-scrollbar {
+    width: 4px;
   }
-  .glass-scrollbar::-webkit-scrollbar-track {
+  .eb-scrollbar::-webkit-scrollbar-track {
     background: transparent;
   }
-  .glass-scrollbar::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.15);
-    border-radius: 3px;
+  .eb-scrollbar::-webkit-scrollbar-thumb {
+    background: #3F3F46;
+    border-radius: 2px;
   }
-  .glass-scrollbar::-webkit-scrollbar-thumb:hover {
-    background: rgba(255, 255, 255, 0.25);
+  .eb-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: #52525B;
   }
 }
 
