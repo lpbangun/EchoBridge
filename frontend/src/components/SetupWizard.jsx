@@ -259,7 +259,11 @@ export default function SetupWizard({ onComplete }) {
                   className="glass-input w-full text-sm px-4 py-2.5 rounded-lg mt-2"
                 />
                 <p className="text-xs text-slate-400 mt-1">
-                  Tip: If using OpenClaw, point this to a folder in your agent's <code className="text-slate-400">extraPaths</code>.
+                  Tip: If using OpenClaw locally, point this to a folder in your agent's <code className="text-slate-400">extraPaths</code>.
+                </p>
+                <p className="text-xs text-slate-400 mt-2">
+                  Remote agent? It connects via API instead — generate a key in{' '}
+                  <span className="text-slate-300">Settings → Agent Connections</span> after setup.
                 </p>
               </label>
             </div>

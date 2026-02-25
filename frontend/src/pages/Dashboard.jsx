@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Settings, Upload, MessageSquare, Key, CloudOff, RefreshCw, BookOpen, Mic } from 'lucide-react';
+import { Settings, Upload, MessageSquare, Key, CloudOff, RefreshCw, BookOpen, Mic, Users } from 'lucide-react';
 import { listSessions, searchSessions, getSettings, listSeries, createSession } from '../lib/api';
 import { getPendingCount } from '../lib/offlineStorage';
 import { syncPendingRecordings, onSyncStatusChange } from '../lib/syncManager';
@@ -170,6 +170,13 @@ export default function Dashboard() {
             aria-label="Settings"
           >
             <Settings size={20} strokeWidth={1.5} />
+          </button>
+          <button
+            onClick={() => navigate('/join')}
+            className="btn-secondary inline-flex items-center gap-2 touch-target"
+          >
+            <Users size={16} strokeWidth={1.5} />
+            Join
           </button>
           <button
             onClick={() => navigate('/new')}

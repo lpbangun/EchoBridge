@@ -51,9 +51,19 @@ export default function GuidePage() {
           <div className="flex gap-4">
             <FolderOpen size={18} strokeWidth={1.5} className="text-orange-400 flex-shrink-0 mt-0.5" />
             <div>
-              <h3 className="text-sm font-semibold text-slate-200">Agent Bridge: Output Directory</h3>
+              <h3 className="text-sm font-semibold text-slate-200">Agent Bridge</h3>
               <p className="text-sm text-slate-400 mt-0.5">
-                Defaults to <code className="text-slate-400">~/Downloads/EchoBridge</code>. Power users can point this to an agent's watched folder (e.g. OpenClaw's <code className="text-slate-400">extraPaths</code>) so your agent discovers new meeting notes automatically.
+                <span className="text-slate-300">Local agent?</span> Point <code className="text-slate-400">OUTPUT_DIR</code> to your agent's watched folder (e.g. OpenClaw's <code className="text-slate-400">extraPaths</code>) so it discovers meeting notes automatically.
+              </p>
+              <p className="text-sm text-slate-400 mt-2">
+                <span className="text-slate-300">Remote agent?</span> It connects via API instead. Generate an API key in{' '}
+                <button
+                  onClick={() => navigate('/settings')}
+                  className="text-orange-400 hover:text-orange-300 transition-colors"
+                >
+                  Settings → Agent Connections
+                </button>
+                . Give your agent the URL (<code className="text-slate-400">https://your-app.up.railway.app</code>) + key. It can poll sessions, read notes, and join rooms via WebSocket.
               </p>
             </div>
           </div>
@@ -71,7 +81,8 @@ DEEPGRAM_API_KEY=your-deepgram-key
 DEEPGRAM_MODEL=nova-3
 OUTPUT_DIR=~/Downloads/EchoBridge
 AUTO_EXPORT=true
-AUTO_INTERPRET=true`}
+AUTO_INTERPRET=true
+ECHOBRIDGE_AGENT_API_KEY=your-secret-key`}
           </pre>
         </div>
       </div>
@@ -189,6 +200,40 @@ AUTO_INTERPRET=true`}
         </div>
       </div>
 
+      {/* Rooms & Collaboration */}
+      <div className="glass rounded-xl p-4 md:p-6 mt-8">
+        <div className="flex items-center gap-2">
+          <Users size={18} strokeWidth={1.5} className="text-slate-400" />
+          <span className="text-sm font-semibold text-slate-200 uppercase tracking-wider">
+            Rooms & Collaboration
+          </span>
+        </div>
+        <p className="text-sm text-slate-400 mt-2">
+          Host live collaborative meetings where multiple participants share a real-time transcript.
+        </p>
+
+        <ol className="mt-4 space-y-3 text-sm text-slate-400 list-decimal list-inside">
+          <li>Click <span className="text-slate-300">Upload</span> on the Dashboard and choose <span className="text-slate-300">Create Room</span></li>
+          <li>Share the room code with other participants</li>
+          <li>Others click <span className="text-slate-300">Join</span> on the Dashboard and enter the code</li>
+          <li>The host starts recording — everyone sees the live transcript</li>
+        </ol>
+
+        <p className="text-sm text-slate-400 mt-4">
+          AI agents can join rooms too — they connect via WebSocket with a bearer token and receive the transcript in real time.
+        </p>
+
+        <div className="mt-4">
+          <button
+            onClick={() => navigate('/join')}
+            className="btn-secondary inline-flex items-center gap-2 text-sm touch-target"
+          >
+            <Users size={16} strokeWidth={1.5} />
+            Join a Room
+          </button>
+        </div>
+      </div>
+
       {/* For AI Agents */}
       <div className="glass rounded-xl p-4 md:p-6 mt-8">
         <div className="flex items-center gap-2">
@@ -198,7 +243,7 @@ AUTO_INTERPRET=true`}
           </span>
         </div>
         <p className="text-sm text-slate-400 mt-2">
-          EchoBridge exposes a full API and MCP server for AI agents. To connect an agent:
+          EchoBridge exposes a full API and MCP server for AI agents. To connect a remote agent:
         </p>
         <ol className="mt-3 space-y-2 text-sm text-slate-400 list-decimal list-inside">
           <li>
@@ -212,8 +257,12 @@ AUTO_INTERPRET=true`}
             {' '}and scroll to <span className="text-slate-300">Agent Connections</span>
           </li>
           <li>Generate an API key and copy the config snippet for your platform</li>
-          <li>Paste into your agent's config (MCP client, OpenClaw, or raw REST)</li>
+          <li>Give the agent your deployed URL (e.g. <code className="text-slate-400">https://echobridge.up.railway.app</code>) + key</li>
+          <li>The agent can poll sessions, read notes, join rooms via WebSocket, or connect via MCP</li>
         </ol>
+        <p className="text-sm text-slate-400 mt-3">
+          <span className="text-slate-300">Local agent?</span> You can also use the file-based bridge — set <code className="text-slate-400">OUTPUT_DIR</code> to a folder your agent watches.
+        </p>
       </div>
 
       {/* Quick link to settings */}

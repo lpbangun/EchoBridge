@@ -1,18 +1,18 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Pause, Square, Play, WifiOff } from 'lucide-react';
+import { Pause, Square, Play, WifiOff, ArrowLeft } from 'lucide-react';
 import { getSession, submitTranscript } from '../lib/api';
 import { formatDuration, contextLabel } from '../lib/utils';
 import { savePendingRecording } from '../lib/offlineStorage';
+import { createSpeechRecognition } from '../lib/speechRecognition';
 import useOnlineStatus from '../hooks/useOnlineStatus';
-import AudioRecorder from '../components/AudioRecorder';
 
 export default function Recording() {
   const navigate = useNavigate();
   const { sessionId } = useParams();
   const isOnline = useOnlineStatus();
   const [session, setSession] = useState(null);
-  const [isRecording, setIsRecording] = useState(true);
+  const [isRecording, setIsRecording] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
   const [elapsed, setElapsed] = useState(0);
   const [audioLevel, setAudioLevel] = useState(0);
@@ -24,6 +24,11 @@ export default function Recording() {
   const pausedTimeRef = useRef(0);
   const lastPauseRef = useRef(null);
   const transcriptRef = useRef('');
+  const recognitionRef = useRef(null);
+  const audioContextRef = useRef(null);
+  const analyserRef = useRef(null);
+  const animFrameRef = useRef(null);
+  const mediaStreamRef = useRef(null);
 
   // Fetch session info
   useEffect(() => {
@@ -33,6 +38,81 @@ export default function Recording() {
         .catch(() => {});
     }
   }, [sessionId]);
+
+  // Start speech recognition and audio level on mount
+  useEffect(() => {
+    let cancelled = false;
+
+    async function startRecording() {
+      // Start speech recognition
+      const recognition = createSpeechRecognition({
+        onChunk: (chunk) => {
+          if (cancelled) return;
+          if (chunk.isFinal) {
+            transcriptRef.current = transcriptRef.current
+              ? transcriptRef.current + ' ' + chunk.text
+              : chunk.text;
+            setTranscript(transcriptRef.current);
+          }
+        },
+        onError: (err) => {
+          console.error('Speech recognition error:', err);
+        },
+        onEnd: () => {},
+      });
+      recognitionRef.current = recognition;
+      recognition.start();
+
+      // Start audio level metering via getUserMedia + AnalyserNode
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        if (cancelled) {
+          stream.getTracks().forEach((t) => t.stop());
+          return;
+        }
+        mediaStreamRef.current = stream;
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        audioContextRef.current = audioCtx;
+        const source = audioCtx.createMediaStreamSource(stream);
+        const analyser = audioCtx.createAnalyser();
+        analyser.fftSize = 256;
+        source.connect(analyser);
+        analyserRef.current = analyser;
+
+        const dataArray = new Uint8Array(analyser.frequencyBinCount);
+        function updateLevel() {
+          if (cancelled) return;
+          analyser.getByteFrequencyData(dataArray);
+          let sum = 0;
+          for (let i = 0; i < dataArray.length; i++) sum += dataArray[i];
+          const avg = sum / dataArray.length / 255;
+          setAudioLevel(avg);
+          animFrameRef.current = requestAnimationFrame(updateLevel);
+        }
+        updateLevel();
+      } catch {
+        // Mic permission denied or unavailable — recording still works via speech API
+      }
+
+      if (!cancelled) {
+        startTimeRef.current = Date.now();
+        setIsRecording(true);
+      }
+    }
+
+    startRecording();
+
+    return () => {
+      cancelled = true;
+      if (recognitionRef.current) {
+        recognitionRef.current.stop();
+        recognitionRef.current = null;
+      }
+      if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
+      if (audioContextRef.current) audioContextRef.current.close().catch(() => {});
+      if (mediaStreamRef.current) mediaStreamRef.current.getTracks().forEach((t) => t.stop());
+    };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Timer
   useEffect(() => {
@@ -50,19 +130,6 @@ export default function Recording() {
     return () => clearInterval(interval);
   }, [isRecording, isPaused]);
 
-  const handleTranscriptChunk = useCallback((text, isFinal) => {
-    if (isFinal) {
-      transcriptRef.current = transcriptRef.current
-        ? transcriptRef.current + ' ' + text
-        : text;
-      setTranscript(transcriptRef.current);
-    }
-  }, []);
-
-  const handleAudioLevel = useCallback((level) => {
-    setAudioLevel(level);
-  }, []);
-
   function handlePause() {
     if (isPaused) {
       // Resuming
@@ -71,14 +138,32 @@ export default function Recording() {
         lastPauseRef.current = null;
       }
       setIsPaused(false);
+      if (recognitionRef.current) recognitionRef.current.resume();
     } else {
       // Pausing
       lastPauseRef.current = Date.now();
       setIsPaused(true);
+      if (recognitionRef.current) recognitionRef.current.pause();
     }
   }
 
+  function cleanupAudio() {
+    if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
+    if (audioContextRef.current) audioContextRef.current.close().catch(() => {});
+    if (mediaStreamRef.current) mediaStreamRef.current.getTracks().forEach((t) => t.stop());
+    if (recognitionRef.current) {
+      recognitionRef.current.stop();
+      recognitionRef.current = null;
+    }
+  }
+
+  function handleCancel() {
+    cleanupAudio();
+    navigate(-1);
+  }
+
   async function handleStop() {
+    cleanupAudio();
     setIsRecording(false);
     setIsPaused(false);
     setSubmitting(true);
@@ -103,6 +188,12 @@ export default function Recording() {
       return;
     }
 
+    if (!currentTranscript.trim()) {
+      setError('No speech detected. Make sure your microphone is working and try again.');
+      setSubmitting(false);
+      return;
+    }
+
     try {
       await submitTranscript(sessionId, currentTranscript, elapsed);
       navigate(`/session/${sessionId}`);
@@ -124,12 +215,17 @@ export default function Recording() {
 
   return (
     <div className="w-full min-h-screen flex flex-col items-center justify-center px-4 md:px-6 safe-area-inset">
-      <AudioRecorder
-        onTranscriptChunk={handleTranscriptChunk}
-        onAudioLevel={handleAudioLevel}
-        isRecording={isRecording}
-        isPaused={isPaused}
-      />
+      {/* Back / Cancel button */}
+      <div className="fixed top-4 left-4 z-10 safe-area-inset">
+        <button
+          onClick={handleCancel}
+          className="text-slate-400 hover:text-slate-200 transition-colors inline-flex items-center gap-2 touch-target"
+          disabled={submitting}
+        >
+          <ArrowLeft size={20} strokeWidth={1.5} />
+          <span className="text-sm">Cancel</span>
+        </button>
+      </div>
 
       {/* Glass container for recording UI */}
       <div className="glass rounded-xl p-6 md:p-12 flex flex-col items-center w-full max-w-lg">
@@ -231,7 +327,18 @@ export default function Recording() {
 
       {/* Error */}
       {error && (
-        <p className="mt-4 text-sm text-red-400">{error}</p>
+        <div className="mt-4 flex flex-col items-center gap-3">
+          <p className="text-sm text-red-400">{error}</p>
+          {!isRecording && !submitting && (
+            <button
+              onClick={() => navigate(-1)}
+              className="btn-secondary text-sm inline-flex items-center gap-2"
+            >
+              <ArrowLeft size={14} strokeWidth={1.5} />
+              Go Back
+            </button>
+          )}
+        </div>
       )}
 
       {/* Session metadata */}

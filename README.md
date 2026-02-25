@@ -59,25 +59,27 @@ Click **New Session**, upload an audio file or record live, then pick a **Lens**
 
 ## OpenClaw Integration
 
-### Path A — File-based (self-hosted)
+### Path A — File-based (same machine only)
 
-Point OpenClaw at your EchoBridge export directory:
+Point OpenClaw at your EchoBridge export directory. **Only works if EchoBridge and OpenClaw run on the same machine.**
 
 ```json
 {
   "agents": {
     "defaults": {
       "memorySearch": {
-        "extraPaths": ["~/obsidian-vault/echobridge/"]
+        "extraPaths": ["~/Downloads/EchoBridge/"]
       }
     }
   }
 }
 ```
 
-Set `OUTPUT_DIR` in `.env` to your Obsidian vault path. EchoBridge exports `.md` files there, and OpenClaw indexes them natively.
+Set `OUTPUT_DIR` in `.env` to match. EchoBridge exports `.md` files there, and OpenClaw indexes them natively.
 
-### Path B — Skill-based
+### Path B — API-based (local or remote)
+
+**Use this if your agent is remote.** Set `ECHOBRIDGE_API_URL` to your deployed URL (e.g., `https://echobridge.up.railway.app`).
 
 Copy the skill into your OpenClaw skills directory:
 
@@ -86,7 +88,7 @@ cp -r openclaw-skill/echobridge ~/.openclaw/skills/
 ```
 
 Set the required environment variables:
-- `ECHOBRIDGE_API_URL` — your EchoBridge instance URL (e.g., `http://localhost:8000`)
+- `ECHOBRIDGE_API_URL` — your EchoBridge instance URL (e.g., `https://echobridge.up.railway.app`)
 - `ECHOBRIDGE_API_KEY` — the agent API key from your `.env`
 
 ## Environment Variables
