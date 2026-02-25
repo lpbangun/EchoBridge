@@ -42,6 +42,7 @@ export default function SetupWizard({ onComplete }) {
         default_model: defaultModel,
         output_dir: outputDir,
         auto_export: true,
+        onboarding_complete: true,
       };
 
       // Set the appropriate API key

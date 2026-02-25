@@ -49,6 +49,7 @@ def _build_settings_response() -> SettingsResponse:
         s3_prefix=settings.s3_prefix,
         cloud_sync_audio=settings.cloud_sync_audio,
         cloud_sync_exports=settings.cloud_sync_exports,
+        onboarding_complete=settings.onboarding_complete,
     )
 
 
@@ -133,6 +134,9 @@ async def update_settings(body: SettingsUpdate, db=Depends(get_db)):
     if body.cloud_sync_exports is not None:
         settings.cloud_sync_exports = body.cloud_sync_exports
         changed["cloud_sync_exports"] = body.cloud_sync_exports
+    if body.onboarding_complete is not None:
+        settings.onboarding_complete = body.onboarding_complete
+        changed["onboarding_complete"] = body.onboarding_complete
 
     # Persist preference fields to SQLite
     if changed:

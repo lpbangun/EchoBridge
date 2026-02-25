@@ -29,6 +29,7 @@ PREFERENCE_FIELDS = {
     "s3_prefix",
     "cloud_sync_audio",
     "cloud_sync_exports",
+    "onboarding_complete",
 }
 
 

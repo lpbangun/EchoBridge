@@ -50,6 +50,9 @@ class Settings(BaseSettings):
     cloud_sync_audio: bool = True  # Sync audio files
     cloud_sync_exports: bool = True  # Sync markdown exports
 
+    # Onboarding
+    onboarding_complete: bool = False
+
     # Auto-interpret
     auto_interpret: bool = True
     auto_interpret_model: str = ""  # empty = use default_model

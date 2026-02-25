@@ -219,6 +219,8 @@ class SettingsResponse(BaseModel):
     s3_prefix: str
     cloud_sync_audio: bool
     cloud_sync_exports: bool
+    # Onboarding
+    onboarding_complete: bool
 
 
 class SettingsUpdate(BaseModel):
@@ -251,6 +253,8 @@ class SettingsUpdate(BaseModel):
     s3_prefix: str | None = None
     cloud_sync_audio: bool | None = None
     cloud_sync_exports: bool | None = None
+    # Onboarding
+    onboarding_complete: bool | None = None
 
 
 # --- API Key schemas ---

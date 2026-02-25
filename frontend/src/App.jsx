@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { getSettings } from './lib/api';
+import { getSettings, updateSettings } from './lib/api';
 import Dashboard from './pages/Dashboard';
 import NewSession from './pages/NewSession';
 import Recording from './pages/Recording';
@@ -14,9 +14,11 @@ import GuidePage from './pages/GuidePage';
 import OfflineBanner from './components/OfflineBanner';
 import InstallPrompt from './components/InstallPrompt';
 import SetupWizard from './components/SetupWizard';
+import WelcomeLanding from './components/WelcomeLanding';
 import { initSyncManager } from './lib/syncManager';
 
 export default function App() {
+  const [showLanding, setShowLanding] = useState(false);
   const [showWizard, setShowWizard] = useState(false);
   const [settingsLoaded, setSettingsLoaded] = useState(false);
 
@@ -27,21 +29,27 @@ export default function App() {
   useEffect(() => {
     getSettings()
       .then((settings) => {
-        // Show wizard if no AI provider key is configured
         const hasAnyKey =
           settings.openrouter_api_key_set ||
           settings.openai_api_key_set ||
           settings.anthropic_api_key_set ||
           settings.google_api_key_set ||
           settings.xai_api_key_set;
-        setShowWizard(!hasAnyKey);
+        const isNewUser = !settings.onboarding_complete && !hasAnyKey;
+        setShowLanding(isNewUser);
+        setShowWizard(!isNewUser && !hasAnyKey);
         setSettingsLoaded(true);
       })
       .catch(() => {
-        // If settings fail to load, show the app anyway
         setSettingsLoaded(true);
       });
   }, []);
+
+  async function markComplete() {
+    await updateSettings({ onboarding_complete: true });
+    setShowLanding(false);
+    setShowWizard(false);
+  }
 
   if (!settingsLoaded) {
     return (
@@ -51,8 +59,17 @@ export default function App() {
     );
   }
 
+  if (showLanding) {
+    return (
+      <WelcomeLanding
+        onGetStarted={() => { setShowLanding(false); setShowWizard(true); }}
+        onSkip={markComplete}
+      />
+    );
+  }
+
   if (showWizard) {
-    return <SetupWizard onComplete={() => setShowWizard(false)} />;
+    return <SetupWizard onComplete={markComplete} />;
   }
 
   return (

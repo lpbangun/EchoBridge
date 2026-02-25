@@ -27,6 +27,7 @@ async def test_get_settings(client):
     assert isinstance(data["models"], dict)
     assert "ai_provider" in data
     assert "provider_models" in data
+    assert "onboarding_complete" in data
 
 
 @pytest.mark.asyncio
@@ -283,6 +284,26 @@ async def test_settings_load_on_startup(db):
 
     # Restore original to avoid polluting other tests
     settings.user_display_name = original
+
+
+@pytest.mark.asyncio
+async def test_onboarding_complete_persists(client, db):
+    """PUT onboarding_complete=true → persisted and returned in settings."""
+    res = await client.put("/api/settings", json={"onboarding_complete": True})
+    assert res.status_code == 200
+    assert res.json()["onboarding_complete"] is True
+
+    # Verify it persisted to the DB
+    cursor = await db.execute(
+        "SELECT value FROM app_settings WHERE key = ?", ("onboarding_complete",)
+    )
+    row = await cursor.fetchone()
+    assert row is not None
+    assert json.loads(row[0]) is True
+
+    # Verify GET also returns it
+    res = await client.get("/api/settings")
+    assert res.json()["onboarding_complete"] is True
 
 
 @pytest.mark.asyncio
