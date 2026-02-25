@@ -29,13 +29,13 @@ Audio → Transcript → Your notes (preset lens)
 ## 2. Core Concepts
 
 ### Session
-A single recording event. Has audio, transcript, and one or more interpretations.
+A single recording event. Has audio, transcript, and one or more interpretations. Sessions support resume recording — users can append additional audio to a completed session, which concatenates the transcript and regenerates notes from the combined content. Sessions receive an AI-generated title from the transcript when auto-interpret is enabled and no title is set.
 
 ### Room
 A shared session that others can join via a room code. One host records. Everyone gets the same transcript. Each participant (human or agent) creates their own interpretation.
 
 ### Interpretation
-An AI-generated analysis of a transcript through a specific lens. Your meeting notes are one interpretation. An agent's analysis is another. Each interpretation is independent.
+An AI-generated analysis of a transcript through a specific lens. Your meeting notes are one interpretation. An agent's analysis is another. Each interpretation is independent. Interpretations are editable — users can modify the generated markdown inline after creation.
 
 ### Lens
 The system prompt that shapes an interpretation. Two types:
@@ -678,6 +678,25 @@ async def call_openrouter(
 | Fast | Gemini 2.5 Flash | `google/gemini-2.5-flash-preview` | ~$0.15 / $0.60 |
 | Budget | DeepSeek V3 | `deepseek/deepseek-chat-v3-0324` | ~$0.27 / $1.10 |
 
+### Auto-pipeline (post-transcription):
+
+When a transcript is submitted (browser STT or audio upload), a background pipeline runs:
+
+1. **Title generation**: If the session has no title, `generate_title()` sends the first 3000 characters of transcript to the AI with a system prompt requesting a concise 3-8 word title. The title is stored only if the session title is still null/empty (race-safe SQL guard). Failure is silently ignored — the session simply stays untitled.
+
+2. **Auto-interpretation**: If `auto_interpret` is enabled, runs the `smart_notes` lens against the full transcript. When re-running on a resumed session, existing primary interpretations are demoted (`is_primary = 0`) before the new one is inserted, ensuring only the latest auto-generated notes are flagged primary.
+
+3. **Auto-export**: If `auto_export` is enabled, saves the `.md` file.
+
+4. **Memory synthesis**: If the session belongs to a series, synthesizes cross-session memory.
+
+```python
+async def generate_title(transcript: str, model: str) -> str:
+    """Generate a concise 3-8 word title from a transcript."""
+    # Uses call_ai with temperature=0.3, max_tokens=32
+    # Returns "" on any failure
+```
+
 ---
 
 ## 11. .md Export Format
@@ -752,14 +771,19 @@ DELETE /api/sessions/{id}                Delete session + audio + interpretation
 ### Transcription:
 ```
 POST   /api/sessions/{id}/audio          Upload audio → run STT
-POST   /api/sessions/{id}/transcript     Submit browser STT transcript
+POST   /api/sessions/{id}/transcript     Submit browser STT transcript (supports append mode)
 ```
+
+The transcript endpoint accepts an optional `append` boolean in the body. When true, the new transcript is concatenated to the existing one (with a space separator) and the duration is added to the existing duration, enabling resume recording on completed sessions.
 
 ### Interpretation:
 ```
 POST   /api/sessions/{id}/interpret      Run lens or socket → create interpretation
 GET    /api/sessions/{id}/interpretations List all interpretations
+PATCH  /api/sessions/{id}/interpretations/{interp_id}  Update interpretation markdown
 ```
+
+The PATCH endpoint allows editing an interpretation's `output_markdown` field. Rejects empty content (400). The FTS trigger `interpretations_au` auto-updates the search index on modification.
 
 ### Rooms:
 ```
@@ -1082,12 +1106,13 @@ Notes:
 Features:
 - Centered glass card, massive whitespace (80% empty)
 - Timer is `text-5xl font-bold font-mono` — the largest element
-- 24-bar audio waveform, reactive to real audio levels (orange bars)
+- 24-bar audio waveform, reactive to real audio levels (orange bars). Uses time-domain RMS calculation (`getByteTimeDomainData`) with a 3x boost multiplier for visible speech levels (raw speech RMS ~0.05-0.3 maps to ~0.15-0.9 display range)
 - Pulsing red recording indicator dot
 - Pause/Resume toggle + Stop button (red)
 - Offline fallback: if server unreachable, saves to IndexedDB
 - Session metadata at bottom
 - Browser Web Speech API for live transcription
+- **Append mode**: When navigated to with `?mode=append`, the recording appends to an existing session's transcript instead of overwriting. Used by the "Continue Recording" button on completed sessions
 
 ### Session View
 ```
@@ -1102,7 +1127,8 @@ Features:
 │  Series: Weekly Syncs                   │ desktop│
 │  Room PROB-0219 · 3 people · 2 agents  │ hidden │
 │                                         │ on     │
-│  ## Summary                             │ mobile)│
+│  NOTES                        [✏ Edit] │ mobile)│
+│  ## Summary                             │        │
 │  Met with Sarah and David to finalize   │        │
 │  pricing strategy...                    │        │
 │                                         │        │
@@ -1113,18 +1139,21 @@ Features:
 │  ☐ Revise pricing page — David          │        │
 │                                         │        │
 │  ────────────────────────────────       │        │
+│  [🎤 Continue Recording]                │        │
+│  ────────────────────────────────       │        │
 │  probixio · pricing · investor-readiness│        │
 │  📥 Saved to ~/obsidian/echobridge/     │        │
 └─────────────────────────────────────────┴────────┘
 ```
 
 Features:
-- Inline editable title
+- Inline editable title (auto-populated by AI title generation when auto-interpret is enabled)
 - Three tabs in a glass pill nav: Summary, Transcript, Interpretations (with count)
 - Active tab: `bg-orange-500/20 text-orange-300`
 - Metadata row: context type, date, duration, status
 - Series badge (links to /series/:id)
-- Primary interpretation auto-displayed on Summary tab
+- Primary interpretation auto-displayed on Summary tab with **inline editing** — "Notes" header with Edit/Save/Cancel controls toggle between `<MarkdownPreview>` (view) and `<textarea>` (edit). Save calls `PATCH /api/sessions/{id}/interpretations/{interp_id}` and updates local state
+- **Continue Recording** button: shown on completed sessions below the primary interpretation. Navigates to `/recording/:id?mode=append` to append additional audio. New notes regenerate from the combined transcript (old primary interpretation is demoted)
 - Transcript tab: monospace text in glass card, scrollable
 - Interpretations tab: cards for each interpretation + "Run interpretation" modal with lens/socket selector
 - Export button downloads .md

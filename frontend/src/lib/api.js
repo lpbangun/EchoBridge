@@ -102,10 +102,10 @@ export async function uploadAudio(sessionId, file) {
   return res.json();
 }
 
-export async function submitTranscript(sessionId, transcript, durationSeconds) {
+export async function submitTranscript(sessionId, transcript, durationSeconds, append = false) {
   return request(`/sessions/${sessionId}/transcript`, {
     method: 'POST',
-    body: JSON.stringify({ transcript, duration_seconds: durationSeconds }),
+    body: JSON.stringify({ transcript, duration_seconds: durationSeconds, append }),
   });
 }
 
@@ -120,6 +120,13 @@ export async function interpretSession(sessionId, data) {
 
 export async function getInterpretations(sessionId) {
   return request(`/sessions/${sessionId}/interpretations`);
+}
+
+export async function updateInterpretation(sessionId, interpretationId, data) {
+  return request(`/sessions/${sessionId}/interpretations/${interpretationId}`, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  });
 }
 
 // --- Export ---

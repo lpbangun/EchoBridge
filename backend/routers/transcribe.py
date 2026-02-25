@@ -49,6 +49,22 @@ async def _run_auto_pipeline(session_id: str):
                 await db.commit()
                 return
 
+            # Generate title if none set
+            cursor = await db.execute(
+                "SELECT title, transcript FROM sessions WHERE id = ?", (session_id,)
+            )
+            title_row = await cursor.fetchone()
+            if title_row and not title_row["title"] and title_row["transcript"]:
+                from services.ai_service import generate_title
+                model = settings.auto_interpret_model or settings.default_model
+                generated = await generate_title(title_row["transcript"], model)
+                if generated:
+                    await db.execute(
+                        "UPDATE sessions SET title = ? WHERE id = ? AND (title IS NULL OR title = '')",
+                        (generated, session_id),
+                    )
+                    await db.commit()
+
             # Run auto-interpretation
             interpretation = await auto_interpret(session_id, db)
             if not interpretation:
@@ -237,17 +253,28 @@ async def submit_transcript(
 
     transcript = body.get("transcript", "")
     duration = body.get("duration_seconds", 0)
+    append = body.get("append", False)
 
     if not transcript:
         raise HTTPException(400, "Transcript is empty")
 
-    await db.execute(
-        """UPDATE sessions
-        SET transcript = ?, duration_seconds = ?, status = 'processing',
-            stt_provider = 'browser'
-        WHERE id = ?""",
-        (transcript, duration, session_id),
-    )
+    if append:
+        await db.execute(
+            """UPDATE sessions
+            SET transcript = COALESCE(transcript, '') || ' ' || ?,
+                duration_seconds = COALESCE(duration_seconds, 0) + ?,
+                status = 'processing', stt_provider = 'browser'
+            WHERE id = ?""",
+            (transcript, duration, session_id),
+        )
+    else:
+        await db.execute(
+            """UPDATE sessions
+            SET transcript = ?, duration_seconds = ?, status = 'processing',
+                stt_provider = 'browser'
+            WHERE id = ?""",
+            (transcript, duration, session_id),
+        )
     await db.commit()
 
     # Fire-and-forget auto-interpret pipeline

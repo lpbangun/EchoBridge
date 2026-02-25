@@ -6,7 +6,7 @@ import json
 from fastapi import APIRouter, Depends, HTTPException
 
 from database import get_db
-from models.schemas import InterpretRequest, InterpretationResponse
+from models.schemas import InterpretRequest, InterpretationResponse, InterpretationUpdate
 from services.interpret_service import (
     interpret_with_custom,
     interpret_with_lens,
@@ -111,6 +111,45 @@ async def interpret_session(
         )
 
     return result
+
+
+@router.patch("/{session_id}/interpretations/{interpretation_id}", response_model=InterpretationResponse)
+async def update_interpretation(
+    session_id: str,
+    interpretation_id: str,
+    body: InterpretationUpdate,
+    db=Depends(get_db),
+):
+    """Update an interpretation's markdown content."""
+    cursor = await db.execute("SELECT * FROM sessions WHERE id = ?", (session_id,))
+    if not await cursor.fetchone():
+        raise HTTPException(404, "Session not found")
+
+    cursor = await db.execute(
+        "SELECT * FROM interpretations WHERE id = ? AND session_id = ?",
+        (interpretation_id, session_id),
+    )
+    row = await cursor.fetchone()
+    if not row:
+        raise HTTPException(404, "Interpretation not found")
+
+    if not body.output_markdown.strip():
+        raise HTTPException(400, "Markdown content cannot be empty")
+
+    await db.execute(
+        "UPDATE interpretations SET output_markdown = ? WHERE id = ?",
+        (body.output_markdown, interpretation_id),
+    )
+    await db.commit()
+
+    cursor = await db.execute(
+        "SELECT * FROM interpretations WHERE id = ?", (interpretation_id,)
+    )
+    updated = await cursor.fetchone()
+    d = dict(updated)
+    if isinstance(d.get("output_structured"), str):
+        d["output_structured"] = json.loads(d["output_structured"])
+    return d
 
 
 @router.get("/{session_id}/interpretations", response_model=list[InterpretationResponse])

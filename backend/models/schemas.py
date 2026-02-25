@@ -113,6 +113,10 @@ class InterpretationResponse(BaseModel):
     created_at: str
 
 
+class InterpretationUpdate(BaseModel):
+    output_markdown: str
+
+
 # --- Room schemas ---
 
 class RoomCreate(BaseModel):

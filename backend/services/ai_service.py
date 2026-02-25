@@ -129,6 +129,25 @@ async def call_ai(
     )
 
 
+async def generate_title(transcript: str, model: str) -> str:
+    """Generate a concise 3-8 word title from a transcript."""
+    system_prompt = (
+        "Generate a concise 3-8 word title for this meeting or recording "
+        "based on the transcript. Return only the title, no quotes, no punctuation at the end."
+    )
+    try:
+        title = await call_ai(
+            model=model,
+            system_prompt=system_prompt,
+            user_content=f"TRANSCRIPT:\n{transcript[:3000]}",
+            temperature=0.3,
+            max_tokens=32,
+        )
+        return title.strip().strip('"\'')
+    except Exception:
+        return ""
+
+
 # Backward-compatible alias
 async def call_openrouter(
     model: str,

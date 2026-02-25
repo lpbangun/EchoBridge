@@ -265,6 +265,12 @@ async def auto_interpret(session_id: str, db) -> dict | None:
     interpretation_id = str(uuid.uuid4())
     now = datetime.now(timezone.utc).isoformat()
 
+    # Demote any existing primary interpretation before inserting new one
+    await db.execute(
+        "UPDATE interpretations SET is_primary = 0 WHERE session_id = ? AND is_primary = 1",
+        (session_id,),
+    )
+
     await db.execute(
         """INSERT INTO interpretations
         (id, session_id, source_type, source_name, lens_type, lens_id,
