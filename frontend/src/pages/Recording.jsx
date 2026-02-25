@@ -22,6 +22,7 @@ export default function Recording() {
   const [transcript, setTranscript] = useState('');
   const [liveChunks, setLiveChunks] = useState([]);
   const [showTranscript, setShowTranscript] = useState(true);
+  const [showFullTranscript, setShowFullTranscript] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
   const [savedOffline, setSavedOffline] = useState(false);
@@ -92,6 +93,9 @@ export default function Recording() {
         mediaStreamRef.current = stream;
         const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         audioContextRef.current = audioCtx;
+        if (audioCtx.state === 'suspended') {
+          await audioCtx.resume();
+        }
         const source = audioCtx.createMediaStreamSource(stream);
         const analyser = audioCtx.createAnalyser();
         analyser.fftSize = 512;
@@ -378,12 +382,32 @@ export default function Recording() {
       {isRecording && showTranscript && (
         <div className="mt-6 w-full max-w-lg">
           <div className="flex items-center justify-between mb-2">
-            <span className="section-label">Live Transcript</span>
+            <div className="flex items-center gap-3">
+              <span className="section-label">Transcript</span>
+              <div className="flex items-center bg-zinc-800 rounded-md overflow-hidden text-xs">
+                <button
+                  onClick={() => setShowFullTranscript(false)}
+                  className={`px-2.5 py-1 transition-colors ${!showFullTranscript ? 'bg-zinc-600 text-white' : 'text-zinc-400 hover:text-zinc-300'}`}
+                >
+                  Live
+                </button>
+                <button
+                  onClick={() => setShowFullTranscript(true)}
+                  className={`px-2.5 py-1 transition-colors ${showFullTranscript ? 'bg-zinc-600 text-white' : 'text-zinc-400 hover:text-zinc-300'}`}
+                >
+                  Full
+                </button>
+              </div>
+            </div>
             <span className="text-xs text-zinc-500">
               {liveChunks.filter((c) => c.is_final).length} phrases
             </span>
           </div>
-          <LiveTranscript chunks={liveChunks} />
+          {showFullTranscript ? (
+            <LiveTranscript fullTranscript={transcript || ''} />
+          ) : (
+            <LiveTranscript chunks={liveChunks} />
+          )}
         </div>
       )}
 
