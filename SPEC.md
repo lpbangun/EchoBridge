@@ -50,6 +50,12 @@ Lens    = "here's a prompt, give me markdown"
 Socket  = "here's a prompt + output schema, give me validated JSON + markdown"
 ```
 
+### Series
+A group of related sessions (e.g. "Weekly Syncs", "Research Meetings"). Series have an AI-generated memory document that summarizes insights, decisions, and patterns across all sessions in the group. Memory refreshes on demand.
+
+### Conversation
+A persistent chat thread for asking questions about meetings. Conversations can be global (cross-meeting search via /ask) or tied to a specific session (chat sidebar in session view). Messages persist across browser sessions.
+
 ---
 
 ## 3. Architecture
@@ -99,13 +105,15 @@ Socket  = "here's a prompt + output schema, give me validated JSON + markdown"
 |---|---|---|
 | Database | SQLite (single file) | Zero infra. Works self-hosted and dockerized. |
 | STT live | Browser Web Speech API | Zero config, free, works in hosted version. |
-| STT upload | faster-whisper (local) | Free, private, fast on CPU. |
-| AI | OpenRouter (BYO key) | Model flexibility. User owns their key. |
+| STT upload | Multi-provider (Local whisper, OpenAI, Deepgram) | User picks accuracy/speed/cost tradeoff. Deepgram Nova 3 recommended. |
+| AI | Multi-provider (OpenRouter, OpenAI, Anthropic, Google, xAI) | Model flexibility. User owns their key. OpenRouter + Grok 4.1 Fast recommended. |
 | Agent integration | REST API + WebSocket + file-based | Three paths for different deployment contexts. |
 | Primary data store | SQLite | The source of truth for sessions, interpretations, rooms. |
 | .md files | Export (canonical for OpenClaw) | Written on session complete. OpenClaw indexes these natively via `extraPaths`. |
 | Rooms | Room code join (no accounts for guests) | Simplest multi-user model. |
 | Sockets | Prompt + output JSON schema | Agents get structured, parseable output. |
+| Offline support | IndexedDB + sync | Recordings work without server; sync when back online. |
+| PWA | Service worker + install prompt | App installable on desktop/mobile for quick access. |
 
 ---
 
@@ -189,6 +197,34 @@ CREATE TABLE api_keys (
     last_used_at TIMESTAMP
 );
 
+-- Series (group related sessions with shared memory)
+CREATE TABLE series (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    description TEXT DEFAULT '',
+    memory_document TEXT DEFAULT '',           -- AI-generated cross-session summary
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Conversations (persistent chat threads, optionally tied to a session)
+CREATE TABLE conversations (
+    id TEXT PRIMARY KEY,
+    session_id TEXT REFERENCES sessions(id) ON DELETE CASCADE,  -- NULL for global conversations
+    title TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Messages (chat messages within conversations)
+CREATE TABLE messages (
+    id TEXT PRIMARY KEY,
+    conversation_id TEXT NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
+    role TEXT NOT NULL,                        -- "user" | "assistant"
+    content TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
 -- Full-text search
 CREATE VIRTUAL TABLE sessions_fts USING fts5(
     title, transcript,
@@ -200,6 +236,8 @@ CREATE VIRTUAL TABLE interpretations_fts USING fts5(
     content='interpretations', content_rowid='rowid'
 );
 ```
+
+Note: Sessions have a `series_id TEXT REFERENCES series(id)` column for grouping into series.
 
 ---
 
@@ -745,6 +783,34 @@ GET    /api/sockets/{id}                 Get socket details + schema
 POST   /api/sockets                      Create custom socket
 ```
 
+### Series:
+```
+POST   /api/series                       Create series
+GET    /api/series                       List all series
+GET    /api/series/{id}                  Get series details
+PATCH  /api/series/{id}                  Update name, description
+DELETE /api/series/{id}                  Delete series
+GET    /api/series/{id}/memory           Get memory document
+POST   /api/series/{id}/memory/refresh   Regenerate memory from sessions
+GET    /api/series/{id}/sessions         List sessions in series
+POST   /api/series/{id}/sessions/{sid}   Add session to series
+DELETE /api/series/{id}/sessions/{sid}   Remove session from series
+```
+
+### Chat:
+```
+POST   /api/chat                         Send message, get AI response
+GET    /api/chat/conversations           List conversations
+GET    /api/chat/conversations/{id}      Get conversation + messages
+DELETE /api/chat/conversations/{id}      Delete conversation
+```
+
+### Storage:
+```
+POST   /api/storage/test                 Test cloud storage connection
+GET    /api/storage/status               Get storage status
+```
+
 ### Search + Settings:
 ```
 GET    /api/search?q=...                 FTS5 across sessions + interpretations
@@ -772,6 +838,16 @@ POST   /api/v1/sessions/{id}/interpret/socket/{socket_id}  Socket interpretation
 # Rooms
 GET    /api/v1/rooms/{code}              Room status
 WS     /api/v1/stream/room/{code}        Live transcript stream
+
+# Series
+GET    /api/v1/series                    List all series
+GET    /api/v1/series/{id}               Get series details
+GET    /api/v1/series/{id}/memory        Get memory document
+
+# Chat
+GET    /api/v1/chat/conversations        List conversations
+GET    /api/v1/chat/conversations/{id}   Get conversation + messages
+POST   /api/v1/chat/conversations/{id}/messages  Send message
 
 # Search
 GET    /api/v1/search?q=...              FTS5 search
@@ -865,212 +941,421 @@ WS /api/v1/stream/room/{code}
 
 ## 14. GUI Screens
 
-Read DESIGN.md for visual style. All screens follow Swiss minimalist principles.
+Read DESIGN.md for visual style. All screens use a dark glassmorphic design with orange accent color.
+
+**Routes:**
+
+| Route | Page | Purpose |
+|-------|------|---------|
+| `/` | Dashboard | Session list, search, filters, quick actions |
+| `/new` | NewSession | Upload audio or create room |
+| `/recording/:sessionId` | Recording | Live audio capture with waveform |
+| `/session/:id` | SessionView | Notes, transcript, interpretations, chat |
+| `/room/:code` | RoomView | Live collaborative meeting |
+| `/join` | JoinRoom | Enter room code + name |
+| `/series/:id` | SeriesView | Series memory + session list |
+| `/ask` | AskPage | Cross-meeting AI chat |
+| `/guide` | GuidePage | Getting started + setup help |
+| `/settings` | SettingsPage | Configuration (providers, STT, export, agent API) |
+
+**App-level wrappers** (rendered around all routes):
+- `SetupWizard` — shown on first launch if no AI provider key configured
+- `OfflineBanner` — connectivity indicator when offline
+- `InstallPrompt` — PWA installation prompt
 
 ### Dashboard
 ```
-┌────────────────────────────────────────────────┐
-│  ECHOBRIDGE                       [⚙] [+ New] │
-│                                                 │
-│  ┌─────────────────────────────────────────┐   │
-│  │ 🔍 Search sessions...                  │   │
-│  └─────────────────────────────────────────┘   │
-│                                                 │
-│  All  📚  🚀  🔬  💡  🎤                      │
-│                                                 │
-│  ┌─────────────────────────────────────────┐   │
-│  │ STARTUP MEETING                         │   │
-│  │ Probixio — Weekly Sync                  │   │
-│  │ Today, 2:30 PM · 45 min · Room PROB-0219│   │
-│  └─────────────────────────────────────────┘   │
-│                                                 │
-│  ┌─────────────────────────────────────────┐   │
-│  │ CLASS LECTURE                            │   │
-│  │ Learning Transfer — HGSE T550           │   │
-│  │ Today, 10:00 AM · 75 min               │   │
-│  └─────────────────────────────────────────┘   │
-│                                                 │
-└────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────┐
+│ ┌──────────────────────────────────────────────┐ │
+│ │ ECHOBRIDGE                                   │ │
+│ │ Your meeting bridge for humans and agents    │ │
+│ │                                              │ │
+│ │ [Guide] [Ask] [⚙] [Join] [Upload] [Record]  │ │
+│ └──────────────────────────────────────────────┘ │
+│                                                   │
+│  ┌──────────────────────────────────────────┐    │
+│  │ Pending recordings to sync (N)  [Sync]  │    │  ← only if offline recordings exist
+│  └──────────────────────────────────────────┘    │
+│                                                   │
+│  ┌──────────────────────────────────────────┐    │
+│  │ Set up your API key to get started       │    │  ← only if no API key
+│  └──────────────────────────────────────────┘    │
+│                                                   │
+│  🔍 Search sessions...                           │
+│  All  📚  🚀  🔬  💡  🎤                        │
+│  Series: [All] [Weekly Syncs] [Research] ...     │
+│                                                   │
+│  ┌──────────────────────────────────────────┐    │
+│  │ ● RECORDING · STARTUP MEETING            │    │  ← active sessions sort first
+│  │ Probixio — Weekly Sync                   │    │
+│  │ Today, 2:30 PM · 45 min · PROB-0219     │    │
+│  └──────────────────────────────────────────┘    │
+│                                                   │
+│  ┌──────────────────────────────────────────┐    │
+│  │ CLASS LECTURE                             │    │
+│  │ Learning Transfer — HGSE T550            │    │
+│  │ Today, 10:00 AM · 75 min                │    │
+│  └──────────────────────────────────────────┘    │
+│                                                   │
+│  (empty state: icon + "No sessions yet" + CTA)   │
+└──────────────────────────────────────────────────┘
 ```
 
-### New Session
+Features:
+- Header glass card with all quick actions (Guide, Ask, Settings, Join, Upload, Record)
+- Quick Record button starts recording immediately with defaults
+- Offline sync banner when IndexedDB has pending recordings
+- API key setup banner for first-time users
+- Search with 300ms debounce
+- Context filter chips + Series filter chips
+- Active sessions (recording/transcribing/processing) sort to top
+- 10-second polling when active sessions exist
+
+### New Session (Upload / Room)
 ```
-┌────────────────────────────────────────────────┐
-│  ← Back                          NEW SESSION   │
-│                                                 │
-│  SESSION TYPE                                   │
-│                                                 │
-│  ┌──────────┐ ┌──────────┐ ┌──────────┐       │
-│  │ CLASS    │ │ STARTUP  │ │ RESEARCH │       │
-│  │ LECTURE  │ │ MEETING  │ │ DISCUSS. │       │
-│  └──────────┘ └──────────┘ └──────────┘       │
-│  ┌──────────┐ ┌──────────┐                     │
-│  │ WORKING  │ │ TALK /   │                     │
-│  │ SESSION  │ │ SEMINAR  │                     │
-│  └──────────┘ └──────────┘                     │
-│                                                 │
-│  Title                                          │
-│  ┌─────────────────────────────────────────┐   │
-│  │                                         │   │
-│  └─────────────────────────────────────────┘   │
-│                                                 │
-│  Context                                        │
-│  ┌─────────────────────────────────────────┐   │
-│  │ Course / Project / Topic                │   │
-│  └─────────────────────────────────────────┘   │
-│                                                 │
-│  Model                                          │
-│  Claude Sonnet 4                           ▾   │
-│                                                 │
-│  ┌────────────┐ ┌───────────┐ ┌───────────┐   │
-│  │  Record    │ │  Upload   │ │  Create   │   │
-│  │  Live      │ │  File     │ │  Room     │   │
-│  └────────────┘ └───────────┘ └───────────┘   │
-│                                                 │
-└────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────┐
+│  ← Back                       UPLOAD / ROOM      │
+│  Set up your session before uploading or          │
+│  creating a room                                  │
+│                                                   │
+│  ┌──────────────────────────────────────────────┐│
+│  │ SESSION TYPE                                  ││
+│  │ ┌──────────┐ ┌──────────┐ ┌──────────┐      ││
+│  │ │ CLASS    │ │ STARTUP  │ │ RESEARCH │      ││
+│  │ │ LECTURE  │ │ MEETING  │ │ DISCUSS. │      ││
+│  │ └──────────┘ └──────────┘ └──────────┘      ││
+│  │ ┌──────────┐ ┌──────────┐                    ││
+│  │ │ WORKING  │ │ TALK /   │                    ││
+│  │ │ SESSION  │ │ SEMINAR  │                    ││
+│  │ └──────────┘ └──────────┘                    ││
+│  │                                               ││
+│  │ Title                                         ││
+│  │ ┌───────────────────────────────────────┐    ││
+│  │ │                                       │    ││
+│  │ └───────────────────────────────────────┘    ││
+│  │                                               ││
+│  │ Context (dynamic label per session type)      ││
+│  │ ┌───────────────────────────────────────┐    ││
+│  │ │ Course / Project / Topic              │    ││
+│  │ └───────────────────────────────────────┘    ││
+│  │                                               ││
+│  │ Series                                    ▾  ││
+│  │                                               ││
+│  │ ┌────────────────┐  ┌──────────────────┐     ││
+│  │ │  Upload File   │  │  Create Room     │     ││
+│  │ └────────────────┘  └──────────────────┘     ││
+│  └──────────────────────────────────────────────┘│
+└──────────────────────────────────────────────────┘
 ```
 
-### Room View (participant)
+Notes:
+- "Record Live" is now the quick-record button on Dashboard (not on this page)
+- Series selector for grouping sessions
+- Context metadata input label changes dynamically per session type (e.g. "Course name" for lectures, "Client name" for startup meetings)
+
+### Recording
 ```
-┌────────────────────────────────────────────────┐
-│  ROOM PROB-0219                    ● RECORDING  │
-│  Probixio — Weekly Sync             01:23:45   │
-│                                                 │
-│  ┌──────────────────────────────────────────┐  │
-│  │                                          │  │
-│  │  Live Transcript                         │  │
-│  │                                          │  │
-│  │  ...and I think the pricing model should │  │
-│  │  reflect actual usage rather than flat   │  │
-│  │  rate. Sarah mentioned that enterprise   │  │
-│  │  customers specifically asked for this...│  │
-│  │                                          │  │
-│  └──────────────────────────────────────────┘  │
-│                                                 │
-│  PARTICIPANTS                                   │
-│  Logani (host) · Sarah · David                 │
-│  🤖 openclaw-main · 🤖 research-agent          │
-│                                                 │
-│  YOUR INTERPRETATION                            │
-│  Socket: Action Items                      ▾   │
-│                                                 │
-│  [Will generate when session ends]              │
-│                                                 │
-└────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────┐
+│  ✕ Cancel                                         │
+│                                                   │
+│                                                   │
+│         ┌────────────────────────────┐           │
+│         │                            │           │
+│         │      ● RECORDING           │           │
+│         │      01:23:45              │           │
+│         │                            │           │
+│         │  ▁▃▅▇▅▃▁▃▅▇▅▃▁▃▅▇▅▃▁    │           │
+│         │                            │           │
+│         │  Your audio is being       │           │
+│         │  captured and transcribed  │           │
+│         │                            │           │
+│         │  [ ⏸ Pause ]  [ ■ Stop ]  │           │
+│         │                            │           │
+│         └────────────────────────────┘           │
+│                                                   │
+│         📚 HGSE T550 — Learning Transfer         │
+│         Room: PROB-0219 · 3 listeners            │
+│                                                   │
+└──────────────────────────────────────────────────┘
 ```
+
+Features:
+- Centered glass card, massive whitespace (80% empty)
+- Timer is `text-5xl font-bold font-mono` — the largest element
+- 24-bar audio waveform, reactive to real audio levels (orange bars)
+- Pulsing red recording indicator dot
+- Pause/Resume toggle + Stop button (red)
+- Offline fallback: if server unreachable, saves to IndexedDB
+- Session metadata at bottom
+- Browser Web Speech API for live transcription
 
 ### Session View
 ```
-┌────────────────────────────────────────────────┐
-│  ← Back     Probixio — Weekly Sync    [✎] [📥]│
-│                                                 │
-│  Summary   Transcript   Interpretations (4)    │
-│  ─────────                                      │
-│                                                 │
-│  STARTUP MEETING · Feb 19 · 45 min             │
-│  Room PROB-0219 · 3 people · 2 agents          │
-│                                                 │
-│  ## Summary                                     │
-│  Met with Sarah and David to finalize           │
-│  pricing strategy. The major decision was...    │
-│                                                 │
-│  ## Decisions Made                              │
-│  1. Switch to usage-based pricing...            │
-│                                                 │
-│  ## Action Items                                │
-│  ☐ Revise pricing page — David — Feb 22        │
-│  ☐ Email YC partners — self — Feb 25           │
-│                                                 │
-│  ────────────────────────────────────────       │
-│  probixio · pricing · investor-readiness        │
-│  📥 Saved to ~/obsidian/echobridge/             │
-└────────────────────────────────────────────────┘
+┌─────────────────────────────────────────┬────────┐
+│  ← Back   Probixio — Weekly Sync  [📥] │ 💬 Chat│
+│                                         │        │
+│  ┌─────────────────────────────────┐    │ Chat   │
+│  │ Summary  Transcript  Interp (4)│    │ panel  │
+│  └─────────────────────────────────┘    │ (400px │
+│                                         │ sidebar│
+│  STARTUP MEETING · Feb 19 · 45 min     │ on     │
+│  Series: Weekly Syncs                   │ desktop│
+│  Room PROB-0219 · 3 people · 2 agents  │ hidden │
+│                                         │ on     │
+│  ## Summary                             │ mobile)│
+│  Met with Sarah and David to finalize   │        │
+│  pricing strategy...                    │        │
+│                                         │        │
+│  ## Decisions Made                      │        │
+│  1. Switch to usage-based pricing...    │        │
+│                                         │        │
+│  ## Action Items                        │        │
+│  ☐ Revise pricing page — David          │        │
+│                                         │        │
+│  ────────────────────────────────       │        │
+│  probixio · pricing · investor-readiness│        │
+│  📥 Saved to ~/obsidian/echobridge/     │        │
+└─────────────────────────────────────────┴────────┘
 ```
 
-### Interpretations Tab (within Session View)
+Features:
+- Inline editable title
+- Three tabs in a glass pill nav: Summary, Transcript, Interpretations (with count)
+- Active tab: `bg-orange-500/20 text-orange-300`
+- Metadata row: context type, date, duration, status
+- Series badge (links to /series/:id)
+- Primary interpretation auto-displayed on Summary tab
+- Transcript tab: monospace text in glass card, scrollable
+- Interpretations tab: cards for each interpretation + "Run interpretation" modal with lens/socket selector
+- Export button downloads .md
+- Chat sidebar toggle (desktop only, 400px fixed right panel)
+- Polls for status updates every 5s while processing
+- Skeleton loading states
+
+### Room View
 ```
-│  Summary   Transcript   Interpretations (4)    │
-│                                     ─────────── │
-│                                                 │
-│  ┌─────────────────────────────────────────┐   │
-│  │ YOU — Startup Meeting lens              │   │
-│  │ Primary · Claude Sonnet 4               │   │
-│  │ 3 decisions · 5 action items            │   │
-│  └─────────────────────────────────────────┘   │
-│                                                 │
-│  ┌─────────────────────────────────────────┐   │
-│  │ 🤖 openclaw-main — Custom lens          │   │
-│  │ "User positions and emotional signals"  │   │
-│  └─────────────────────────────────────────┘   │
-│                                                 │
-│  ┌─────────────────────────────────────────┐   │
-│  │ Sarah — Action Items socket             │   │
-│  │ 5 items · 2 unassigned                  │   │
-│  └─────────────────────────────────────────┘   │
-│                                                 │
-│  ┌─────────────────────────────────────────┐   │
-│  │ 🤖 research-agent — Devil's Advocate     │   │
-│  │ 3 weak arguments · 2 missing perspectives│   │
-│  └─────────────────────────────────────────┘   │
-│                                                 │
+┌──────────────────────────────────────────────────┐
+│  ← Back           ROOM PROB-0219        [Copy]   │
+│                                                   │
+│  Status: ● RECORDING   Host: Logani              │
+│                                                   │
+│  PARTICIPANTS                                     │
+│  Logani (host) · Sarah · David                   │
+│  🤖 openclaw-main · 🤖 research-agent            │
+│                                                   │
+│  ┌──────────────────────────────────────────────┐│
+│  │ Live Transcript                               ││
+│  │                                               ││
+│  │ ...and I think the pricing model should       ││
+│  │ reflect actual usage rather than flat          ││
+│  │ rate. Sarah mentioned that enterprise         ││
+│  │ customers specifically asked for this...      ││
+│  └──────────────────────────────────────────────┘│
+│                                                   │
+│                           [ ■ Stop Recording ]    │
+│                                                   │
+└──────────────────────────────────────────────────┘
 ```
+
+Features:
+- Room code display with copy-to-clipboard button
+- Status indicator with color (red for recording, amber for waiting)
+- Host display name
+- Participant list (humans + agents distinguished)
+- Live transcript via WebSocket streaming
+- Host controls: Start Recording / Stop Recording
+- Status polling (5s interval)
+- Auto-redirect to session view when room closes
+
+### Join Room
+```
+┌──────────────────────────────────────────────────┐
+│  ← Back                            JOIN ROOM     │
+│                                                   │
+│  ┌──────────────────────────────────────────────┐│
+│  │ Room code                                     ││
+│  │ ┌───────────────────────────────────────┐    ││
+│  │ │ PROB-0219                (monospace)   │    ││
+│  │ └───────────────────────────────────────┘    ││
+│  │                                               ││
+│  │ Your name                                     ││
+│  │ ┌───────────────────────────────────────┐    ││
+│  │ │ Sarah                                 │    ││
+│  │ └───────────────────────────────────────┘    ││
+│  │                                               ││
+│  │                          [ Join Room ]        ││
+│  └──────────────────────────────────────────────┘│
+└──────────────────────────────────────────────────┘
+```
+
+Features:
+- Auto-uppercase room code input
+- Form validation (both fields required)
+- Redirects to /room/:code on success
+
+### Series View
+```
+┌──────────────────────────────────────────────────┐
+│  ← Back                                          │
+│                                                   │
+│  Weekly Syncs                     (editable)     │
+│  Probixio team weekly meetings    (editable)     │
+│  5 sessions · Updated Feb 22                     │
+│                                                   │
+│  ┌──────────────────────────────────┐            │
+│  │ Memory     Sessions              │            │
+│  └──────────────────────────────────┘            │
+│                                                   │
+│  ┌──────────────────────────────────────────────┐│
+│  │ Cross-session memory (AI-generated)          ││
+│  │                                     [Refresh]││
+│  │                                               ││
+│  │ ## Key Themes                                 ││
+│  │ - Pricing strategy has evolved from...        ││
+│  │ - Team alignment on usage-based model...      ││
+│  │                                               ││
+│  │ ## Running Decisions                          ││
+│  │ - Switch to usage-based pricing (Feb 19)      ││
+│  └──────────────────────────────────────────────┘│
+│                                                   │
+└──────────────────────────────────────────────────┘
+```
+
+Features:
+- Inline editable series name and description
+- Metadata: session count, last updated date
+- Two tabs: Memory, Sessions
+- Memory tab: AI-generated cross-session summary with refresh button
+- Sessions tab: list of all sessions in the series, linking to /session/:id
+
+### Ask Page (Cross-Meeting Chat)
+```
+┌──────────────┬───────────────────────────────────┐
+│ Conversations│  Weekly Syncs                     │
+│    [+ New]   │  Ask about your meetings          │
+│              │                                    │
+│ ▸ Weekly     │  ┌────────────────────────────┐   │
+│   Syncs      │  │ User: What pricing model   │   │
+│              │  │ did we decide on?           │   │
+│   Research   │  │                             │   │
+│   Notes      │  │ AI: Based on the Feb 19    │   │
+│              │  │ sync, the team decided to   │   │
+│              │  │ switch to usage-based...    │   │
+│              │  └────────────────────────────┘   │
+│              │                                    │
+│              │  ┌──────────────────────┐ [Send]  │
+│              │  │ Ask a question...     │         │
+│              │  └──────────────────────┘         │
+└──────────────┴───────────────────────────────────┘
+```
+
+Features:
+- Two-column layout: conversation sidebar (272px) + chat area
+- Sidebar: conversation list with dates, delete on hover, new conversation button
+- Active conversation highlighted with orange left border
+- Chat panel using ChatPanel component
+- Mobile: sidebar toggles via hamburger button
+- Conversations persist across sessions
+
+### Guide Page (Getting Started)
+```
+┌──────────────────────────────────────────────────┐
+│  ← Back                    GETTING STARTED       │
+│                                                   │
+│  RECOMMENDED SETUP                                │
+│  ┌──────────────────────────────────────────────┐│
+│  │ Transcription: Deepgram Nova 3               ││
+│  │ (best accuracy, requires API key)            ││
+│  ├──────────────────────────────────────────────┤│
+│  │ AI Provider: OpenRouter + Grok 4.1 Fast      ││
+│  │ (best speed/quality, BYO key)                ││
+│  ├──────────────────────────────────────────────┤│
+│  │ Agent Bridge: Remote agent setup             ││
+│  │ (for OpenClaw/external agents)               ││
+│  └──────────────────────────────────────────────┘│
+│                                                   │
+│  QUICK SETUP (3 steps)                           │
+│  1. Get API keys                                 │
+│  2. Configure in Settings                        │
+│  3. Record your first meeting                    │
+│                                                   │
+│  CORE CONCEPTS                                   │
+│  ┌──────┐ ┌──────┐ ┌──────┐ ┌──────┐           │
+│  │ Lens │ │Socket│ │Series│ │ Room │           │
+│  └──────┘ └──────┘ └──────┘ └──────┘           │
+│                                                   │
+│  ROOMS & COLLABORATION                           │
+│  1. Create room → Share code → Record...         │
+│                                                   │
+│  FOR AI AGENTS                                   │
+│  1. Generate API key → Configure agent...        │
+│                                                   │
+│                              [Open Settings]      │
+└──────────────────────────────────────────────────┘
+```
+
+Features:
+- Recommended provider configurations with rationale
+- Step-by-step quick setup instructions
+- Core concept cards (Lens, Socket, Series, Room)
+- Rooms & collaboration guide
+- Agent integration guide
+- .env code snippet for reference
+- Link to Settings page
 
 ### Settings
 ```
-┌────────────────────────────────────────────────┐
-│  ← Back                            SETTINGS    │
-│                                                 │
-│  API KEYS                                       │
-│  OpenRouter                                     │
-│  ┌─────────────────────────────────────────┐   │
-│  │ sk-or-•••••••••••••••••••               │   │
-│  └─────────────────────────────────────────┘   │
-│                                                 │
-│  TRANSCRIPTION                                  │
-│  Live: Browser Speech API                      │
-│  Upload: faster-whisper                        │
-│  Whisper model: small                      ▾   │
-│                                                 │
-│  AI MODEL                                       │
-│  Default: Claude Sonnet 4                  ▾   │
-│                                                 │
-│  EXPORT                                         │
-│  Output directory                               │
-│  ┌─────────────────────────────────────────┐   │
-│  │ ~/obsidian-vault/echobridge/            │   │
-│  └─────────────────────────────────────────┘   │
-│  Auto-export after processing: ✓               │
-│  Include transcript in .md: ✓                  │
-│                                                 │
-│  AGENT API                                      │
-│  Key: scribe_sk_•••••••••     [↻] [Copy]      │
-│  Endpoint: http://localhost:8000               │
-│                                                 │
-│  DISPLAY                                        │
-│  Your name: Logani                             │
-│                                                 │
-└────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────┐
+│  ← Back                            SETTINGS      │
+│                                                   │
+│  AI PROVIDER                                      │
+│  ( ) OpenRouter  ( ) OpenAI  ( ) Anthropic       │
+│  ( ) Google      ( ) xAI                          │
+│  API Key                                          │
+│  ┌─────────────────────────────────────────┐     │
+│  │ sk-or-•••••••••••••••      [👁] [Test] │     │
+│  └─────────────────────────────────────────┘     │
+│  ✓ Connected                                      │
+│                                                   │
+│  DEFAULT MODEL                                    │
+│  ┌─────────────────────────────────────────┐     │
+│  │ Grok 4.1 Fast                       ▾  │     │
+│  └─────────────────────────────────────────┘     │
+│  Custom model ID (optional)                      │
+│                                                   │
+│  TRANSCRIPTION                                    │
+│  Provider: ( ) Local  ( ) OpenAI  ( ) Deepgram   │
+│  Model: nova-3                               ▾   │
+│                                                   │
+│  EXPORT & AUTOMATION                              │
+│  Output directory                                 │
+│  ┌─────────────────────────────────────────┐     │
+│  │ ~/Downloads/EchoBridge                  │     │
+│  └─────────────────────────────────────────┘     │
+│  Auto-interpret after transcription: ✓            │
+│  Auto-export after processing: ✓                  │
+│  Include transcript in .md: ✓                     │
+│                                                   │
+│  AGENT API                                        │
+│  Key: scribe_sk_•••••••••     [Generate] [Copy]  │
+│  Endpoint: http://localhost:8000                  │
+│  (Python / JavaScript config snippets)            │
+│                                                   │
+│  DISPLAY                                          │
+│  Your name: Logani                               │
+│                                                   │
+└──────────────────────────────────────────────────┘
 ```
 
-### Join Room (simple overlay or page)
-```
-┌────────────────────────────────────────────────┐
-│  ← Back                          JOIN ROOM     │
-│                                                 │
-│  Enter room code                                │
-│  ┌─────────────────────────────────────────┐   │
-│  │ PROB-0219                               │   │
-│  └─────────────────────────────────────────┘   │
-│                                                 │
-│  Your name                                      │
-│  ┌─────────────────────────────────────────┐   │
-│  │ Sarah                                   │   │
-│  └─────────────────────────────────────────┘   │
-│                                                 │
-│                                 [ Join Room ]   │
-│                                                 │
-└────────────────────────────────────────────────┘
-```
+Features:
+- Multi-provider AI key management (OpenRouter, OpenAI, Anthropic, Google, xAI)
+- Provider-specific test connection button with status indicator
+- Default model dropdown with presets + custom model ID input
+- STT provider selector (Local whisper, OpenAI, Deepgram) with model dropdown
+- Export path, auto-interpret toggle, auto-export toggle, transcript inclusion toggle
+- Agent API key generation with copy-to-clipboard
+- Platform-specific config snippets (Python, JavaScript)
+- Display name setting
 
 ---
 
@@ -1100,7 +1385,10 @@ echobridge/
 │   │   ├── export.py
 │   │   ├── stream.py
 │   │   ├── agent.py
-│   │   └── settings.py
+│   │   ├── settings.py
+│   │   ├── series.py          # Series CRUD + memory
+│   │   ├── chat.py            # Chat conversations + messages
+│   │   └── storage.py         # Cloud storage test/status
 │   │
 │   ├── services/
 │   │   ├── stt/
@@ -1112,7 +1400,12 @@ echobridge/
 │   │   ├── room_service.py
 │   │   ├── stream_manager.py
 │   │   ├── markdown_service.py
-│   │   └── search_service.py
+│   │   ├── search_service.py
+│   │   ├── auth_service.py
+│   │   ├── memory_service.py   # Cross-session memory generation
+│   │   ├── chat_service.py     # Chat/conversation logic
+│   │   ├── ask_service.py      # Cross-meeting search for chat
+│   │   └── sync_service.py     # Offline sync handling
 │   │
 │   ├── lenses/
 │   │   ├── base.py
@@ -1135,7 +1428,9 @@ echobridge/
 │   │   ├── test_rooms.py
 │   │   ├── test_sockets.py
 │   │   ├── test_agent_api.py
-│   │   └── test_websocket.py
+│   │   ├── test_settings.py
+│   │   ├── test_transcribe.py
+│   │   └── test_export.py
 │   │
 │   └── requirements.txt
 │
@@ -1143,6 +1438,7 @@ echobridge/
 │   ├── src/
 │   │   ├── App.jsx
 │   │   ├── main.jsx
+│   │   ├── index.css           # Custom glass/button/label classes
 │   │   ├── pages/
 │   │   │   ├── Dashboard.jsx
 │   │   │   ├── NewSession.jsx
@@ -1150,7 +1446,10 @@ echobridge/
 │   │   │   ├── SessionView.jsx
 │   │   │   ├── RoomView.jsx
 │   │   │   ├── JoinRoom.jsx
-│   │   │   └── SettingsPage.jsx
+│   │   │   ├── SettingsPage.jsx
+│   │   │   ├── SeriesView.jsx  # Series memory + sessions
+│   │   │   ├── AskPage.jsx     # Cross-meeting chat
+│   │   │   └── GuidePage.jsx   # Getting started guide
 │   │   ├── components/
 │   │   │   ├── AudioRecorder.jsx
 │   │   │   ├── FileUploader.jsx
@@ -1161,7 +1460,12 @@ echobridge/
 │   │   │   ├── InterpretationCard.jsx
 │   │   │   ├── LiveTranscript.jsx
 │   │   │   ├── ParticipantList.jsx
-│   │   │   └── SearchBar.jsx
+│   │   │   ├── SearchBar.jsx
+│   │   │   ├── ChatPanel.jsx       # Persistent chat component
+│   │   │   ├── SeriesSelector.jsx   # Series picker dropdown
+│   │   │   ├── OfflineBanner.jsx    # Offline sync status
+│   │   │   ├── InstallPrompt.jsx    # PWA install banner
+│   │   │   └── SetupWizard.jsx      # First-run API key setup
 │   │   ├── lib/
 │   │   │   ├── api.js
 │   │   │   ├── websocket.js
