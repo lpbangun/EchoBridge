@@ -52,6 +52,57 @@ Preset sockets: action_items, decisions, devils_advocate, executive_brief, conce
 ### Subscribe to live session
 WS /api/v1/stream/room/{code}
 
+### Get session details
+GET /api/v1/sessions/{id}
+
+### Session interpretations (notes/analyses)
+GET /api/v1/sessions/{id}/interpretations
+
+### Series (recurring meetings)
+GET /api/v1/series
+GET /api/v1/series/{id}/memory
+
+### Connection test
+GET /api/v1/ping
+
+## Exec examples
+
+```bash
+# Test connection
+exec curl -s -H "Authorization: Bearer $ECHOBRIDGE_API_KEY" \
+  "$ECHOBRIDGE_API_URL/api/v1/ping"
+
+# Search meetings
+exec curl -s -H "Authorization: Bearer $ECHOBRIDGE_API_KEY" \
+  "$ECHOBRIDGE_API_URL/api/v1/search?q=pricing"
+
+# Get latest session
+exec curl -s -H "Authorization: Bearer $ECHOBRIDGE_API_KEY" \
+  "$ECHOBRIDGE_API_URL/api/v1/sessions?limit=1"
+
+# Get transcript
+exec curl -s -H "Authorization: Bearer $ECHOBRIDGE_API_KEY" \
+  "$ECHOBRIDGE_API_URL/api/v1/sessions/{id}/transcript"
+
+# Get all notes for a session
+exec curl -s -H "Authorization: Bearer $ECHOBRIDGE_API_KEY" \
+  "$ECHOBRIDGE_API_URL/api/v1/sessions/{id}/interpretations"
+
+# Custom interpretation
+exec curl -s -X POST -H "Authorization: Bearer $ECHOBRIDGE_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"system_prompt": "Extract all decisions made"}' \
+  "$ECHOBRIDGE_API_URL/api/v1/sessions/{id}/interpret"
+
+# Extract action items via socket
+exec curl -s -X POST -H "Authorization: Bearer $ECHOBRIDGE_API_KEY" \
+  "$ECHOBRIDGE_API_URL/api/v1/sessions/{id}/interpret/socket/action_items"
+
+# List available analysis sockets
+exec curl -s -H "Authorization: Bearer $ECHOBRIDGE_API_KEY" \
+  "$ECHOBRIDGE_API_URL/api/v1/sockets"
+```
+
 ## Using results
 1. Answer user's question with specific meeting context
 2. Write durable insights to memory/YYYY-MM-DD.md

@@ -334,7 +334,18 @@ export default function SettingsPage() {
       }, null, 2);
     }
     if (tab === 'openclaw') {
-      return `ECHOBRIDGE_API_URL=${baseUrl}\nECHOBRIDGE_API_KEY=${key}`;
+      return `# 1. Set environment variables
+export ECHOBRIDGE_API_URL=${baseUrl}
+export ECHOBRIDGE_API_KEY=${key}
+
+# 2. Install skill (run on your agent's machine)
+mkdir -p skills/echobridge
+curl -H "Authorization: Bearer ${key}" \\
+  ${baseUrl}/api/v1/skill > skills/echobridge/SKILL.md
+
+# 3. Test connection
+curl -H "Authorization: Bearer $ECHOBRIDGE_API_KEY" \\
+  $ECHOBRIDGE_API_URL/api/v1/ping`;
     }
     // rest
     return `curl -H "Authorization: Bearer ${key}" \\\n  ${baseUrl}/api/v1/sessions`;
@@ -1038,7 +1049,7 @@ export default function SettingsPage() {
                   <>Add this to your MCP client config (e.g. <code className="text-slate-400">~/.claude/settings.json</code> for Claude Code, or Claude Desktop settings).</>
                 )}
                 {configTab === 'openclaw' && (
-                  <>Add these environment variables to your agent config. The EchoBridge skill file is included in the repo at <code className="text-slate-400">openclaw-skill/echobridge/SKILL.md</code>.</>
+                  <>Run these commands on your agent's machine. Step 2 auto-downloads the SKILL.md via the API. Step 3 verifies the connection.</>
                 )}
                 {configTab === 'rest' && (
                   <>Use this pattern with any HTTP client. Full API: /api/v1/sessions, /api/v1/search, /api/v1/sockets, and more.</>

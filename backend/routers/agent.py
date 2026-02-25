@@ -1,8 +1,10 @@
 """Agent API router — all /api/v1/ endpoints with bearer auth."""
 
 import json
+from pathlib import Path
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi.responses import PlainTextResponse
 
 from database import get_db
 from services.auth_service import verify_api_key
@@ -19,6 +21,48 @@ from services.chat_service import (
 from services.search_service import search
 
 router = APIRouter(prefix="/api/v1", tags=["agent-api"])
+
+# Path to SKILL.md relative to project root
+_SKILL_MD_PATH = Path(__file__).resolve().parent.parent.parent / "openclaw-skill" / "echobridge" / "SKILL.md"
+
+_AVAILABLE_ENDPOINTS = [
+    "/api/v1/sessions",
+    "/api/v1/sessions/{id}",
+    "/api/v1/sessions/{id}/transcript",
+    "/api/v1/sessions/{id}/interpretations",
+    "/api/v1/sessions/{id}/interpret",
+    "/api/v1/sessions/{id}/interpret/socket/{socket_id}",
+    "/api/v1/search",
+    "/api/v1/sockets",
+    "/api/v1/rooms/{code}",
+    "/api/v1/series",
+    "/api/v1/series/{id}",
+    "/api/v1/series/{id}/memory",
+    "/api/v1/chat/conversations",
+    "/api/v1/chat/conversations/{id}",
+    "/api/v1/chat/conversations/{id}/messages",
+    "/api/v1/ping",
+    "/api/v1/skill",
+]
+
+
+@router.get("/ping")
+async def ping(api_key=Depends(verify_api_key)):
+    """Connection test — verify auth and discover available endpoints."""
+    return {
+        "status": "ok",
+        "agent_name": api_key.get("name", "unknown"),
+        "version": "1.0",
+        "endpoints": _AVAILABLE_ENDPOINTS,
+    }
+
+
+@router.get("/skill", response_class=PlainTextResponse)
+async def get_skill(api_key=Depends(verify_api_key)):
+    """Return SKILL.md content so agents can self-discover EchoBridge capabilities."""
+    if not _SKILL_MD_PATH.exists():
+        raise HTTPException(404, "SKILL.md not found")
+    return _SKILL_MD_PATH.read_text(encoding="utf-8")
 
 
 @router.get("/sessions")

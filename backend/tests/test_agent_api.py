@@ -118,3 +118,43 @@ async def test_agent_list_sockets(client, db):
     )
     assert resp.status_code == 200
     assert len(resp.json()) >= 5
+
+
+@pytest.mark.asyncio
+async def test_agent_ping(client, db):
+    key = await _create_api_key(client, db)
+    resp = await client.get(
+        "/api/v1/ping",
+        headers={"Authorization": f"Bearer {key}"},
+    )
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["status"] == "ok"
+    assert data["agent_name"] == "test-agent"
+    assert data["version"] == "1.0"
+    assert isinstance(data["endpoints"], list)
+    assert "/api/v1/sessions" in data["endpoints"]
+
+
+@pytest.mark.asyncio
+async def test_agent_ping_no_auth(client, db):
+    resp = await client.get("/api/v1/ping")
+    assert resp.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_agent_skill(client, db):
+    key = await _create_api_key(client, db)
+    resp = await client.get(
+        "/api/v1/skill",
+        headers={"Authorization": f"Bearer {key}"},
+    )
+    assert resp.status_code == 200
+    assert "EchoBridge" in resp.text
+    assert "text/plain" in resp.headers["content-type"]
+
+
+@pytest.mark.asyncio
+async def test_agent_skill_no_auth(client, db):
+    resp = await client.get("/api/v1/skill")
+    assert resp.status_code == 401
