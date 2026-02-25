@@ -48,9 +48,11 @@ def generate_markdown(
     duration_min = f"{duration_sec // 60}min" if duration_sec else "unknown"
 
     # Build frontmatter
+    title = session.get("title") or f"{context.replace('_', ' ').title()} Notes"
     frontmatter_lines = [
         "---",
         f'id: "{session["id"]}"',
+        f'title: "{title}"',
         f"date: {created}",
         f"type: {context}",
         f"duration: {duration_min}",
@@ -74,13 +76,13 @@ def generate_markdown(
     frontmatter_lines.extend([
         f"model: {model}",
         "source: echobridge",
+        "auto_generated: true",
         "---",
     ])
 
     parts = ["\n".join(frontmatter_lines), ""]
 
-    # Title
-    title = session.get("title") or f"{context.replace('_', ' ').title()} Notes"
+    # Title (already computed for frontmatter above)
     parts.append(f"# {title}")
     parts.append("")
 

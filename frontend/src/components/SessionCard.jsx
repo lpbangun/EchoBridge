@@ -17,14 +17,25 @@ const STATUS_STYLES = {
   closed: { dot: 'bg-slate-400', text: 'text-slate-400' },
 };
 
+const STATUS_LABELS = {
+  recording: 'Recording...',
+  transcribing: 'Transcribing...',
+  processing: 'Generating notes...',
+};
+
 function getStatusStyle(status) {
   return STATUS_STYLES[status] || { dot: 'bg-slate-400', text: 'text-slate-400' };
+}
+
+function getStatusLabel(status) {
+  return STATUS_LABELS[status] || status;
 }
 
 export default function SessionCard({ session, onClick }) {
   const status = session.status;
   const showStatus = status && status !== 'complete';
   const statusStyle = getStatusStyle(status);
+  const isActive = status === 'recording' || status === 'transcribing' || status === 'processing';
 
   return (
     <button
@@ -38,6 +49,12 @@ export default function SessionCard({ session, onClick }) {
       <h3 className="mt-2 text-base font-medium text-slate-100">
         {session.title || 'Untitled Session'}
       </h3>
+
+      {session.summary_snippet && (
+        <p className="mt-2 text-sm text-slate-400 line-clamp-2">
+          {session.summary_snippet}
+        </p>
+      )}
 
       <p className="mt-1 text-sm text-slate-400">
         {formatDate(session.created_at)}
@@ -57,8 +74,13 @@ export default function SessionCard({ session, onClick }) {
         )}
         {showStatus && (
           <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 bg-white/10 text-xs font-medium ${statusStyle.text}`}>
-            <span className={`w-1.5 h-1.5 rounded-full ${statusStyle.dot}`} />
-            {status}
+            {isActive && (
+              <span className={`w-1.5 h-1.5 rounded-full ${statusStyle.dot} animate-pulse`} />
+            )}
+            {!isActive && (
+              <span className={`w-1.5 h-1.5 rounded-full ${statusStyle.dot}`} />
+            )}
+            {getStatusLabel(status)}
           </span>
         )}
       </div>

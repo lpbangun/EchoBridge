@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Key, Cpu, Mic, Layers, Box, Users, BookOpen, Settings, Bot } from 'lucide-react';
+import { ArrowLeft, Key, Cpu, Mic, Layers, Box, Users, BookOpen, Settings, Bot, FolderOpen } from 'lucide-react';
 
 export default function GuidePage() {
   const navigate = useNavigate();
@@ -18,6 +18,62 @@ export default function GuidePage() {
         <h1 className="text-lg md:text-xl font-semibold text-slate-100">
           GUIDE
         </h1>
+      </div>
+
+      {/* Recommended Setup */}
+      <div className="glass rounded-xl p-4 md:p-6 mt-8">
+        <span className="text-sm font-semibold text-orange-300 uppercase tracking-wider">
+          Recommended Setup
+        </span>
+        <p className="text-sm text-slate-400 mt-1">The optimal configuration for quality and ease of use.</p>
+
+        <div className="mt-6 space-y-6">
+          <div className="flex gap-4">
+            <Mic size={18} strokeWidth={1.5} className="text-orange-400 flex-shrink-0 mt-0.5" />
+            <div>
+              <h3 className="text-sm font-semibold text-slate-200">Transcription: Deepgram Nova 3</h3>
+              <p className="text-sm text-slate-400 mt-0.5">
+                Best-in-class accuracy for speech-to-text. Free tier includes 200 hours/month — more than enough for most users. Use Local Whisper if you want zero cloud dependency.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex gap-4">
+            <Cpu size={18} strokeWidth={1.5} className="text-orange-400 flex-shrink-0 mt-0.5" />
+            <div>
+              <h3 className="text-sm font-semibold text-slate-200">AI: OpenRouter + Claude Sonnet 4.6</h3>
+              <p className="text-sm text-slate-400 mt-0.5">
+                OpenRouter gives you one API key for 500+ models. Claude Sonnet 4.6 is the best balance of quality and speed for meeting notes. Alternative: direct Anthropic API.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex gap-4">
+            <FolderOpen size={18} strokeWidth={1.5} className="text-orange-400 flex-shrink-0 mt-0.5" />
+            <div>
+              <h3 className="text-sm font-semibold text-slate-200">Agent Bridge: Output to Agent Memory</h3>
+              <p className="text-sm text-slate-400 mt-0.5">
+                Set the output directory to a folder in your OpenClaw agent's <code className="text-slate-400">extraPaths</code>. Your agent will automatically discover new meeting notes on its next heartbeat. No API configuration needed — just files.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* .env snippet */}
+        <div className="mt-6">
+          <span className="section-label">Recommended .env</span>
+          <pre className="mt-2 p-4 bg-slate-900/60 border border-slate-700 rounded-lg font-mono text-xs text-slate-300 overflow-x-auto whitespace-pre">
+{`AI_PROVIDER=openrouter
+OPENROUTER_API_KEY=sk-or-your-key
+DEFAULT_MODEL=anthropic/claude-sonnet-4.6
+STT_PROVIDER=deepgram
+DEEPGRAM_API_KEY=your-deepgram-key
+DEEPGRAM_MODEL=nova-3
+OUTPUT_DIR=~/agent-memory/echobridge
+AUTO_EXPORT=true
+AUTO_INTERPRET=true`}
+          </pre>
+        </div>
       </div>
 
       {/* Quick Setup */}
@@ -76,7 +132,7 @@ export default function GuidePage() {
                 >
                   New Session
                 </button>
-                , upload an audio file or record live, pick a lens, and get your notes instantly.
+                , hit Record on the Dashboard, speak, and stop — notes are generated automatically.
               </p>
             </div>
           </div>

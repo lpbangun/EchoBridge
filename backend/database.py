@@ -173,6 +173,17 @@ async def get_db() -> aiosqlite.Connection:
     return _db
 
 
+async def get_db_connection() -> aiosqlite.Connection:
+    """Create a standalone database connection (for background tasks outside the request lifecycle)."""
+    db_path = settings.database_path
+    os.makedirs(os.path.dirname(db_path), exist_ok=True)
+    conn = await aiosqlite.connect(db_path)
+    conn.row_factory = aiosqlite.Row
+    await conn.execute("PRAGMA journal_mode=WAL")
+    await conn.execute("PRAGMA foreign_keys=ON")
+    return conn
+
+
 async def close_db():
     """Close the database connection."""
     global _db

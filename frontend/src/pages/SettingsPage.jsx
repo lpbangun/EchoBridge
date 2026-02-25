@@ -11,6 +11,11 @@ const OPENAI_STT_MODELS = [
   { id: 'gpt-4o-transcribe', name: 'GPT-4o Transcribe', description: 'Highest accuracy' },
 ];
 
+const DEEPGRAM_MODELS = [
+  { id: 'nova-3', name: 'Nova 3', description: 'Latest, best accuracy' },
+  { id: 'nova-2', name: 'Nova 2', description: 'Previous generation' },
+];
+
 const PROVIDERS = [
   { id: 'openrouter', name: 'OpenRouter', keyPrefix: 'sk-or-', docsUrl: 'https://openrouter.ai/keys', description: 'Access 500+ models from all providers through one API key.' },
   { id: 'openai', name: 'OpenAI', keyPrefix: 'sk-', docsUrl: 'https://platform.openai.com/api-keys', description: 'GPT-4o, o3, and other OpenAI models directly.' },
@@ -47,6 +52,9 @@ export default function SettingsPage() {
   const [whisperModel, setWhisperModel] = useState('small');
   const [openaiSttModel, setOpenaiSttModel] = useState('whisper-1');
   const [providerModels, setProviderModels] = useState({});
+  const [deepgramModel, setDeepgramModel] = useState('nova-3');
+  const [deepgramKey, setDeepgramKey] = useState('');
+  const [deepgramKeySet, setDeepgramKeySet] = useState(false);
 
   // API keys per provider
   const [apiKeys, setApiKeys] = useState({
@@ -110,6 +118,8 @@ export default function SettingsPage() {
         setWhisperModel(data.whisper_model || 'small');
         setOpenaiSttModel(data.openai_stt_model || 'whisper-1');
         setProviderModels(data.provider_models || {});
+        setDeepgramModel(data.deepgram_model || 'nova-3');
+        setDeepgramKeySet(data.deepgram_api_key_set || false);
         setApiKeySetFlags({
           openrouter: data.openrouter_api_key_set || false,
           openai: data.openai_api_key_set || false,
@@ -183,6 +193,10 @@ export default function SettingsPage() {
     if (openaiSttModel !== (original.openai_stt_model || 'whisper-1')) {
       payload.openai_stt_model = openaiSttModel;
     }
+    if (deepgramKey) payload.deepgram_api_key = deepgramKey;
+    if (deepgramModel !== (original.deepgram_model || 'nova-3')) {
+      payload.deepgram_model = deepgramModel;
+    }
 
     // Cloud storage settings (always send if different from original)
     if (cloudEnabled !== (original.cloud_storage_enabled || false)) {
@@ -237,6 +251,8 @@ export default function SettingsPage() {
         xai: updated.xai_api_key_set || false,
       });
       setApiKeys({ openrouter: '', openai: '', anthropic: '', google: '', xai: '' });
+      setDeepgramKey('');
+      setDeepgramKeySet(updated.deepgram_api_key_set || false);
       setS3SecretKey('');
       setS3SecretConfigured(updated.s3_secret_configured || false);
       setSaveSuccess('Settings saved.');
@@ -556,6 +572,16 @@ export default function SettingsPage() {
             >
               Cloud (OpenAI)
             </button>
+            <button
+              onClick={() => setSttProvider('deepgram')}
+              className={`px-3 md:px-4 py-2 text-sm font-medium rounded-lg transition-colors touch-target whitespace-nowrap ${
+                sttProvider === 'deepgram'
+                  ? 'bg-orange-500/20 text-orange-300 border border-orange-500/40'
+                  : 'text-slate-400 border border-slate-700 hover:border-slate-500 hover:text-slate-300'
+              }`}
+            >
+              Deepgram
+            </button>
           </div>
         </div>
 
@@ -616,6 +642,56 @@ export default function SettingsPage() {
                 Requires an OpenAI API key — set one in the AI Provider section above.
               </p>
             )}
+          </>
+        )}
+
+        {sttProvider === 'deepgram' && (
+          <>
+            <label className="block mt-6">
+              <span className="section-label">Deepgram Model</span>
+              <div className="relative mt-2">
+                <select
+                  value={deepgramModel}
+                  onChange={(e) => setDeepgramModel(e.target.value)}
+                  className="glass-select w-full text-base px-4 py-3 rounded-xl appearance-none"
+                >
+                  {DEEPGRAM_MODELS.map((m) => (
+                    <option key={m.id} value={m.id}>
+                      {m.name} — {m.description}
+                    </option>
+                  ))}
+                </select>
+                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-4">
+                  <svg className="h-4 w-4 text-slate-400" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clipRule="evenodd" />
+                  </svg>
+                </div>
+              </div>
+            </label>
+            <label className="block mt-4">
+              <span className="section-label">Deepgram API Key</span>
+              <input
+                type="password"
+                value={deepgramKey}
+                onChange={(e) => setDeepgramKey(e.target.value)}
+                placeholder={deepgramKeySet ? '••••••••' : 'Enter Deepgram API key'}
+                className="glass-input w-full text-base px-4 py-3 rounded-xl mt-2"
+              />
+              {deepgramKeySet && !deepgramKey && (
+                <span className="mt-2 inline-flex items-center gap-1.5 text-sm text-green-400">
+                  <Check size={16} strokeWidth={1.5} />
+                  API key is set
+                </span>
+              )}
+              <p className="text-xs text-slate-400 mt-1">
+                Get your key at{' '}
+                <a href="https://console.deepgram.com" target="_blank" rel="noopener noreferrer" className="text-orange-400 hover:text-orange-300 transition-colors inline-flex items-center gap-1">
+                  console.deepgram.com
+                  <ExternalLink size={12} />
+                </a>
+                {' '}— free tier includes 200 hours/month.
+              </p>
+            </label>
           </>
         )}
       </div>

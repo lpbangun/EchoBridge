@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Mic, Upload, Users } from 'lucide-react';
+import { ArrowLeft, Upload, Users } from 'lucide-react';
 import { createSession, getSettings, createRoom, uploadAudio } from '../lib/api';
 import { contextMetaLabel } from '../lib/utils';
 import ContextSelector from '../components/ContextSelector';
@@ -13,7 +13,6 @@ export default function NewSession() {
   const [title, setTitle] = useState('');
   const [contextMeta, setContextMeta] = useState('');
   const [model, setModel] = useState('');
-  const [models, setModels] = useState([]);
   const [showUploader, setShowUploader] = useState(false);
   const [sessionId, setSessionId] = useState(null);
   const [seriesId, setSeriesId] = useState(null);
@@ -23,19 +22,9 @@ export default function NewSession() {
   useEffect(() => {
     getSettings()
       .then((settings) => {
-        // models can be an object {id: label} or an array
-        const raw = settings.models || {};
-        const modelList = Array.isArray(raw) ? raw : Object.keys(raw);
-        setModels(modelList);
-        setModel(settings.default_model || modelList[0] || '');
+        setModel(settings.default_model || '');
       })
       .catch(() => {
-        // Default models if settings endpoint fails
-        setModels([
-          'anthropic/claude-sonnet-4-20250514',
-          'google/gemini-2.5-flash-preview',
-          'deepseek/deepseek-chat-v3-0324',
-        ]);
         setModel('anthropic/claude-sonnet-4-20250514');
       });
   }, []);
@@ -44,24 +33,6 @@ export default function NewSession() {
     const metaLabel = contextMetaLabel(context).toLowerCase();
     if (!contextMeta.trim()) return {};
     return { [metaLabel]: contextMeta.trim() };
-  }
-
-  async function handleRecordLive() {
-    setCreating(true);
-    setError(null);
-    try {
-      const session = await createSession({
-        context,
-        title: title.trim() || undefined,
-        context_metadata: buildContextMetadata(),
-        model,
-        series_id: seriesId || undefined,
-      });
-      navigate(`/recording/${session.id}`);
-    } catch (err) {
-      setError(err.message || 'Failed to create session.');
-      setCreating(false);
-    }
   }
 
   async function handleUploadFile() {
@@ -126,11 +97,11 @@ export default function NewSession() {
           Back
         </button>
         <h1 className="text-lg md:text-xl font-semibold text-slate-100">
-          NEW SESSION
+          UPLOAD / ROOM
         </h1>
       </div>
 
-      <p className="mt-6 text-sm text-slate-400">Choose a session type, then record live, upload a file, or start a collaborative room.</p>
+      <p className="mt-6 text-sm text-slate-400">Upload a pre-recorded audio file or start a collaborative room.</p>
 
       {/* Glass form container */}
       <div className="mt-8 glass rounded-xl p-4 md:p-8">
@@ -184,32 +155,6 @@ export default function NewSession() {
           </div>
         </div>
 
-        {/* Model selector */}
-        <div className="mt-8">
-          <label className="section-label">
-            Model
-          </label>
-          <p className="text-xs text-slate-400 mt-1">The AI model used to generate notes. Different models vary in speed and quality.</p>
-          <div className="relative mt-2">
-            <select
-              value={model}
-              onChange={(e) => setModel(e.target.value)}
-              className="glass-select w-full text-base px-4 py-3 rounded-xl pr-10"
-            >
-              {models.map((m) => (
-                <option key={m} value={m}>
-                  {m}
-                </option>
-              ))}
-            </select>
-            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3">
-              <svg className="h-5 w-5 text-slate-400" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clipRule="evenodd" />
-              </svg>
-            </div>
-          </div>
-        </div>
-
         {/* Error */}
         {error && (
           <p className="mt-8 text-sm text-red-400">{error}</p>
@@ -230,20 +175,9 @@ export default function NewSession() {
         <div className="mt-8 md:mt-12 space-y-4">
           <div>
             <button
-              onClick={handleRecordLive}
-              disabled={creating}
-              className="btn-primary inline-flex items-center gap-2 disabled:opacity-50 w-full justify-center touch-target"
-            >
-              <Mic size={16} strokeWidth={1.5} />
-              Record Live
-            </button>
-            <p className="text-xs text-slate-400 mt-1 text-center">Use your microphone to capture audio in real-time</p>
-          </div>
-          <div>
-            <button
               onClick={handleUploadFile}
               disabled={creating}
-              className="btn-secondary inline-flex items-center gap-2 disabled:opacity-50 w-full justify-center touch-target"
+              className="btn-primary inline-flex items-center gap-2 disabled:opacity-50 w-full justify-center touch-target"
             >
               <Upload size={16} strokeWidth={1.5} />
               Upload File

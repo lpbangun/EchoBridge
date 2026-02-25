@@ -142,7 +142,7 @@ export default function Recording() {
             </span>
           )}
           <span className="text-xs font-medium tracking-widest uppercase text-slate-400">
-            {submitting ? 'Processing' : isPaused ? 'Paused' : 'Recording'}
+            {submitting ? 'Generating notes' : isPaused ? 'Paused' : 'Recording'}
           </span>
         </div>
 

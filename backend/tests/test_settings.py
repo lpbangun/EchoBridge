@@ -172,7 +172,7 @@ async def test_list_lenses(client):
     assert res.status_code == 200
     data = res.json()
     assert isinstance(data, list)
-    assert len(data) == 5  # 5 preset lenses
+    assert len(data) == 6  # 6 preset lenses (including smart_notes)
 
     # Each lens has the expected shape
     for lens in data:
@@ -184,7 +184,7 @@ async def test_list_lenses(client):
 
 @pytest.mark.asyncio
 async def test_list_lenses_contains_expected_ids(client):
-    """The preset lenses include the 5 known context types."""
+    """The preset lenses include the 6 known lens types."""
     res = await client.get("/api/lenses")
     ids = {lens["id"] for lens in res.json()}
     expected = {
@@ -193,6 +193,7 @@ async def test_list_lenses_contains_expected_ids(client):
         "research_discussion",
         "working_session",
         "talk_seminar",
+        "smart_notes",
     }
     assert ids == expected
 

@@ -1,5 +1,6 @@
-import { useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { getSettings } from './lib/api';
 import Dashboard from './pages/Dashboard';
 import NewSession from './pages/NewSession';
 import Recording from './pages/Recording';
@@ -12,12 +13,47 @@ import AskPage from './pages/AskPage';
 import GuidePage from './pages/GuidePage';
 import OfflineBanner from './components/OfflineBanner';
 import InstallPrompt from './components/InstallPrompt';
+import SetupWizard from './components/SetupWizard';
 import { initSyncManager } from './lib/syncManager';
 
 export default function App() {
+  const [showWizard, setShowWizard] = useState(false);
+  const [settingsLoaded, setSettingsLoaded] = useState(false);
+
   useEffect(() => {
     initSyncManager();
   }, []);
+
+  useEffect(() => {
+    getSettings()
+      .then((settings) => {
+        // Show wizard if no AI provider key is configured
+        const hasAnyKey =
+          settings.openrouter_api_key_set ||
+          settings.openai_api_key_set ||
+          settings.anthropic_api_key_set ||
+          settings.google_api_key_set ||
+          settings.xai_api_key_set;
+        setShowWizard(!hasAnyKey);
+        setSettingsLoaded(true);
+      })
+      .catch(() => {
+        // If settings fail to load, show the app anyway
+        setSettingsLoaded(true);
+      });
+  }, []);
+
+  if (!settingsLoaded) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="h-6 w-6 border-2 border-orange-400 border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  if (showWizard) {
+    return <SetupWizard onComplete={() => setShowWizard(false)} />;
+  }
 
   return (
     <BrowserRouter>

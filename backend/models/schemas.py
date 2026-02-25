@@ -86,6 +86,7 @@ class SessionListItem(BaseModel):
     host_name: str | None
     series_id: str | None = None
     series_name: str | None = None
+    summary_snippet: str | None = None
 
 
 # --- Interpretation schemas ---
@@ -203,6 +204,11 @@ class SettingsResponse(BaseModel):
     default_model: str
     models: dict[str, str]
     provider_models: dict[str, dict[str, str]]
+    # Deepgram
+    deepgram_api_key_set: bool
+    deepgram_model: str
+    # Auto-interpret
+    auto_interpret: bool
     # Cloud storage
     cloud_storage_enabled: bool
     s3_endpoint_url: str
@@ -230,6 +236,11 @@ class SettingsUpdate(BaseModel):
     whisper_model: str | None = None
     openai_stt_model: str | None = None
     default_model: str | None = None
+    # Deepgram
+    deepgram_api_key: str | None = None
+    deepgram_model: str | None = None
+    # Auto-interpret
+    auto_interpret: bool | None = None
     # Cloud storage
     cloud_storage_enabled: bool | None = None
     s3_endpoint_url: str | None = None

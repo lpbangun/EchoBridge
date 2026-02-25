@@ -5,6 +5,7 @@ from lenses.startup_meeting import LENS as startup_meeting
 from lenses.research_discussion import LENS as research_discussion
 from lenses.working_session import LENS as working_session
 from lenses.talk_seminar import LENS as talk_seminar
+from lenses.smart_notes import LENS as smart_notes
 
 PRESET_LENSES = {
     "class_lecture": class_lecture,
@@ -12,6 +13,7 @@ PRESET_LENSES = {
     "research_discussion": research_discussion,
     "working_session": working_session,
     "talk_seminar": talk_seminar,
+    "smart_notes": smart_notes,
 }
 
 

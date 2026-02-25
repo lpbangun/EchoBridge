@@ -38,6 +38,15 @@ function darkStatusColor(status) {
   return colors[status] || 'text-slate-500';
 }
 
+/** Friendly status labels */
+function friendlyStatusLabel(status) {
+  const labels = {
+    processing: 'Generating notes...',
+    transcribing: 'Transcribing...',
+  };
+  return labels[status] || status;
+}
+
 export default function SessionView() {
   const navigate = useNavigate();
   const { id } = useParams();
@@ -296,7 +305,7 @@ export default function SessionView() {
                 <>
                   <span>&middot;</span>
                   <span className={darkStatusColor(session.status)}>
-                    {session.status}
+                    {friendlyStatusLabel(session.status)}
                   </span>
                 </>
               )}
@@ -379,13 +388,47 @@ export default function SessionView() {
             <div className="mt-8">
               {primaryInterpretation ? (
                 <MarkdownPreview content={primaryInterpretation.output_markdown} />
+              ) : session.status === 'processing' && !primaryInterpretation ? (
+                <div className="space-y-4">
+                  <div className="flex items-center gap-3 text-slate-400">
+                    <div className="h-4 w-4 border-2 border-orange-400 border-t-transparent rounded-full animate-spin" />
+                    <span className="text-sm">Generating notes...</span>
+                  </div>
+                  {/* Skeleton lines */}
+                  <div className="space-y-3 mt-6">
+                    <div className="h-4 bg-white/10 rounded-lg w-3/4 animate-pulse" />
+                    <div className="h-4 bg-white/10 rounded-lg w-full animate-pulse" />
+                    <div className="h-4 bg-white/10 rounded-lg w-5/6 animate-pulse" />
+                    <div className="h-4 bg-white/10 rounded-lg w-2/3 animate-pulse" />
+                  </div>
+                </div>
+              ) : session.status === 'transcribing' ? (
+                <div className="space-y-4">
+                  <div className="flex items-center gap-3 text-slate-400">
+                    <div className="h-4 w-4 border-2 border-orange-400 border-t-transparent rounded-full animate-spin" />
+                    <span className="text-sm">Transcribing...</span>
+                  </div>
+                  {/* Skeleton lines */}
+                  <div className="space-y-3 mt-6">
+                    <div className="h-4 bg-white/10 rounded-lg w-3/4 animate-pulse" />
+                    <div className="h-4 bg-white/10 rounded-lg w-full animate-pulse" />
+                    <div className="h-4 bg-white/10 rounded-lg w-5/6 animate-pulse" />
+                    <div className="h-4 bg-white/10 rounded-lg w-2/3 animate-pulse" />
+                  </div>
+                </div>
               ) : session.status === 'complete' ? (
-                <p className="text-sm text-slate-400">
-                  No primary interpretation yet.
-                </p>
+                <div className="text-center py-8">
+                  <p className="text-sm text-slate-400">No auto-generated notes available.</p>
+                  <button
+                    onClick={() => setActiveTab('Interpretations')}
+                    className="btn-secondary mt-4 text-sm"
+                  >
+                    Run an interpretation
+                  </button>
+                </div>
               ) : (
                 <p className="text-sm text-slate-400">
-                  Session is {session.status}. Interpretation will be available when processing completes.
+                  Session is {friendlyStatusLabel(session.status).toLowerCase()}. Interpretation will be available when processing completes.
                 </p>
               )}
             </div>
@@ -435,7 +478,7 @@ export default function SessionView() {
           <div>
             {interpretations.length === 0 && (
               <p className="text-sm text-slate-400">
-                Interpretations are AI-generated notes from your transcript. Click 'New Interpretation' and choose a lens to get started.
+                Interpretations are AI-generated notes from your transcript. Click '+ Run custom interpretation' and choose a lens to get started.
               </p>
             )}
 
@@ -491,9 +534,9 @@ export default function SessionView() {
               ) : (
                 <button
                   onClick={() => setShowLensSelector(true)}
-                  className="btn-secondary touch-target"
+                  className="text-sm text-slate-400 hover:text-orange-400 transition-colors"
                 >
-                  New Interpretation
+                  + Run custom interpretation
                 </button>
               )}
             </div>

@@ -217,3 +217,73 @@ SECTION 2: A JSON object conforming exactly to this schema:
         "is_primary": False,
         "created_at": now,
     }
+
+
+async def auto_interpret(session_id: str, db) -> dict | None:
+    """Auto-generate comprehensive meeting notes for a session."""
+    cursor = await db.execute("SELECT * FROM sessions WHERE id = ?", (session_id,))
+    row = await cursor.fetchone()
+    if not row:
+        return None
+
+    session = dict(row)
+    transcript = session.get("transcript", "")
+    if not transcript or not transcript.strip():
+        return None
+
+    model = settings.auto_interpret_model or settings.default_model
+    metadata = session.get("context_metadata", "{}")
+    if isinstance(metadata, str):
+        metadata = json.loads(metadata)
+
+    # Use smart_notes lens
+    lens = get_lens("smart_notes")
+    if not lens:
+        return None
+
+    metadata_str = json.dumps(metadata, indent=2) if metadata else "{}"
+    prompt = lens["system_prompt"].replace("{context_metadata}", metadata_str)
+
+    # Fetch memory context if session belongs to a series
+    from services.memory_service import get_memory_context_for_session
+    memory_context = await get_memory_context_for_session(session_id, db)
+
+    if memory_context:
+        prompt += "\n\nYou have access to a Meeting Memory document from previous sessions in this series. Use it for context — reference prior decisions, note action item progress, and connect themes across meetings."
+
+    user_content = ""
+    if memory_context:
+        user_content += f"MEETING MEMORY (context from previous meetings):\n{memory_context}\n\n---\n\n"
+    user_content += f"TRANSCRIPT:\n{transcript}"
+
+    output = await call_openrouter(
+        model=model,
+        system_prompt=prompt,
+        user_content=user_content,
+    )
+
+    interpretation_id = str(uuid.uuid4())
+    now = datetime.now(timezone.utc).isoformat()
+
+    await db.execute(
+        """INSERT INTO interpretations
+        (id, session_id, source_type, source_name, lens_type, lens_id,
+         model, output_markdown, is_primary, created_at)
+        VALUES (?, ?, 'system', 'EchoBridge', 'preset', 'smart_notes', ?, ?, 1, ?)""",
+        (interpretation_id, session_id, model, output, now),
+    )
+    await db.commit()
+
+    return {
+        "id": interpretation_id,
+        "session_id": session_id,
+        "source_type": "system",
+        "source_name": "EchoBridge",
+        "lens_type": "preset",
+        "lens_id": "smart_notes",
+        "model": model,
+        "output_markdown": output,
+        "output_structured": None,
+        "is_primary": True,
+        "created_at": now,
+    }

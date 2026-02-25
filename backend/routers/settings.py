@@ -37,6 +37,9 @@ def _build_settings_response() -> SettingsResponse:
         default_model=settings.default_model,
         models=settings.models,
         provider_models=settings.provider_models,
+        deepgram_api_key_set=bool(settings.deepgram_api_key),
+        deepgram_model=settings.deepgram_model,
+        auto_interpret=settings.auto_interpret,
         cloud_storage_enabled=settings.cloud_storage_enabled,
         s3_endpoint_url=settings.s3_endpoint_url,
         s3_access_key_id=settings.s3_access_key_id,
@@ -85,6 +88,12 @@ async def update_settings(body: SettingsUpdate):
         settings.openai_stt_model = body.openai_stt_model
     if body.default_model is not None:
         settings.default_model = body.default_model
+    if body.deepgram_api_key is not None:
+        settings.deepgram_api_key = body.deepgram_api_key
+    if body.deepgram_model is not None:
+        settings.deepgram_model = body.deepgram_model
+    if body.auto_interpret is not None:
+        settings.auto_interpret = body.auto_interpret
     if body.cloud_storage_enabled is not None:
         settings.cloud_storage_enabled = body.cloud_storage_enabled
     if body.s3_endpoint_url is not None:

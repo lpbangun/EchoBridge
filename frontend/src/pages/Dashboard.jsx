@@ -1,7 +1,7 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Settings, Plus, MessageSquare, Key, CloudOff, RefreshCw, BookOpen } from 'lucide-react';
-import { listSessions, searchSessions, getSettings, listSeries } from '../lib/api';
+import { Settings, Upload, MessageSquare, Key, CloudOff, RefreshCw, BookOpen, Mic } from 'lucide-react';
+import { listSessions, searchSessions, getSettings, listSeries, createSession } from '../lib/api';
 import { getPendingCount } from '../lib/offlineStorage';
 import { syncPendingRecordings, onSyncStatusChange } from '../lib/syncManager';
 import SessionCard from '../components/SessionCard';
@@ -19,12 +19,22 @@ export default function Dashboard() {
   const [seriesFilter, setSeriesFilter] = useState(null);
   const [pendingCount, setPendingCount] = useState(0);
   const [syncing, setSyncing] = useState(false);
+  const [creatingRecord, setCreatingRecord] = useState(false);
+  const pollIntervalRef = useRef(null);
 
   // Check if API key is set and load series
   useEffect(() => {
     getSettings()
       .then((settings) => {
-        setNeedsApiKey(!settings.openrouter_api_key_set);
+        const providerKeyMap = {
+          openrouter: 'openrouter_api_key_set',
+          openai: 'openai_api_key_set',
+          anthropic: 'anthropic_api_key_set',
+          google: 'google_api_key_set',
+          xai: 'xai_api_key_set',
+        };
+        const keyField = providerKeyMap[settings.ai_provider] || 'openrouter_api_key_set';
+        setNeedsApiKey(!settings[keyField]);
       })
       .catch(() => {});
     listSeries()
@@ -76,6 +86,26 @@ export default function Dashboard() {
     return () => clearTimeout(timeout);
   }, [fetchSessions, searchQuery]);
 
+  // Poll for updates when any session has active status
+  useEffect(() => {
+    const hasActiveSession = sessions.some(
+      (s) => s.status === 'recording' || s.status === 'transcribing' || s.status === 'processing'
+    );
+
+    if (hasActiveSession) {
+      pollIntervalRef.current = setInterval(() => {
+        fetchSessions();
+      }, 10000);
+    }
+
+    return () => {
+      if (pollIntervalRef.current) {
+        clearInterval(pollIntervalRef.current);
+        pollIntervalRef.current = null;
+      }
+    };
+  }, [sessions, fetchSessions]);
+
   function handleSessionClick(id) {
     navigate(`/session/${id}`);
   }
@@ -83,6 +113,26 @@ export default function Dashboard() {
   function handleSync() {
     syncPendingRecordings();
   }
+
+  async function handleQuickRecord() {
+    setCreatingRecord(true);
+    try {
+      const session = await createSession({ context: 'working_session' });
+      navigate(`/recording/${session.id}`);
+    } catch (err) {
+      setError(err.message || 'Failed to create session.');
+      setCreatingRecord(false);
+    }
+  }
+
+  // Sort sessions: active statuses first, then by date
+  const activeStatuses = ['recording', 'transcribing', 'processing'];
+  const sortedSessions = [...sessions].sort((a, b) => {
+    const aActive = activeStatuses.includes(a.status) ? 0 : 1;
+    const bActive = activeStatuses.includes(b.status) ? 0 : 1;
+    if (aActive !== bActive) return aActive - bActive;
+    return 0; // preserve server order for same-priority items
+  });
 
   return (
     <div className="max-w-5xl mx-auto px-4 py-6 md:px-6 md:py-12 safe-area-inset">
@@ -123,10 +173,18 @@ export default function Dashboard() {
           </button>
           <button
             onClick={() => navigate('/new')}
-            className="btn-primary inline-flex items-center gap-2 touch-target"
+            className="btn-secondary inline-flex items-center gap-2 touch-target"
           >
-            <Plus size={16} strokeWidth={1.5} />
-            New
+            <Upload size={16} strokeWidth={1.5} />
+            Upload
+          </button>
+          <button
+            onClick={handleQuickRecord}
+            disabled={creatingRecord}
+            className="btn-primary inline-flex items-center gap-2 touch-target disabled:opacity-50"
+          >
+            <Mic size={16} strokeWidth={1.5} />
+            Record
           </button>
         </div>
       </div>
@@ -227,23 +285,24 @@ export default function Dashboard() {
         {!loading && !error && sessions.length === 0 && (
           <div className="glass rounded-xl p-8 md:p-12 flex flex-col items-center text-center">
             <MessageSquare size={40} strokeWidth={1.5} className="text-slate-400 mb-4" />
-            <p className="text-base font-medium text-slate-300">No sessions yet</p>
+            <p className="text-base font-medium text-slate-300">No meetings yet</p>
             <p className="mt-1 text-sm text-slate-400 max-w-md">
-              Record a meeting, upload an audio file, or create a live room. EchoBridge transcribes and summarizes everything for you.
+              No meetings yet. Tap Record to capture your first conversation.
             </p>
             <button
-              onClick={() => navigate('/new')}
-              className="btn-primary inline-flex items-center gap-2 mt-6"
+              onClick={handleQuickRecord}
+              disabled={creatingRecord}
+              className="btn-primary inline-flex items-center gap-2 mt-6 disabled:opacity-50"
             >
-              <Plus size={16} strokeWidth={1.5} />
-              New Session
+              <Mic size={16} strokeWidth={1.5} />
+              Record
             </button>
           </div>
         )}
 
         {!loading && !error && sessions.length > 0 && (
           <div className="grid gap-4">
-            {sessions.map((session) => (
+            {sortedSessions.map((session) => (
               <SessionCard
                 key={session.id}
                 session={session}

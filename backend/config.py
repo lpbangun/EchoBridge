@@ -50,6 +50,14 @@ class Settings(BaseSettings):
     cloud_sync_audio: bool = True  # Sync audio files
     cloud_sync_exports: bool = True  # Sync markdown exports
 
+    # Auto-interpret
+    auto_interpret: bool = True
+    auto_interpret_model: str = ""  # empty = use default_model
+
+    # Deepgram STT
+    deepgram_api_key: str = ""
+    deepgram_model: str = "nova-3"
+
     # Models per provider — users can also paste custom model IDs
     provider_models: dict[str, dict[str, str]] = {
         "openrouter": {

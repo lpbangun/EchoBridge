@@ -1,5 +1,8 @@
 """Transcription router — handles audio upload and browser STT."""
 
+import asyncio
+import json
+import logging
 import os
 import uuid
 
@@ -7,6 +10,104 @@ from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 
 from config import settings
 from database import get_db
+
+logger = logging.getLogger(__name__)
+
+
+async def _run_memory_synthesis(db, series_id, session, interpretation_md, model):
+    """Background task: synthesize memory with its own db connection."""
+    from services.memory_service import synthesize_and_store_memory
+    try:
+        await synthesize_and_store_memory(
+            series_id=series_id,
+            session=session,
+            interpretation_markdown=interpretation_md,
+            model=model,
+            db=db,
+        )
+    except Exception:
+        logger.exception("Memory synthesis failed for series %s", series_id)
+    finally:
+        await db.close()
+
+
+async def _run_auto_pipeline(session_id: str):
+    """Background task: auto-interpret then auto-export."""
+    from database import get_db_connection
+    from services.interpret_service import auto_interpret
+    from services.markdown_service import save_markdown
+
+    try:
+        db = await get_db_connection()
+        try:
+            if not settings.auto_interpret:
+                # Still mark session complete even when auto-interpret is off
+                await db.execute(
+                    "UPDATE sessions SET status = 'complete' WHERE id = ?",
+                    (session_id,),
+                )
+                await db.commit()
+                return
+
+            # Run auto-interpretation
+            interpretation = await auto_interpret(session_id, db)
+            if not interpretation:
+                # Empty transcript or other issue — mark complete anyway
+                await db.execute(
+                    "UPDATE sessions SET status = 'complete' WHERE id = ?",
+                    (session_id,),
+                )
+                await db.commit()
+                return
+
+            # Update session status to complete
+            await db.execute(
+                "UPDATE sessions SET status = 'complete' WHERE id = ?",
+                (session_id,),
+            )
+            await db.commit()
+
+            # Fire memory synthesis if session belongs to a series
+            # Use a separate db connection so we can close ours safely
+            cursor = await db.execute(
+                "SELECT series_id FROM sessions WHERE id = ?", (session_id,)
+            )
+            row = await cursor.fetchone()
+            if row and row["series_id"]:
+                from services.memory_service import synthesize_and_store_memory
+                cursor2 = await db.execute(
+                    "SELECT * FROM sessions WHERE id = ?", (session_id,)
+                )
+                session = dict(await cursor2.fetchone())
+                # Give memory synthesis its own db connection
+                mem_db = await get_db_connection()
+                asyncio.create_task(
+                    _run_memory_synthesis(
+                        mem_db,
+                        session["series_id"],
+                        session,
+                        interpretation.get("output_markdown", ""),
+                        settings.auto_interpret_model or settings.default_model,
+                    )
+                )
+
+            # Auto-export if enabled
+            if settings.auto_export:
+                cursor = await db.execute(
+                    "SELECT * FROM sessions WHERE id = ?", (session_id,)
+                )
+                session_row = await cursor.fetchone()
+                if session_row:
+                    session_dict = dict(session_row)
+                    if isinstance(session_dict.get("context_metadata"), str):
+                        session_dict["context_metadata"] = json.loads(
+                            session_dict["context_metadata"]
+                        )
+                    await save_markdown(session_dict, interpretation)
+        finally:
+            await db.close()
+    except Exception:
+        logger.exception("Auto-pipeline failed for session %s", session_id)
 
 router = APIRouter(prefix="/api/sessions", tags=["transcription"])
 
@@ -52,9 +153,12 @@ async def upload_audio(
     await db.commit()
 
     # Determine which STT provider to use
-    use_openai = settings.stt_provider == "openai" and settings.openai_api_key
+    use_cloud = (
+        (settings.stt_provider == "openai" and settings.openai_api_key) or
+        (settings.stt_provider == "deepgram" and settings.deepgram_api_key)
+    )
 
-    if not use_openai:
+    if not use_cloud:
         # Lazy-import whisper — heavy native deps (ctranslate2) may not be available
         try:
             from services.stt.whisper import transcribe_file as _check_whisper  # noqa: F401
@@ -70,7 +174,7 @@ async def upload_audio(
         from services.stt import transcribe_file
 
         result = await transcribe_file(audio_path)
-        provider_name = "openai" if use_openai else "whisper"
+        provider_name = settings.stt_provider if use_cloud else "whisper"
         await db.execute(
             """UPDATE sessions
             SET transcript = ?, duration_seconds = ?, status = 'processing',
@@ -86,6 +190,9 @@ async def upload_audio(
             if sync:
                 remote_key = f"audio/{file_id}{ext}"
                 sync.enqueue(audio_path, remote_key, file_type="audio")
+
+        # Fire-and-forget auto-interpret pipeline
+        asyncio.create_task(_run_auto_pipeline(session_id))
 
         return {
             "session_id": session_id,
@@ -128,6 +235,9 @@ async def submit_transcript(
         (transcript, duration, session_id),
     )
     await db.commit()
+
+    # Fire-and-forget auto-interpret pipeline
+    asyncio.create_task(_run_auto_pipeline(session_id))
 
     return {
         "session_id": session_id,

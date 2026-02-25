@@ -75,7 +75,11 @@ async def list_sessions(
     offset: int = Query(default=0, ge=0),
     db=Depends(get_db),
 ):
-    query = "SELECT s.*, sr.name as series_name FROM sessions s LEFT JOIN series sr ON s.series_id = sr.id"
+    query = """SELECT s.*, sr.name as series_name,
+    SUBSTR(i.output_markdown, 1, 200) as summary_snippet
+    FROM sessions s
+    LEFT JOIN series sr ON s.series_id = sr.id
+    LEFT JOIN interpretations i ON i.session_id = s.id AND i.is_primary = 1"""
     params: list = []
     conditions = []
 
