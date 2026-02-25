@@ -1,6 +1,6 @@
 # EchoBridge
 
-The meeting bridge for humans and AI agents. Captures audio, transcribes it, and makes the transcript available to you (as structured notes) and any number of AI agents (each with their own lens).
+An open-source, self-hosted meeting bridge for humans and AI agents. Captures audio, transcribes it, and makes the transcript available to you (as structured notes) and any number of AI agents (each with their own lens). Your data lives on your server. No accounts, no cloud dependency.
 
 ## Self-Hosted Quickstart
 

@@ -25,6 +25,8 @@ Audio → Transcript → Your notes (preset lens)
 3. **Agent-direct**: Agents query transcripts and request interpretations via API
 4. **Agent Meeting**: Multi-agent structured conversations with orchestrated turn-taking
 
+EchoBridge is open source and self-hosted. You run it on your own machine or server, and you own every byte of data it produces. The SQLite database, audio files, and exported notes are ordinary files on your filesystem. Your AI provider keys live in your `.env`, never transmitted to any EchoBridge server — because no EchoBridge server exists. There is no account to create, no subscription, and no telemetry.
+
 ---
 
 ## 2. Core Concepts
@@ -1744,6 +1746,40 @@ S3_PREFIX=echobridge/
 ---
 
 ## 17. Infrastructure & Deployment
+
+### Deployment Philosophy
+
+**Ownership model**: One person, one instance, one database. EchoBridge has no concept of user accounts, no multi-tenant middleware, no authorization layer between you and your data. The entire application assumes a single owner. This is a deliberate architectural decision, not a limitation — it eliminates an entire class of security and privacy concerns.
+
+**What "your data" means**: Three directories of ordinary files. Nothing proprietary, nothing locked in.
+
+| Data | Default path | What's inside |
+|------|-------------|---------------|
+| Database | `./data/echobridge.db` | SQLite — sessions, transcripts, interpretations, rooms, sockets |
+| Audio | `./data/audio/` | `.webm` / `.wav` recordings, one file per session |
+| Exports | `./output/` | `.md` files, one per interpretation |
+
+You can copy, back up, inspect, or delete any of these with standard filesystem tools. The database is a single SQLite file — `sqlite3 echobridge.db .dump` gives you everything.
+
+**Cross-device access**: EchoBridge doesn't have a sync layer. Cross-device access is solved by your deployment choice, not by a built-in sync mechanism.
+
+**Three deployment models**:
+
+| Model | Where it runs | Cross-device? | Best for |
+|-------|---------------|---------------|----------|
+| **Local** | Your laptop/desktop | No — localhost only | Solo use, OpenClaw file bridge |
+| **Railway / VPS** | Cloud server (~$5–20/mo) | Yes — public URL | Cross-device, remote agents, team rooms |
+| **Hybrid** | Local + tunnel (Tailscale/Cloudflare) | Yes — private tunnel | Local storage + cross-device, no cloud bill |
+
+**Where data lives per model**:
+
+| Model | SQLite path | Audio path | Export path |
+|-------|-------------|------------|-------------|
+| Local | `./data/echobridge.db` | `./data/audio/` | `./output/` or custom `OUTPUT_DIR` |
+| Railway / VPS | `/data/echobridge.db` (persistent volume) | `/data/audio/` | `/data/output/` |
+| Hybrid | `./data/echobridge.db` (local disk) | `./data/audio/` | `./output/` or custom `OUTPUT_DIR` |
+
+**Recommendation**: Railway for most users who need cross-device access. One `git push`, one persistent volume, and you have a URL that works from any device. Local for users who only need EchoBridge from one machine or who want the OpenClaw file bridge.
 
 ### Development: Docker sandbox
 

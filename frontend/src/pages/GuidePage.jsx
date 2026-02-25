@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import { Key, Cpu, Mic, Layers, Box, Users, BookOpen, Settings, Bot, FolderOpen } from 'lucide-react';
+import { Key, Cpu, Mic, Layers, Box, Users, BookOpen, Settings, Bot, FolderOpen, Server } from 'lucide-react';
 
 export default function GuidePage() {
   const navigate = useNavigate();
@@ -139,6 +139,55 @@ ECHOBRIDGE_AGENT_API_KEY=your-secret-key`}
             </div>
           </div>
         </div>
+      </div>
+
+      {/* How Your Data Works */}
+      <div className="card-lg p-4 md:p-6 mt-8">
+        <div className="flex items-center gap-2">
+          <Server size={18} strokeWidth={1.5} className="text-zinc-400" />
+          <span className="text-sm font-semibold text-zinc-200 uppercase tracking-wider">
+            How Your Data Works
+          </span>
+        </div>
+        <p className="text-sm text-zinc-400 mt-2">
+          EchoBridge is open source and self-hosted. You run it, you own the data — your database, audio files, and exported notes are ordinary files on your server. No accounts, no telemetry, no EchoBridge servers.
+        </p>
+
+        <div className="mt-6 space-y-5">
+          <div className="flex gap-4">
+            <div className="flex-shrink-0 w-1 bg-zinc-700" />
+            <div>
+              <h3 className="text-sm font-semibold text-zinc-200">Local</h3>
+              <p className="text-sm text-zinc-400 mt-0.5">
+                Run on your laptop or desktop. Localhost only — best for solo use and the OpenClaw file bridge.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex gap-4">
+            <div className="flex-shrink-0 w-1 bg-accent" />
+            <div>
+              <h3 className="text-sm font-semibold text-zinc-200">Railway / VPS</h3>
+              <p className="text-sm text-zinc-400 mt-0.5">
+                Deploy to a cloud server (~$5–20/mo) for a public URL. Access from any device, connect remote agents, host team rooms. Recommended for most users.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex gap-4">
+            <div className="flex-shrink-0 w-1 bg-zinc-700" />
+            <div>
+              <h3 className="text-sm font-semibold text-zinc-200">Hybrid</h3>
+              <p className="text-sm text-zinc-400 mt-0.5">
+                Run locally with a tunnel (Tailscale or Cloudflare). Local storage with cross-device access, no cloud bill.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <p className="text-xs text-zinc-500 mt-6">
+          All data is ordinary files — one SQLite database, one audio directory, one export directory. Copy, back up, or inspect with standard tools.
+        </p>
       </div>
 
       {/* Core Concepts */}
