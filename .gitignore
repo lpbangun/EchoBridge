@@ -49,3 +49,16 @@ frontend/dist/
 # Windows artifacts
 nul
 .worktrees/
+
+# Playwright MCP
+.playwright-mcp/
+
+# Pencil design files
+*.pen
+
+# QA screenshots
+qa-*.png
+images/
+
+# Accidental home-dir artifacts
+backend/~/
