@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Copy, Key, Check, ExternalLink, Cloud, RefreshCw } from 'lucide-react';
-import { getSettings, updateSettings, createApiKey, testCloudConnection, getStorageStatus } from '../lib/api';
+import { Copy, Key, Check, ExternalLink, Cloud, RefreshCw, FileText } from 'lucide-react';
+import { getSettings, updateSettings, createApiKey, testCloudConnection, getStorageStatus, getSkillMd } from '../lib/api';
 
 const WHISPER_MODELS = ['tiny', 'base', 'small', 'medium', 'large'];
 
@@ -82,6 +82,7 @@ export default function SettingsPage() {
   const [copied, setCopied] = useState(false);
   const [configTab, setConfigTab] = useState('mcp');
   const [copiedConfig, setCopiedConfig] = useState(false);
+  const [copiedSkill, setCopiedSkill] = useState(false);
 
   // Cloud storage state
   const [cloudEnabled, setCloudEnabled] = useState(false);
@@ -355,6 +356,17 @@ curl -H "Authorization: Bearer $ECHOBRIDGE_API_KEY" \\
       setTimeout(() => setCopiedConfig(false), 2000);
     } catch {
       setKeyError('Failed to copy. Please select and copy manually.');
+    }
+  }
+
+  async function handleCopySkill() {
+    try {
+      const skillText = await getSkillMd();
+      await navigator.clipboard.writeText(skillText);
+      setCopiedSkill(true);
+      setTimeout(() => setCopiedSkill(false), 2000);
+    } catch {
+      setKeyError('Failed to copy skill file.');
     }
   }
 
@@ -1050,6 +1062,29 @@ curl -H "Authorization: Bearer $ECHOBRIDGE_API_KEY" \\
                   <>
                     <Copy size={16} strokeWidth={1.5} />
                     Copy Config
+                  </>
+                )}
+              </button>
+            </div>
+
+            <div className="mt-6 pt-4 border-t border-zinc-700">
+              <p className="text-xs text-zinc-500 mb-3">
+                Share the EchoBridge skill file with your agent. Paste this into your
+                agent's skills directory or knowledge base.
+              </p>
+              <button
+                onClick={handleCopySkill}
+                className="btn-secondary inline-flex items-center gap-2 touch-target"
+              >
+                {copiedSkill ? (
+                  <>
+                    <Check size={16} strokeWidth={1.5} />
+                    Copied!
+                  </>
+                ) : (
+                  <>
+                    <FileText size={16} strokeWidth={1.5} />
+                    Copy Skill File
                   </>
                 )}
               </button>

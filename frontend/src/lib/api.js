@@ -308,6 +308,14 @@ export async function deleteConversation(id) {
   });
 }
 
+// --- Skill ---
+
+export async function getSkillMd() {
+  const res = await fetch(`${BASE}/skill`);
+  if (!res.ok) throw new Error('Failed to load skill file');
+  return res.text();
+}
+
 // --- Cloud Storage ---
 
 export async function testCloudConnection() {

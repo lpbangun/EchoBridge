@@ -4,8 +4,10 @@ import hashlib
 import secrets
 import uuid
 from datetime import datetime, timezone
+from pathlib import Path
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import PlainTextResponse
 
 from config import settings
 from database import get_db
@@ -166,6 +168,17 @@ async def create_api_key(body: ApiKeyCreate, db=Depends(get_db)):
         key=raw_key,
         created_at=now,
     )
+
+
+_SKILL_MD_PATH = Path(__file__).resolve().parent.parent.parent / "openclaw-skill" / "echobridge" / "SKILL.md"
+
+
+@router.get("/skill", response_class=PlainTextResponse)
+async def get_skill_file():
+    """Return SKILL.md content (unauthenticated) for the Settings UI."""
+    if not _SKILL_MD_PATH.exists():
+        raise HTTPException(404, "SKILL.md not found")
+    return _SKILL_MD_PATH.read_text(encoding="utf-8")
 
 
 @router.get("/lenses")
