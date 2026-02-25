@@ -21,8 +21,8 @@ export default function SetupWizard({ onComplete }) {
   const [openaiKeyForStt, setOpenaiKeyForStt] = useState('');
   const [aiProvider, setAiProvider] = useState('openrouter');
   const [aiKey, setAiKey] = useState('');
-  const [defaultModel, setDefaultModel] = useState('anthropic/claude-sonnet-4.6');
-  const [outputDir, setOutputDir] = useState('~/obsidian-vault/echobridge');
+  const [defaultModel, setDefaultModel] = useState('x-ai/grok-4.1-fast');
+  const [outputDir, setOutputDir] = useState('~/Downloads/EchoBridge');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
 
@@ -191,7 +191,7 @@ export default function SetupWizard({ onComplete }) {
                     key={prov.id}
                     onClick={() => {
                       setAiProvider(prov.id);
-                      if (prov.id === 'openrouter') setDefaultModel('anthropic/claude-sonnet-4.6');
+                      if (prov.id === 'openrouter') setDefaultModel('x-ai/grok-4.1-fast');
                       else if (prov.id === 'anthropic') setDefaultModel('claude-sonnet-4-6-latest');
                       else if (prov.id === 'openai') setDefaultModel('gpt-4o');
                     }}
@@ -246,7 +246,7 @@ export default function SetupWizard({ onComplete }) {
             <div>
               <h2 className="text-base font-semibold text-slate-200">Where should meeting notes be saved?</h2>
               <p className="text-sm text-slate-400 mt-1">
-                After each meeting, a .md file is automatically saved here. Point this to a folder your AI agent watches.
+                Point this to any folder. Works great with Obsidian, Notion sync folders, or a directory your AI agent watches.
               </p>
 
               <label className="block mt-6">
@@ -255,7 +255,7 @@ export default function SetupWizard({ onComplete }) {
                   type="text"
                   value={outputDir}
                   onChange={(e) => setOutputDir(e.target.value)}
-                  placeholder="~/obsidian-vault/echobridge"
+                  placeholder="~/Downloads/EchoBridge"
                   className="glass-input w-full text-sm px-4 py-2.5 rounded-lg mt-2"
                 />
                 <p className="text-xs text-slate-400 mt-1">

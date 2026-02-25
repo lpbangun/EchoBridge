@@ -711,7 +711,7 @@ export default function SettingsPage() {
             type="text"
             value={outputDir}
             onChange={(e) => setOutputDir(e.target.value)}
-            placeholder="~/obsidian-vault/echobridge"
+            placeholder="~/Downloads/EchoBridge"
             className="glass-input w-full text-base px-4 py-3 rounded-xl mt-2"
           />
         </label>

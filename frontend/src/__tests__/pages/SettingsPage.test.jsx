@@ -25,7 +25,7 @@ import { getSettings, updateSettings, createApiKey, testCloudConnection, getStor
 const MOCK_SETTINGS = {
   user_display_name: 'Alice',
   ai_provider: 'openrouter',
-  default_model: 'anthropic/claude-sonnet-4.6',
+  default_model: 'x-ai/grok-4.1-fast',
   output_dir: '/output',
   auto_export: true,
   include_transcript_in_md: false,
@@ -36,12 +36,12 @@ const MOCK_SETTINGS = {
   google_api_key_set: false,
   xai_api_key_set: false,
   models: {
-    'anthropic/claude-sonnet-4.6': 'Claude Sonnet 4.6',
+    'x-ai/grok-4.1-fast': 'Grok 4.1 Fast',
     'google/gemini-3-flash-preview': 'Gemini 3 Flash',
   },
   provider_models: {
     openrouter: {
-      'anthropic/claude-sonnet-4.6': 'Claude Sonnet 4.6',
+      'x-ai/grok-4.1-fast': 'Grok 4.1 Fast',
       'google/gemini-3-flash-preview': 'Gemini 3 Flash',
     },
     openai: {
@@ -104,7 +104,7 @@ describe('SettingsPage', () => {
       expect(screen.getByText('Default Model')).toBeInTheDocument();
     });
     // The select should have the model options (format: "Name — id")
-    expect(screen.getByText('Claude Sonnet 4.6 — anthropic/claude-sonnet-4.6')).toBeInTheDocument();
+    expect(screen.getByText('Grok 4.1 Fast — x-ai/grok-4.1-fast')).toBeInTheDocument();
     expect(screen.getByText('Gemini 3 Flash — google/gemini-3-flash-preview')).toBeInTheDocument();
   });
 

@@ -41,9 +41,9 @@ export default function GuidePage() {
           <div className="flex gap-4">
             <Cpu size={18} strokeWidth={1.5} className="text-orange-400 flex-shrink-0 mt-0.5" />
             <div>
-              <h3 className="text-sm font-semibold text-slate-200">AI: OpenRouter + Claude Sonnet 4.6</h3>
+              <h3 className="text-sm font-semibold text-slate-200">AI: OpenRouter + Grok 4.1 Fast</h3>
               <p className="text-sm text-slate-400 mt-0.5">
-                OpenRouter gives you one API key for 500+ models. Claude Sonnet 4.6 is the best balance of quality and speed for meeting notes. Alternative: direct Anthropic API.
+                OpenRouter gives you one API key for 500+ models. Grok 4.1 Fast is the best balance of quality and speed for meeting notes. Alternative: direct xAI, Anthropic, or OpenAI APIs.
               </p>
             </div>
           </div>
@@ -51,9 +51,9 @@ export default function GuidePage() {
           <div className="flex gap-4">
             <FolderOpen size={18} strokeWidth={1.5} className="text-orange-400 flex-shrink-0 mt-0.5" />
             <div>
-              <h3 className="text-sm font-semibold text-slate-200">Agent Bridge: Output to Agent Memory</h3>
+              <h3 className="text-sm font-semibold text-slate-200">Agent Bridge: Output Directory</h3>
               <p className="text-sm text-slate-400 mt-0.5">
-                Set the output directory to a folder in your OpenClaw agent's <code className="text-slate-400">extraPaths</code>. Your agent will automatically discover new meeting notes on its next heartbeat. No API configuration needed — just files.
+                Defaults to <code className="text-slate-400">~/Downloads/EchoBridge</code>. Power users can point this to an agent's watched folder (e.g. OpenClaw's <code className="text-slate-400">extraPaths</code>) so your agent discovers new meeting notes automatically.
               </p>
             </div>
           </div>
@@ -65,11 +65,11 @@ export default function GuidePage() {
           <pre className="mt-2 p-4 bg-slate-900/60 border border-slate-700 rounded-lg font-mono text-xs text-slate-300 overflow-x-auto whitespace-pre">
 {`AI_PROVIDER=openrouter
 OPENROUTER_API_KEY=sk-or-your-key
-DEFAULT_MODEL=anthropic/claude-sonnet-4.6
+DEFAULT_MODEL=x-ai/grok-4.1-fast
 STT_PROVIDER=deepgram
 DEEPGRAM_API_KEY=your-deepgram-key
 DEEPGRAM_MODEL=nova-3
-OUTPUT_DIR=~/agent-memory/echobridge
+OUTPUT_DIR=~/Downloads/EchoBridge
 AUTO_EXPORT=true
 AUTO_INTERPRET=true`}
           </pre>

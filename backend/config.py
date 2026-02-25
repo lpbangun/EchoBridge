@@ -28,7 +28,7 @@ class Settings(BaseSettings):
     openai_stt_model: str = "whisper-1"  # whisper-1 | gpt-4o-mini-transcribe | gpt-4o-transcribe
 
     # AI
-    default_model: str = "anthropic/claude-sonnet-4.6"
+    default_model: str = "x-ai/grok-4.1-fast"
 
     # Server
     host: str = "0.0.0.0"
@@ -85,6 +85,7 @@ class Settings(BaseSettings):
             "gemini-2.5-pro": "Gemini 2.5 Pro",
         },
         "xai": {
+            "grok-4.1-fast": "Grok 4.1 Fast",
             "grok-3": "Grok 3",
             "grok-3-fast": "Grok 3 Fast",
         },
