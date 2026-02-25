@@ -319,3 +319,62 @@ export async function testCloudConnection() {
 export async function getStorageStatus() {
   return request('/storage/status');
 }
+
+// --- Agent Meetings ---
+
+export async function createAgentMeeting(data) {
+  return request('/rooms/meeting', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function getAgentMeeting(code) {
+  return request(`/rooms/${code}/meeting`);
+}
+
+export async function startAgentMeeting(code) {
+  return request(`/rooms/${code}/meeting/start`, {
+    method: 'POST',
+  });
+}
+
+export async function stopAgentMeeting(code) {
+  return request(`/rooms/${code}/meeting/stop`, {
+    method: 'POST',
+  });
+}
+
+export async function pauseAgentMeeting(code) {
+  return request(`/rooms/${code}/meeting/pause`, {
+    method: 'POST',
+  });
+}
+
+export async function resumeAgentMeeting(code) {
+  return request(`/rooms/${code}/meeting/resume`, {
+    method: 'POST',
+  });
+}
+
+export async function sendDirective(code, text, fromName) {
+  return request(`/rooms/${code}/meeting/directive`, {
+    method: 'POST',
+    body: JSON.stringify({ text, from_name: fromName }),
+  });
+}
+
+export async function sendMeetingMessage(code, text, fromName) {
+  return request(`/rooms/${code}/meeting/message`, {
+    method: 'POST',
+    body: JSON.stringify({ text, from_name: fromName }),
+  });
+}
+
+export async function getMeetingMessages(code, afterSequence = 0) {
+  return request(`/rooms/${code}/meeting/messages?after_sequence=${afterSequence}`);
+}
+
+export async function getMeetingState(code) {
+  return request(`/rooms/${code}/meeting/state`);
+}

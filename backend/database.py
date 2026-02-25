@@ -54,7 +54,10 @@ CREATE TABLE IF NOT EXISTS rooms (
     host_name TEXT NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     status TEXT DEFAULT 'waiting',
-    settings JSON DEFAULT '{}'
+    settings JSON DEFAULT '{}',
+    mode TEXT DEFAULT 'standard',
+    meeting_config JSON DEFAULT '{}',
+    transcript_log TEXT DEFAULT ''
 );
 
 CREATE TABLE IF NOT EXISTS room_participants (
@@ -63,8 +66,24 @@ CREATE TABLE IF NOT EXISTS room_participants (
     name TEXT NOT NULL,
     participant_type TEXT NOT NULL,
     connected_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    agent_name TEXT
+    agent_name TEXT,
+    persona_config JSON DEFAULT '{}',
+    is_external BOOLEAN DEFAULT FALSE
 );
+
+CREATE TABLE IF NOT EXISTS meeting_messages (
+    id TEXT PRIMARY KEY,
+    room_id TEXT NOT NULL REFERENCES rooms(id) ON DELETE CASCADE,
+    sender_name TEXT NOT NULL,
+    sender_type TEXT NOT NULL,
+    message_type TEXT NOT NULL,
+    content TEXT NOT NULL,
+    sequence_number INTEGER NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_meeting_messages_room
+    ON meeting_messages(room_id, sequence_number);
 
 CREATE TABLE IF NOT EXISTS sockets (
     id TEXT PRIMARY KEY,
@@ -175,6 +194,45 @@ async def get_db() -> aiosqlite.Connection:
             await _db.commit()
         except Exception:
             pass  # Column already exists
+        # Migration: add agent meeting columns to rooms
+        for col, default in [
+            ("mode TEXT DEFAULT 'standard'", None),
+            ("meeting_config JSON DEFAULT '{}'", None),
+            ("transcript_log TEXT DEFAULT ''", None),
+        ]:
+            try:
+                await _db.execute(f"ALTER TABLE rooms ADD COLUMN {col}")
+                await _db.commit()
+            except Exception:
+                pass
+        # Migration: add agent meeting columns to room_participants
+        for col in [
+            "persona_config JSON DEFAULT '{}'",
+            "is_external BOOLEAN DEFAULT FALSE",
+        ]:
+            try:
+                await _db.execute(f"ALTER TABLE room_participants ADD COLUMN {col}")
+                await _db.commit()
+            except Exception:
+                pass
+        # Migration: create meeting_messages table
+        await _db.execute("""
+            CREATE TABLE IF NOT EXISTS meeting_messages (
+                id TEXT PRIMARY KEY,
+                room_id TEXT NOT NULL REFERENCES rooms(id) ON DELETE CASCADE,
+                sender_name TEXT NOT NULL,
+                sender_type TEXT NOT NULL,
+                message_type TEXT NOT NULL,
+                content TEXT NOT NULL,
+                sequence_number INTEGER NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        await _db.execute("""
+            CREATE INDEX IF NOT EXISTS idx_meeting_messages_room
+                ON meeting_messages(room_id, sequence_number)
+        """)
+        await _db.commit()
     return _db
 
 

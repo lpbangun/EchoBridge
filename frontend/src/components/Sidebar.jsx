@@ -1,11 +1,12 @@
 import { useNavigate, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Mic, Folder, Users, MessageSquare, Settings, BookOpen } from 'lucide-react';
+import { LayoutDashboard, Mic, Folder, Users, MessageSquare, Settings, BookOpen, Bot } from 'lucide-react';
 
 const NAV_ITEMS = [
   { path: '/', icon: LayoutDashboard, label: 'Dashboard' },
   { path: '/recordings', icon: Mic, label: 'Recordings' },
   { path: '/series', icon: Folder, label: 'Series' },
   { path: '/rooms', icon: Users, label: 'Rooms' },
+  { path: '/meeting', icon: Bot, label: 'Agent Meeting' },
   { path: '/ask', icon: MessageSquare, label: 'Ask' },
 ];
 
@@ -26,6 +27,12 @@ export default function Sidebar({ open, onClose }) {
   function isActive(path) {
     if (path === '/') return location.pathname === '/';
     return location.pathname.startsWith(path);
+  }
+
+  function navPath(path) {
+    // Agent Meeting nav item goes to /meeting/new
+    if (path === '/meeting') return '/meeting/new';
+    return path;
   }
 
   return (
@@ -60,7 +67,7 @@ export default function Sidebar({ open, onClose }) {
             return (
               <button
                 key={item.path}
-                onClick={() => handleNav(item.path)}
+                onClick={() => handleNav(navPath(item.path))}
                 className={`w-full flex items-center gap-3 py-2.5 px-3 rounded-[10px] transition-colors text-left ${
                   active
                     ? 'bg-[#C4F82A14] text-accent font-semibold'

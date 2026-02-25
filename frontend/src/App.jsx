@@ -15,6 +15,8 @@ import GuidePage from './pages/GuidePage';
 import RecordingsPage from './pages/RecordingsPage';
 import SeriesListPage from './pages/SeriesListPage';
 import RoomsPage from './pages/RoomsPage';
+import AgentMeetingCreate from './pages/AgentMeetingCreate';
+import AgentMeetingView from './pages/AgentMeetingView';
 import OfflineBanner from './components/OfflineBanner';
 import InstallPrompt from './components/InstallPrompt';
 import SetupWizard from './components/SetupWizard';
@@ -97,6 +99,8 @@ export default function App() {
         <Route path="/series" element={<LayoutRoute><SeriesListPage /></LayoutRoute>} />
         <Route path="/series/:id" element={<LayoutRoute><SeriesView /></LayoutRoute>} />
         <Route path="/rooms" element={<LayoutRoute><RoomsPage /></LayoutRoute>} />
+        <Route path="/meeting/new" element={<LayoutRoute><AgentMeetingCreate /></LayoutRoute>} />
+        <Route path="/meeting/:code" element={<LayoutRoute><AgentMeetingView /></LayoutRoute>} />
         <Route path="/ask" element={<LayoutRoute><AskPage /></LayoutRoute>} />
         <Route path="/guide" element={<LayoutRoute><GuidePage /></LayoutRoute>} />
         <Route path="/settings" element={<LayoutRoute><SettingsPage /></LayoutRoute>} />

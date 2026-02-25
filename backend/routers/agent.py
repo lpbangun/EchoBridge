@@ -38,6 +38,9 @@ _AVAILABLE_ENDPOINTS = [
     "/api/v1/series",
     "/api/v1/series/{id}",
     "/api/v1/series/{id}/memory",
+    "/api/v1/meetings",
+    "/api/v1/meetings/{code}/respond",
+    "/api/v1/meetings/{code}/context",
     "/api/v1/chat/conversations",
     "/api/v1/chat/conversations/{id}",
     "/api/v1/chat/conversations/{id}/messages",
@@ -380,3 +383,85 @@ async def agent_send_message(
         source=f"agent:{agent_name}",
     )
     return message
+
+
+# --- Agent Meeting endpoints ---
+
+
+@router.post("/meetings")
+async def agent_create_meeting(
+    body: dict,
+    api_key=Depends(verify_api_key),
+    db=Depends(get_db),
+):
+    """External agent creates a meeting room."""
+    from services.room_service import create_agent_meeting_room
+
+    topic = body.get("topic")
+    if not topic:
+        raise HTTPException(400, "Topic is required")
+
+    agents = body.get("agents", [])
+    if len(agents) < 2 or len(agents) > 4:
+        raise HTTPException(400, "2-4 agents required")
+
+    agent_name = api_key.get("name", "agent")
+
+    result = await create_agent_meeting_room(
+        db=db,
+        topic=topic,
+        host_name=agent_name,
+        agents=agents,
+        task_description=body.get("task_description", ""),
+        cooldown_seconds=body.get("cooldown_seconds", 3.0),
+        max_rounds=body.get("max_rounds", 20),
+        title=body.get("title"),
+    )
+    return result
+
+
+@router.post("/meetings/{code}/respond")
+async def agent_meeting_respond(
+    code: str,
+    body: dict,
+    api_key=Depends(verify_api_key),
+):
+    """External agent submits their turn response."""
+    from services.orchestrator_service import get_orchestrator
+
+    orchestrator = get_orchestrator(code)
+    if not orchestrator:
+        raise HTTPException(404, "No active meeting found for this room")
+
+    agent_name = body.get("agent_name") or api_key.get("name", "agent")
+    response = body.get("response", "")
+
+    if not response:
+        raise HTTPException(400, "Response is required")
+
+    submitted = orchestrator.submit_external_response(agent_name, response)
+    if not submitted:
+        raise HTTPException(400, "No pending turn for this agent")
+
+    return {"status": "response_submitted", "agent_name": agent_name}
+
+
+@router.get("/meetings/{code}/context")
+async def agent_meeting_context(
+    code: str,
+    api_key=Depends(verify_api_key),
+):
+    """External agent fetches conversation context (polling alternative to WebSocket)."""
+    from services.orchestrator_service import get_orchestrator
+
+    orchestrator = get_orchestrator(code)
+    if not orchestrator:
+        raise HTTPException(404, "No active meeting found for this room")
+
+    return {
+        "topic": orchestrator.topic,
+        "task_description": orchestrator.task_description,
+        "directives": orchestrator.directives,
+        "conversation": orchestrator._build_conversation_context(),
+        "state": orchestrator.get_state(),
+    }

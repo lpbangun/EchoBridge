@@ -25,6 +25,13 @@ class RoomStatus(str, Enum):
     RECORDING = "recording"
     PROCESSING = "processing"
     CLOSED = "closed"
+    ACTIVE = "active"
+    PAUSED = "paused"
+
+
+class RoomMode(str, Enum):
+    STANDARD = "standard"
+    AGENT_MEETING = "agent_meeting"
 
 
 class LensType(str, Enum):
@@ -320,3 +327,55 @@ class MemoryDocumentResponse(BaseModel):
     memory_document: str
     updated_at: str
     session_count: int
+
+
+# --- Agent Meeting schemas ---
+
+class AgentPersonaConfig(BaseModel):
+    name: str
+    type: str = "internal"  # "internal" | "external"
+    socket_id: str | None = None
+    persona_prompt: str | None = None
+    model: str | None = None
+
+
+class AgentMeetingCreate(BaseModel):
+    topic: str
+    host_name: str
+    agents: list[AgentPersonaConfig] = Field(min_length=2, max_length=4)
+    task_description: str = ""
+    cooldown_seconds: float = Field(default=3.0, ge=1.0, le=30.0)
+    max_rounds: int = Field(default=20, ge=5, le=100)
+    title: str | None = None
+
+
+class DirectiveCreate(BaseModel):
+    text: str
+    from_name: str
+
+
+class HumanMessageCreate(BaseModel):
+    text: str
+    from_name: str
+
+
+class MeetingMessageResponse(BaseModel):
+    id: str
+    room_id: str
+    sender_name: str
+    sender_type: str
+    message_type: str
+    content: str
+    sequence_number: int
+    created_at: str
+
+
+class AgentMeetingResponse(BaseModel):
+    room_id: str
+    code: str
+    session_id: str
+    status: str
+    host_name: str
+    topic: str
+    agents: list[dict] = Field(default_factory=list)
+    created_at: str
