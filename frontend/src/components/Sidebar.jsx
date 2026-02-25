@@ -44,14 +44,14 @@ export default function Sidebar({ open, onClose }) {
         }`}
       >
         {/* Logo */}
-        <div className="px-5 py-5 flex items-center gap-3">
+        <button onClick={() => handleNav('/')} className="px-5 py-5 flex items-center gap-3 w-full text-left">
           <div className="w-8 h-8 rounded-[8px] bg-accent flex items-center justify-center">
             <span className="text-zinc-900 font-display font-extrabold text-sm">E</span>
           </div>
           <span className="font-display font-bold text-[15px] text-white tracking-tight">
             EchoBridge
           </span>
-        </div>
+        </button>
 
         {/* Main nav */}
         <nav className="flex-1 px-3 mt-2 space-y-1">
