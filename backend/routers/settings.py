@@ -42,6 +42,7 @@ def _build_settings_response() -> SettingsResponse:
         deepgram_api_key_set=bool(settings.deepgram_api_key),
         deepgram_model=settings.deepgram_model,
         auto_interpret=settings.auto_interpret,
+        auto_sockets=[s.strip() for s in settings.auto_sockets.split(",") if s.strip()],
         cloud_storage_enabled=settings.cloud_storage_enabled,
         s3_endpoint_url=settings.s3_endpoint_url,
         s3_access_key_id=settings.s3_access_key_id,
@@ -110,6 +111,10 @@ async def update_settings(body: SettingsUpdate, db=Depends(get_db)):
     if body.auto_interpret is not None:
         settings.auto_interpret = body.auto_interpret
         changed["auto_interpret"] = body.auto_interpret
+    if body.auto_sockets is not None:
+        joined = ",".join(body.auto_sockets)
+        settings.auto_sockets = joined
+        changed["auto_sockets"] = joined
     if body.cloud_storage_enabled is not None:
         settings.cloud_storage_enabled = body.cloud_storage_enabled
         changed["cloud_storage_enabled"] = body.cloud_storage_enabled

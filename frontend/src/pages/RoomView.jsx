@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Users, Mic, Square, Copy } from 'lucide-react';
-import { getRoom, startRoom, stopRoom } from '../lib/api';
+import { getRoom, startRoom, stopRoom, kickAgent, getSettings } from '../lib/api';
 import { statusColor } from '../lib/utils';
 import { createWebSocket } from '../lib/websocket';
 import LiveTranscript from '../components/LiveTranscript';
@@ -20,10 +20,11 @@ export default function RoomView() {
   const [actionLoading, setActionLoading] = useState(false);
   const [actionError, setActionError] = useState(null);
   const [copied, setCopied] = useState(false);
+  const [displayName, setDisplayName] = useState('');
   const wsRef = useRef(null);
   const pollRef = useRef(null);
 
-  // Fetch room info on mount
+  // Fetch room info and user display name on mount
   useEffect(() => {
     async function load() {
       setLoading(true);
@@ -39,6 +40,9 @@ export default function RoomView() {
       }
     }
     load();
+    getSettings()
+      .then((s) => { if (s.user_display_name) setDisplayName(s.user_display_name); })
+      .catch(() => {});
   }, [code]);
 
   // Poll room status to detect external changes (e.g. recording started by another client)
@@ -82,7 +86,6 @@ export default function RoomView() {
         }
         if (data.type === 'participant_joined') {
           setParticipants((prev) => {
-            // Avoid duplicates
             const exists = prev.some((p) => p.name === data.name);
             if (exists) return prev;
             return [
@@ -90,6 +93,11 @@ export default function RoomView() {
               { name: data.name, participant_type: data.participant_type },
             ];
           });
+        }
+        if (data.type === 'participant_left') {
+          setParticipants((prev) =>
+            prev.filter((p) => p.name !== data.name)
+          );
         }
       },
       onClose: () => {},
@@ -140,6 +148,15 @@ export default function RoomView() {
       setActionLoading(false);
     }
   }, [code, navigate]);
+
+  const handleKick = useCallback(async (agentName) => {
+    try {
+      await kickAgent(code, agentName);
+      setParticipants((prev) => prev.filter((p) => p.name !== agentName));
+    } catch (err) {
+      setActionError(err.message || 'Failed to kick agent.');
+    }
+  }, [code]);
 
   function handleCopyCode() {
     navigator.clipboard.writeText(code).then(() => {
@@ -245,6 +262,8 @@ export default function RoomView() {
         <ParticipantList
           participants={participants}
           hostName={room.host_name}
+          isHost={room.host_name === displayName}
+          onKick={handleKick}
         />
       </div>
 

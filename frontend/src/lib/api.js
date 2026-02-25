@@ -182,6 +182,13 @@ export async function listSockets() {
   return request('/sockets');
 }
 
+export async function runAgentAnalysis(sessionId, socketIds = []) {
+  return request(`/sessions/${sessionId}/agent-analyze`, {
+    method: 'POST',
+    body: JSON.stringify({ socket_ids: socketIds }),
+  });
+}
+
 // --- Search ---
 
 export async function searchSessions(query) {
@@ -218,6 +225,13 @@ export async function startRoom(code) {
 export async function stopRoom(code) {
   return request(`/rooms/${code}/stop`, {
     method: 'POST',
+  });
+}
+
+export async function kickAgent(code, agentName) {
+  return request(`/rooms/${code}/kick`, {
+    method: 'POST',
+    body: JSON.stringify({ agent_name: agentName }),
   });
 }
 

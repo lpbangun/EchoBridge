@@ -1,12 +1,14 @@
-import { Users, Bot } from 'lucide-react';
+import { Users, Bot, X } from 'lucide-react';
 
 /**
  * ParticipantList displays room participants.
  * Props:
  *  - participants: array of { name, participant_type, agent_name }
  *  - hostName: string
+ *  - isHost: boolean — whether the current user is the room host
+ *  - onKick: (agentName) => void — callback to kick an agent
  */
-export default function ParticipantList({ participants, hostName }) {
+export default function ParticipantList({ participants, hostName, isHost, onKick }) {
   if (!participants || participants.length === 0) {
     return (
       <div>
@@ -37,6 +39,18 @@ export default function ParticipantList({ participants, hostName }) {
             {p.name}
             {p.name === hostName && (
               <span className="text-xs text-accent">(host)</span>
+            )}
+            {p.participant_type === 'agent' && isHost && onKick && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onKick(p.name);
+                }}
+                className="text-zinc-500 hover:text-red-500 transition-colors ml-1"
+                aria-label={`Kick ${p.name}`}
+              >
+                <X size={14} strokeWidth={1.5} />
+              </button>
             )}
           </span>
         ))}

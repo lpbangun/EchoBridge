@@ -220,6 +220,7 @@ class SettingsResponse(BaseModel):
     deepgram_model: str
     # Auto-interpret
     auto_interpret: bool
+    auto_sockets: list[str]
     # Cloud storage
     cloud_storage_enabled: bool
     s3_endpoint_url: str
@@ -254,6 +255,7 @@ class SettingsUpdate(BaseModel):
     deepgram_model: str | None = None
     # Auto-interpret
     auto_interpret: bool | None = None
+    auto_sockets: list[str] | None = None
     # Cloud storage
     cloud_storage_enabled: bool | None = None
     s3_endpoint_url: str | None = None

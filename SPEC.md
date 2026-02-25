@@ -1,6 +1,6 @@
 # EchoBridge — The Meeting Bridge for Humans and Agents
 
-## SPEC.md v1.0 | Definitive Implementation Spec
+## SPEC.md v2.0 | Definitive Implementation Spec
 
 ---
 
@@ -19,10 +19,11 @@ Audio → Transcript → Your notes (preset lens)
                    → Agent N interpretation (any lens)
 ```
 
-**Three modes of use:**
+**Four modes of use:**
 1. **Solo**: Record your own meetings/lectures → get `.md` notes
 2. **Room**: Share a live transcript with other people + their agents
 3. **Agent-direct**: Agents query transcripts and request interpretations via API
+4. **Agent Meeting**: Multi-agent structured conversations with orchestrated turn-taking
 
 ---
 
@@ -56,6 +57,9 @@ A group of related sessions (e.g. "Weekly Syncs", "Research Meetings"). Series h
 ### Conversation
 A persistent chat thread for asking questions about meetings. Conversations can be global (cross-meeting search via /ask) or tied to a specific session (chat sidebar in session view). Messages persist across browser sessions.
 
+### Session Event
+A notification record created when a session completes. Agents poll the events endpoint to discover new sessions without scanning the full session list. Events include session context, title, and interpretation count.
+
 ---
 
 ## 3. Architecture
@@ -82,7 +86,7 @@ A persistent chat thread for asking questions about meetings. Conversations can 
 │                                   └─────────────────────┘│
 │  ┌──────────────────────────────────────────────────────┐│
 │  │ Agent API  /api/v1/  (sessions, search, interpret,   ││
-│  │            stream, sockets)                           ││
+│  │   stream, sockets, events, meetings, chat)           ││
 │  └──────────────────────────────────────────────────────┘│
 └──────────────────────────────────────────────────────────┘
          │                 │                    │
@@ -114,6 +118,11 @@ A persistent chat thread for asking questions about meetings. Conversations can 
 | Sockets | Prompt + output JSON schema | Agents get structured, parseable output. |
 | Offline support | IndexedDB + sync | Recordings work without server; sync when back online. |
 | PWA | Service worker + install prompt | App installable on desktop/mobile for quick access. |
+| Agent meetings | Orchestrator with turn-taking | Structured multi-agent debate with directives and human injection. |
+| Cloud storage | S3-compatible (R2, B2, MinIO) | Optional backup; sync queue with retry logic. |
+| MCP | FastMCP server at /mcp | Alternative agent integration path alongside REST API. |
+| Settings persistence | SQLite app_settings | Survives restarts. Env vars take precedence. |
+| PWA | Service worker + IndexedDB | Offline recording with sync-on-reconnect. |
 
 ---
 
@@ -163,7 +172,10 @@ CREATE TABLE rooms (
     host_name TEXT NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     status TEXT DEFAULT 'waiting',     -- waiting | recording | processing | closed
-    settings JSON DEFAULT '{}'         -- available sockets, model override, etc.
+    settings JSON DEFAULT '{}',        -- available sockets, model override, etc.
+    mode TEXT DEFAULT 'standard',      -- "standard" | "agent_meeting"
+    meeting_config JSON DEFAULT '{}',  -- agent personas, cooldown, max_rounds
+    transcript_log TEXT DEFAULT ''      -- speaker-attributed transcript
 );
 
 -- Room participants (who joined)
@@ -173,8 +185,23 @@ CREATE TABLE room_participants (
     name TEXT NOT NULL,                -- display name
     participant_type TEXT NOT NULL,    -- "human" | "agent"
     connected_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    agent_name TEXT                    -- if type=agent
+    agent_name TEXT,                   -- if type=agent
+    persona_config JSON DEFAULT '{}',  -- agent persona prompt/model config
+    is_external BOOLEAN DEFAULT FALSE  -- external agent (polls API) vs internal (AI-driven)
 );
+
+-- Meeting messages (agent meeting conversation log)
+CREATE TABLE meeting_messages (
+    id TEXT PRIMARY KEY,
+    room_id TEXT NOT NULL REFERENCES rooms(id) ON DELETE CASCADE,
+    sender_name TEXT NOT NULL,
+    sender_type TEXT NOT NULL,         -- "agent" | "human" | "system"
+    message_type TEXT NOT NULL,        -- "message" | "directive" | "status"
+    content TEXT NOT NULL,
+    sequence_number INTEGER NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX idx_meeting_messages_room ON meeting_messages(room_id, sequence_number);
 
 -- Sockets (interpretation templates with output schemas)
 CREATE TABLE sockets (
@@ -196,6 +223,18 @@ CREATE TABLE api_keys (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     last_used_at TIMESTAMP
 );
+
+-- Session events (agent notification queue)
+CREATE TABLE session_events (
+    id TEXT PRIMARY KEY,
+    event_type TEXT NOT NULL,          -- 'session.complete'
+    session_id TEXT NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
+    context TEXT,                       -- session context for filtering
+    title TEXT,
+    interpretations_count INTEGER DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX idx_session_events_created ON session_events(created_at);
 
 -- Series (group related sessions with shared memory)
 CREATE TABLE series (
@@ -237,7 +276,7 @@ CREATE VIRTUAL TABLE interpretations_fts USING fts5(
 );
 ```
 
-Note: Sessions have a `series_id TEXT REFERENCES series(id)` column for grouping into series.
+Note: Sessions have a `series_id TEXT REFERENCES series(id)` column for grouping into series. Rooms have `mode`, `meeting_config`, and `transcript_log` columns for agent meetings. Room participants have `persona_config` and `is_external` columns for agent meeting agents.
 
 ---
 
@@ -512,6 +551,79 @@ def generate_room_code(context: str, title: str) -> str:
 
 ---
 
+## 7.5. Agent Meetings
+
+Agent meetings are structured multi-agent conversations orchestrated by EchoBridge. Unlike rooms (which are human-recorded), agent meetings are AI-driven turn-based discussions.
+
+### Creating an agent meeting:
+
+```
+POST /api/rooms/meeting
+{
+    "topic": "Q3 roadmap priorities",
+    "host_name": "Logani",
+    "agents": [
+        {"name": "Strategist", "type": "internal", "persona_prompt": "You are a business strategist..."},
+        {"name": "Devil's Advocate", "type": "internal", "socket_id": "devils_advocate"},
+        {"name": "MyAgent", "type": "external"}
+    ],
+    "task_description": "Decide top 3 priorities for Q3",
+    "cooldown_seconds": 3.0,
+    "max_rounds": 20,
+    "title": "Q3 Roadmap Meeting"
+}
+```
+
+### Agent types:
+- **Internal**: EchoBridge generates responses using the persona prompt + conversation context. Can reference a socket for persona.
+- **External**: The agent polls for its turn via API and submits responses within 30 seconds.
+
+### Meeting lifecycle:
+```
+waiting → active → paused → active → closed
+```
+
+### Orchestrator features:
+- **Turn-taking**: Cycles through agents in order, one response per round
+- **Directives**: Host can inject steering instructions mid-conversation
+- **Human messages**: Host can add messages to the conversation as a participant
+- **Pause/Resume**: Host can pause and resume the discussion
+- **Idle detection**: Automatically ends if no new messages after 2 idle rounds
+- **Auto-interpret**: Generates smart notes from the conversation transcript on completion
+- **Speaker-attributed transcript**: Full transcript stored with `[Speaker]: message` format
+
+### Meeting endpoints:
+```
+POST   /api/rooms/meeting                    Create agent meeting
+GET    /api/rooms/{code}/meeting             Get meeting state + agents
+POST   /api/rooms/{code}/meeting/start       Start the meeting
+POST   /api/rooms/{code}/meeting/stop        End the meeting
+POST   /api/rooms/{code}/meeting/pause       Pause the meeting
+POST   /api/rooms/{code}/meeting/resume      Resume the meeting
+POST   /api/rooms/{code}/meeting/directive   Inject a directive
+POST   /api/rooms/{code}/meeting/message     Send a human message
+GET    /api/rooms/{code}/meeting/messages     Get conversation log
+GET    /api/rooms/{code}/meeting/state        Get orchestrator state
+
+# Agent API (authenticated)
+POST   /api/v1/meetings                      Create meeting (agent-initiated)
+GET    /api/v1/meetings/{code}/context        Poll for turn + conversation
+POST   /api/v1/meetings/{code}/respond        Submit turn response
+```
+
+### WebSocket protocol for meetings:
+```
+WS /api/stream/meeting/{code}
+
+Server → Client:
+{"type": "meeting_message", "sender_name": "Strategist", "sender_type": "agent", "content_type": "message", "content": "..."}
+{"type": "turn_request", "agent_name": "MyAgent", "topic": "...", "conversation": [...], "directives": [...]}
+{"type": "meeting_status", "status": "paused"}
+{"type": "meeting_ended", "session_id": "...", "rounds": 15, "message_count": 45}
+```
+
+---
+
 ## 8. WebSocket Live Stream
 
 ### For solo sessions:
@@ -686,9 +798,13 @@ When a transcript is submitted (browser STT or audio upload), a background pipel
 
 2. **Auto-interpretation**: If `auto_interpret` is enabled, runs the `smart_notes` lens against the full transcript. When re-running on a resumed session, existing primary interpretations are demoted (`is_primary = 0`) before the new one is inserted, ensuring only the latest auto-generated notes are flagged primary.
 
-3. **Auto-export**: If `auto_export` is enabled, saves the `.md` file.
+3. **Auto-sockets**: If `auto_sockets` is configured (comma-separated socket IDs in settings), runs each configured socket sequentially against the transcript. Failures are logged but don't block the pipeline. Source is tagged `system/AutoSocket`.
 
-4. **Memory synthesis**: If the session belongs to a series, synthesizes cross-session memory.
+4. **Session event**: Inserts a `session.complete` event into `session_events` with interpretation count, enabling agents to discover new sessions via polling.
+
+5. **Memory synthesis**: If the session belongs to a series, synthesizes cross-session memory in a background task with its own database connection.
+
+6. **Auto-export**: If `auto_export` is enabled, saves the `.md` file. If cloud storage is enabled, enqueues the export for S3 sync.
 
 ```python
 async def generate_title(transcript: str, model: str) -> str:
@@ -842,6 +958,8 @@ GET    /api/settings                     Get settings
 PUT    /api/settings                     Update settings
 POST   /api/settings/api-keys            Generate agent API key
 GET    /api/lenses                       List preset lenses
+GET    /api/sockets                      List all sockets
+POST   /api/sessions/{id}/agent-analyze  Run sockets on demand (frontend)
 ```
 
 ### Agent API (/api/v1/):
@@ -875,6 +993,12 @@ POST   /api/v1/chat/conversations/{id}/messages  Send message
 
 # Search
 GET    /api/v1/search?q=...              FTS5 search
+
+# Events (agent notification queue)
+GET    /api/v1/events?since=<ISO>&context=<filter>&limit=50  Poll for session events
+
+# Agent Analysis
+POST   /api/v1/sessions/{id}/agent-analyze   Run sockets on demand + emit event
 
 # Auth
 Authorization: Bearer scribe_sk_...     (all /api/v1/ endpoints)
@@ -912,7 +1036,8 @@ description: >
   Access EchoBridge meeting transcripts and notes. Use when the user
   references past meetings or conversations, asks about decisions or
   action items, or when you need context from embodied interactions.
-  Can subscribe to live meeting streams and request custom interpretations.
+  Can subscribe to live meeting streams, request custom interpretations,
+  participate in multi-agent meetings, and chat within session threads.
 metadata:
   openclaw:
     requires:
@@ -965,7 +1090,7 @@ WS /api/v1/stream/room/{code}
 
 ## 14. GUI Screens
 
-Read DESIGN.md for visual style. All screens use a dark glassmorphic design with orange accent color.
+Read DESIGN.md for visual style. All screens use a dark zinc design with lime (#C4F82A) accent color.
 
 **Routes:**
 
@@ -981,6 +1106,10 @@ Read DESIGN.md for visual style. All screens use a dark glassmorphic design with
 | `/ask` | AskPage | Cross-meeting AI chat |
 | `/guide` | GuidePage | Getting started + setup help |
 | `/settings` | SettingsPage | Configuration (providers, STT, export, agent API) |
+| `/series` | SeriesListPage | All series with session counts |
+| `/recordings` | RecordingsPage | All recordings list |
+| `/rooms` | RoomsPage | All rooms (standard + agent meetings) |
+| `/meeting/:code` | AgentMeetingView | Live agent meeting conversation |
 
 **App-level wrappers** (rendered around all routes):
 - `SetupWizard` — shown on first launch if no AI provider key configured
@@ -1149,11 +1278,12 @@ Features:
 Features:
 - Inline editable title (auto-populated by AI title generation when auto-interpret is enabled)
 - Three tabs in a glass pill nav: Summary, Transcript, Interpretations (with count)
-- Active tab: `bg-orange-500/20 text-orange-300`
+- Active tab: lime accent border-b-2
 - Metadata row: context type, date, duration, status
 - Series badge (links to /series/:id)
 - Primary interpretation auto-displayed on Summary tab with **inline editing** — "Notes" header with Edit/Save/Cancel controls toggle between `<MarkdownPreview>` (view) and `<textarea>` (edit). Save calls `PATCH /api/sessions/{id}/interpretations/{interp_id}` and updates local state
 - **Continue Recording** button: shown on completed sessions below the primary interpretation. Navigates to `/recording/:id?mode=append` to append additional audio. New notes regenerate from the combined transcript (old primary interpretation is demoted)
+- **Run Agent Analysis** button: shown on completed sessions next to Continue Recording. Runs configured auto-sockets (or user-selected sockets) on demand. Shows loading state while processing. Refreshes interpretation list on completion.
 - Transcript tab: monospace text in glass card, scrollable
 - Interpretations tab: cards for each interpretation + "Run interpretation" modal with lens/socket selector
 - Export button downloads .md
@@ -1195,6 +1325,42 @@ Features:
 - Host controls: Start Recording / Stop Recording
 - Status polling (5s interval)
 - Auto-redirect to session view when room closes
+
+### Agent Meeting View
+```
+┌──────────────────────────────────────────────────┐
+│  ← Back        AGENT MEETING             [State] │
+│                                                   │
+│  Q3 Roadmap Priorities                            │
+│  "Decide top 3 priorities for Q3"                │
+│                                                   │
+│  AGENTS                                           │
+│  Strategist (internal) · Devil's Advocate          │
+│  MyAgent (external, waiting)                      │
+│                                                   │
+│  ┌──────────────────────────────────────────────┐│
+│  │ Conversation                                  ││
+│  │                                               ││
+│  │ [Strategist]: I think we should focus on...   ││
+│  │ [Devil's Advocate]: But have we considered... ││
+│  │ [MyAgent]: Good point. I'd add that...        ││
+│  │ [Host directive]: Focus on revenue impact     ││
+│  │                                               ││
+│  └──────────────────────────────────────────────┘│
+│                                                   │
+│  [💬 Send Message]  [📋 Directive]               │
+│  [⏸ Pause]  [■ Stop]                             │
+└──────────────────────────────────────────────────┘
+```
+
+Features:
+- Meeting topic and task description at top
+- Agent list with type (internal/external) and status indicators
+- Live conversation log via WebSocket
+- Host can send messages (as participant) and directives (steering instructions)
+- Pause/Resume and Stop controls
+- Auto-scrolling conversation with speaker attribution
+- Status: waiting → active → paused → closed
 
 ### Join Room
 ```
@@ -1378,12 +1544,13 @@ Features:
 
 Features:
 - Multi-provider AI key management (OpenRouter, OpenAI, Anthropic, Google, xAI)
-- Provider-specific test connection button with status indicator
 - Default model dropdown with presets + custom model ID input
 - STT provider selector (Local whisper, OpenAI, Deepgram) with model dropdown
 - Export path, auto-interpret toggle, auto-export toggle, transcript inclusion toggle
-- Agent API key generation with copy-to-clipboard
-- Platform-specific config snippets (Python, JavaScript)
+- **Auto Sockets**: Checkbox list of sockets to auto-run after every recording
+- **Cloud Storage**: S3-compatible backup config (endpoint, bucket, credentials, sync toggles)
+- Agent API key generation with copy-to-clipboard and platform-specific config snippets (MCP, OpenClaw, REST)
+- Copy Skill File button for sharing SKILL.md with agents
 - Display name setting
 
 ---
@@ -1434,7 +1601,12 @@ echobridge/
 │   │   ├── memory_service.py   # Cross-session memory generation
 │   │   ├── chat_service.py     # Chat/conversation logic
 │   │   ├── ask_service.py      # Cross-meeting search for chat
-│   │   └── sync_service.py     # Offline sync handling
+│   │   ├── sync_service.py     # Offline sync handling
+│   │   ├── orchestrator_service.py # Agent meeting orchestrator
+│   │   ├── settings_service.py   # Preference persistence
+│   │   ├── storage/
+│   │   │   ├── local.py          # Local filesystem storage
+│   │   │   └── s3.py             # S3-compatible cloud storage
 │   │
 │   ├── lenses/
 │   │   ├── base.py
@@ -1478,7 +1650,12 @@ echobridge/
 │   │   │   ├── SettingsPage.jsx
 │   │   │   ├── SeriesView.jsx  # Series memory + sessions
 │   │   │   ├── AskPage.jsx     # Cross-meeting chat
-│   │   │   └── GuidePage.jsx   # Getting started guide
+│   │   │   ├── GuidePage.jsx   # Getting started guide
+│   │   │   ├── RecordingsPage.jsx
+│   │   │   ├── RoomsPage.jsx
+│   │   │   ├── SeriesListPage.jsx
+│   │   │   ├── AgentMeetingCreate.jsx
+│   │   │   └── AgentMeetingView.jsx
 │   │   ├── components/
 │   │   │   ├── AudioRecorder.jsx
 │   │   │   ├── FileUploader.jsx
@@ -1494,7 +1671,9 @@ echobridge/
 │   │   │   ├── SeriesSelector.jsx   # Series picker dropdown
 │   │   │   ├── OfflineBanner.jsx    # Offline sync status
 │   │   │   ├── InstallPrompt.jsx    # PWA install banner
-│   │   │   └── SetupWizard.jsx      # First-run API key setup
+│   │   │   ├── SetupWizard.jsx      # First-run API key setup
+│   │   │   ├── AgentPersonaCard.jsx    # Agent persona display
+│   │   │   └── WelcomeLanding.jsx      # First-run landing
 │   │   ├── lib/
 │   │   │   ├── api.js
 │   │   │   ├── websocket.js
@@ -1548,6 +1727,18 @@ AUDIO_DIR=./data/audio
 
 # Agent API
 ECHOBRIDGE_AGENT_API_KEY=
+
+# Auto-sockets (comma-separated socket IDs to auto-run)
+AUTO_SOCKETS=
+
+# Cloud Storage (S3-compatible)
+CLOUD_STORAGE_ENABLED=false
+S3_ENDPOINT_URL=
+S3_ACCESS_KEY_ID=
+S3_SECRET_ACCESS_KEY=
+S3_BUCKET_NAME=
+S3_REGION=auto
+S3_PREFIX=echobridge/
 ```
 
 ---

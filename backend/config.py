@@ -57,6 +57,9 @@ class Settings(BaseSettings):
     auto_interpret: bool = True
     auto_interpret_model: str = ""  # empty = use default_model
 
+    # Auto-sockets: comma-separated socket IDs to run after auto-interpret
+    auto_sockets: str = ""  # e.g. "action_items,devils_advocate"
+
     # Deepgram STT
     deepgram_api_key: str = ""
     deepgram_model: str = "nova-3"

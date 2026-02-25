@@ -1,11 +1,14 @@
 """WebSocket streaming router for live transcripts and agent meetings."""
 
 import json
+import uuid
+from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, WebSocket, WebSocketDisconnect
 
-from database import get_db
-from services.stream_manager import stream_manager
+from database import get_db, get_db_connection
+from services.auth_service import verify_api_key_token
+from services.stream_manager import ConnectionInfo, stream_manager
 from services.orchestrator_service import get_orchestrator
 
 router = APIRouter(tags=["stream"])
@@ -34,23 +37,105 @@ async def stream_room(websocket: WebSocket, code: str):
     await websocket.accept()
     room_key = f"room:{code}"
 
-    await stream_manager.subscribe(room_key, websocket)
+    # Token-based auth for agents
+    token = websocket.query_params.get("token")
+    agent_info = None
+
+    if token:
+        db = await get_db_connection()
+        try:
+            agent_info = await verify_api_key_token(token, db)
+        finally:
+            await db.close()
+
+        if not agent_info:
+            await websocket.close(code=4001, reason="unauthorized")
+            return
+
+        # Check if agent was previously kicked
+        if stream_manager.is_kicked(room_key, agent_info["name"]):
+            await websocket.close(code=4003, reason="kicked")
+            return
+
+    # Build connection metadata
+    conn_info = ConnectionInfo(
+        name=agent_info["name"] if agent_info else None,
+        participant_type="agent" if agent_info else "human",
+        agent_name=agent_info["name"] if agent_info else None,
+    )
+
+    await stream_manager.subscribe(room_key, websocket, conn_info)
+
+    # Auto-register authenticated agent as room participant
+    if agent_info:
+        db = await get_db_connection()
+        try:
+            cursor = await db.execute(
+                "SELECT id FROM rooms WHERE code = ?", (code,)
+            )
+            room = await cursor.fetchone()
+            if room:
+                pid = str(uuid.uuid4())
+                now = datetime.now(timezone.utc).isoformat()
+                await db.execute(
+                    """INSERT INTO room_participants
+                    (id, room_id, name, participant_type, connected_at, agent_name)
+                    VALUES (?, ?, ?, 'agent', ?, ?)""",
+                    (pid, room["id"], agent_info["name"], now, agent_info["name"]),
+                )
+                await db.commit()
+        finally:
+            await db.close()
+
+        await stream_manager.broadcast(room_key, {
+            "type": "participant_joined",
+            "name": agent_info["name"],
+            "participant_type": "agent",
+        })
+
     try:
         while True:
             data = await websocket.receive_json()
             msg_type = data.get("type")
 
             if msg_type == "identify":
-                # Participant identifying themselves
-                await stream_manager.broadcast(room_key, {
-                    "type": "participant_joined",
-                    "name": data.get("name", "Unknown"),
-                    "participant_type": data.get("participant_type", "human"),
-                })
+                if agent_info:
+                    # Agent already identified via token — ignore
+                    pass
+                else:
+                    name = data.get("name", "Unknown")
+                    conn_info.name = name
+                    await stream_manager.broadcast(room_key, {
+                        "type": "participant_joined",
+                        "name": name,
+                        "participant_type": data.get("participant_type", "human"),
+                    })
             elif msg_type == "transcript_chunk":
-                # Host sending transcript chunks
                 await stream_manager.broadcast(room_key, data)
     except WebSocketDisconnect:
+        # Clean up agent participant on disconnect
+        if agent_info:
+            db = await get_db_connection()
+            try:
+                cursor = await db.execute(
+                    "SELECT id FROM rooms WHERE code = ?", (code,)
+                )
+                room = await cursor.fetchone()
+                if room:
+                    await db.execute(
+                        "DELETE FROM room_participants WHERE room_id = ? AND agent_name = ?",
+                        (room["id"], agent_info["name"]),
+                    )
+                    await db.commit()
+            finally:
+                await db.close()
+
+            await stream_manager.broadcast(room_key, {
+                "type": "participant_left",
+                "name": agent_info["name"],
+                "participant_type": "agent",
+            })
+
         await stream_manager.unsubscribe(room_key, websocket)
 
 
@@ -76,7 +161,6 @@ async def stream_meeting(websocket: WebSocket, code: str):
             elif msg_type == "directive":
                 orchestrator = get_orchestrator(code)
                 if orchestrator:
-                    from database import get_db_connection
                     db = await get_db_connection()
                     try:
                         await orchestrator.add_directive(

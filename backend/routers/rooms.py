@@ -2,7 +2,7 @@
 
 import json
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Body, Depends, HTTPException, Query
 
 from database import get_db
 from models.schemas import (
@@ -17,6 +17,7 @@ from models.schemas import (
 )
 from services.room_service import create_room, join_room, get_room, update_room_status
 from services.orchestrator_service import MeetingOrchestrator, get_orchestrator
+from services.stream_manager import stream_manager
 
 router = APIRouter(prefix="/api/rooms", tags=["rooms"])
 
@@ -77,6 +78,36 @@ async def stop_recording(code: str, db=Depends(get_db)):
         return result
     except ValueError as e:
         raise HTTPException(404, str(e))
+
+
+@router.post("/{code}/kick")
+async def kick_agent(
+    code: str,
+    body: dict = Body(...),
+    db=Depends(get_db),
+):
+    """Kick an agent from a room. Closes their WebSocket and prevents reconnection."""
+    agent_name = body.get("agent_name")
+    if not agent_name:
+        raise HTTPException(400, "agent_name is required")
+
+    room = await get_room(db, code)
+    if not room:
+        raise HTTPException(404, "Room not found")
+
+    room_key = f"room:{code}"
+
+    # Add to kicked set and close WebSocket (triggers disconnect handler)
+    await stream_manager.kick_agent(room_key, agent_name)
+
+    # Remove from DB
+    await db.execute(
+        "DELETE FROM room_participants WHERE room_id = ? AND agent_name = ?",
+        (room["id"], agent_name),
+    )
+    await db.commit()
+
+    return {"status": "kicked", "agent_name": agent_name}
 
 
 # --- Agent Meeting endpoints ---

@@ -15,22 +15,11 @@ export function createSpeechRecognition({ onChunk, onError, onEnd, lang = 'en-US
   let paused = false;
   let shouldRestart = false;
 
-  function start() {
-    if (!isSupported) {
-      if (onError) {
-        onError(new Error('Speech recognition is not supported in this browser.'));
-      }
-      return;
-    }
-
+  function initRecognition() {
     recognition = new SpeechRecognition();
     recognition.continuous = true;
     recognition.interimResults = true;
     recognition.lang = lang;
-
-    startTime = Date.now();
-    paused = false;
-    shouldRestart = true;
 
     recognition.onresult = (event) => {
       if (paused) return;
@@ -73,6 +62,21 @@ export function createSpeechRecognition({ onChunk, onError, onEnd, lang = 'en-US
         onEnd();
       }
     };
+  }
+
+  function start() {
+    if (!isSupported) {
+      if (onError) {
+        onError(new Error('Speech recognition is not supported in this browser.'));
+      }
+      return;
+    }
+
+    startTime = Date.now();
+    paused = false;
+    shouldRestart = true;
+
+    initRecognition();
 
     try {
       recognition.start();
@@ -105,9 +109,13 @@ export function createSpeechRecognition({ onChunk, onError, onEnd, lang = 'en-US
   }
 
   function resume() {
-    if (!isSupported || !recognition) return;
+    if (!isSupported) return;
     paused = false;
     shouldRestart = true;
+
+    // Create a fresh instance — the old one is in a terminal state after stop()
+    initRecognition();
+
     try {
       recognition.start();
     } catch {

@@ -1,6 +1,7 @@
 """Agent API router — all /api/v1/ endpoints with bearer auth."""
 
 import json
+from datetime import datetime
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -44,6 +45,8 @@ _AVAILABLE_ENDPOINTS = [
     "/api/v1/chat/conversations",
     "/api/v1/chat/conversations/{id}",
     "/api/v1/chat/conversations/{id}/messages",
+    "/api/v1/events",
+    "/api/v1/sessions/{id}/agent-analyze",
     "/api/v1/ping",
     "/api/v1/skill",
 ]
@@ -333,6 +336,118 @@ async def search_endpoint(
 ):
     results = await search(db, q)
     return {"query": q, "results": results, "total": len(results)}
+
+
+# --- Events ---
+
+
+@router.get("/events")
+async def list_events(
+    since: str | None = None,
+    context: str | None = None,
+    limit: int = Query(default=50, le=200),
+    api_key=Depends(verify_api_key),
+    db=Depends(get_db),
+):
+    """Poll for session events newer than `since` timestamp."""
+    query = "SELECT * FROM session_events"
+    params: list = []
+    conditions = []
+
+    if since:
+        conditions.append("created_at > ?")
+        params.append(since)
+
+    if context:
+        conditions.append("context = ?")
+        params.append(context)
+
+    if conditions:
+        query += " WHERE " + " AND ".join(conditions)
+
+    query += " ORDER BY created_at ASC LIMIT ?"
+    params.append(limit)
+
+    cursor = await db.execute(query, params)
+    rows = await cursor.fetchall()
+    events = [dict(row) for row in rows]
+    return {"events": events, "count": len(events)}
+
+
+# --- Agent Analyze ---
+
+
+@router.post("/sessions/{session_id}/agent-analyze")
+async def agent_analyze(
+    session_id: str,
+    body: dict | None = None,
+    api_key=Depends(verify_api_key),
+    db=Depends(get_db),
+):
+    """Run sockets on demand for a completed session. Also inserts a session.complete event."""
+    import uuid as _uuid
+    from datetime import timezone
+    from services.interpret_service import get_socket_data, interpret_with_socket
+    from services.memory_service import get_memory_context_for_session
+    from config import settings
+
+    cursor = await db.execute("SELECT * FROM sessions WHERE id = ?", (session_id,))
+    row = await cursor.fetchone()
+    if not row:
+        raise HTTPException(404, "Session not found")
+
+    session = dict(row)
+    if not session.get("transcript"):
+        raise HTTPException(400, "Session has no transcript")
+
+    # Determine which sockets to run
+    socket_ids = (body or {}).get("socket_ids", [])
+    if not socket_ids and settings.auto_sockets:
+        socket_ids = [s.strip() for s in settings.auto_sockets.split(",") if s.strip()]
+    if not socket_ids:
+        raise HTTPException(400, "No socket_ids provided and no auto_sockets configured")
+
+    model = settings.auto_interpret_model or settings.default_model
+    memory_context = await get_memory_context_for_session(session_id, db)
+    agent_name = api_key.get("name", "agent")
+
+    results = []
+    for socket_id in socket_ids:
+        socket_data = await get_socket_data(db, socket_id)
+        if not socket_data:
+            continue
+        result = await interpret_with_socket(
+            session_id=session_id,
+            transcript=session["transcript"],
+            socket_data=socket_data,
+            model=model,
+            source_type="system",
+            source_name="AgentAnalysis",
+            db=db,
+            memory_context=memory_context,
+        )
+        results.append(result)
+
+    # Insert session.complete event
+    cursor = await db.execute(
+        "SELECT COUNT(*) as cnt FROM interpretations WHERE session_id = ?", (session_id,)
+    )
+    interp_count = (await cursor.fetchone())["cnt"]
+    event_id = str(_uuid.uuid4())
+    now = datetime.now(timezone.utc).isoformat()
+    await db.execute(
+        """INSERT INTO session_events (id, event_type, session_id, context, title, interpretations_count, created_at)
+        VALUES (?, 'session.complete', ?, ?, ?, ?, ?)""",
+        (event_id, session_id, session.get("context"), session.get("title"), interp_count, now),
+    )
+    await db.commit()
+
+    return {
+        "session_id": session_id,
+        "interpretation_ids": [r["id"] for r in results],
+        "event_id": event_id,
+        "count": len(results),
+    }
 
 
 # --- Chat endpoints for agents ---

@@ -109,6 +109,18 @@ CREATE TABLE IF NOT EXISTS app_settings (
     value TEXT NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS session_events (
+    id TEXT PRIMARY KEY,
+    event_type TEXT NOT NULL,
+    session_id TEXT NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
+    context TEXT,
+    title TEXT,
+    interpretations_count INTEGER DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_session_events_created ON session_events(created_at);
+
 CREATE TABLE IF NOT EXISTS conversations (
     id TEXT PRIMARY KEY,
     session_id TEXT REFERENCES sessions(id) ON DELETE CASCADE,
@@ -215,6 +227,23 @@ async def get_db() -> aiosqlite.Connection:
                 await _db.commit()
             except Exception:
                 pass
+        # Migration: create session_events table
+        await _db.execute("""
+            CREATE TABLE IF NOT EXISTS session_events (
+                id TEXT PRIMARY KEY,
+                event_type TEXT NOT NULL,
+                session_id TEXT NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
+                context TEXT,
+                title TEXT,
+                interpretations_count INTEGER DEFAULT 0,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        await _db.execute("""
+            CREATE INDEX IF NOT EXISTS idx_session_events_created
+                ON session_events(created_at)
+        """)
+        await _db.commit()
         # Migration: create meeting_messages table
         await _db.execute("""
             CREATE TABLE IF NOT EXISTS meeting_messages (

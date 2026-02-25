@@ -11,6 +11,20 @@ from lenses.base import get_lens
 from services.ai_service import call_openrouter
 
 
+async def get_socket_data(db, socket_id: str) -> dict | None:
+    """Load socket by ID — checks presets first, then custom sockets table."""
+    from routers.sockets import _ensure_presets
+    await _ensure_presets(db)
+    cursor = await db.execute("SELECT * FROM sockets WHERE id = ?", (socket_id,))
+    row = await cursor.fetchone()
+    if not row:
+        return None
+    data = dict(row)
+    if isinstance(data.get("output_schema"), str):
+        data["output_schema"] = json.loads(data["output_schema"])
+    return data
+
+
 async def interpret_with_lens(
     session_id: str,
     transcript: str,

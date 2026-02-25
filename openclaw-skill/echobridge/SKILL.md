@@ -36,6 +36,8 @@ Auth: Bearer $ECHOBRIDGE_API_KEY (header: `Authorization: Bearer $ECHOBRIDGE_API
 ```
 GET /api/v1/ping
   → { status, agent_name, version, endpoints[] }
+  endpoints include: /api/v1/sessions, /api/v1/search, /api/v1/sockets,
+    /api/v1/events, /api/v1/sessions/{id}/agent-analyze, ...
 
 GET /api/v1/skill
   → This file (plain text)
@@ -81,6 +83,16 @@ GET /api/v1/sockets
   → [{ id, name, description, system_prompt, output_schema, is_preset, ... }]
 
 Preset IDs: action_items, decisions, devils_advocate, executive_brief, concept_extractor
+```
+
+### Events (Agent Notifications)
+```
+GET /api/v1/events?since=<ISO timestamp>&context=<filter>&limit=50
+  → { events: [{ id, event_type, session_id, context, title, interpretations_count, created_at }], count }
+
+POST /api/v1/sessions/{id}/agent-analyze
+  Body: { "socket_ids": ["action_items", "devils_advocate"] }  (optional — defaults to auto_sockets config)
+  → { session_id, interpretation_ids[], event_id, count }
 ```
 
 ### Series (recurring meetings)
@@ -145,11 +157,14 @@ WS /api/stream/session/{session_id}
   Send: { type: "transcript_chunk", text, ... }
   Recv: { type: "transcript_chunk", text, ... }
 
-WS /api/stream/room/{code}
+WS /api/stream/room/{code}?token=$ECHOBRIDGE_API_KEY
   Send: { type: "identify", name, participant_type }
   Send: { type: "transcript_chunk", text, ... }
   Recv: { type: "participant_joined", name, participant_type }
+  Recv: { type: "participant_left", name, participant_type }
   Recv: { type: "transcript_chunk", text, ... }
+  Close 4001: unauthorized (invalid token)
+  Close 4003: kicked by host
 
 WS /api/stream/meeting/{code}
   Send: { type: "identify", name, participant_type }
@@ -157,6 +172,23 @@ WS /api/stream/meeting/{code}
   Recv: { type: "turn_request", agent_name, topic, conversation[], directives[] }
   Recv: { type: "meeting_ended", session_id, rounds, message_count }
 ```
+
+### Live Room Monitoring
+
+Subscribe to a room's live transcript to watch meetings in real-time.
+
+1. Get the room code (from meeting invite or `GET /api/v1/rooms/{code}`)
+2. Connect: `WS $ECHOBRIDGE_API_URL/api/stream/room/{code}?token=$ECHOBRIDGE_API_KEY`
+3. Send identify: `{"type": "identify", "name": "YourAgent", "participant_type": "agent"}`
+4. Receive transcript chunks: `{"type": "transcript_chunk", "text": "...", "is_final": true}`
+5. Receive participant events: `participant_joined`, `participant_left`
+6. If kicked by host: connection closed with code 4003
+
+Notes:
+- `is_final=false` is interim recognition; `is_final=true` is committed
+- Accumulate final chunks to build running transcript
+- To get transcript so far: `GET /api/v1/sessions/{id}/transcript` (session_id from room info)
+- The host can disconnect you at any time (code 4003)
 
 ## Agent Meeting Protocol
 
@@ -220,6 +252,10 @@ exec curl -s -X POST -H "Authorization: Bearer $ECHOBRIDGE_API_KEY" \
 exec curl -s -H "Authorization: Bearer $ECHOBRIDGE_API_KEY" \
   "$ECHOBRIDGE_API_URL/api/v1/sockets"
 
+# Get room info (find session_id for transcript access)
+exec curl -s -H "Authorization: Bearer $ECHOBRIDGE_API_KEY" \
+  "$ECHOBRIDGE_API_URL/api/v1/rooms/{code}"
+
 # Create an agent meeting
 exec curl -s -X POST -H "Authorization: Bearer $ECHOBRIDGE_API_KEY" \
   -H "Content-Type: application/json" \
@@ -256,9 +292,31 @@ exec curl -s -X POST -H "Authorization: Bearer $ECHOBRIDGE_API_KEY" \
 # Get series memory
 exec curl -s -H "Authorization: Bearer $ECHOBRIDGE_API_KEY" \
   "$ECHOBRIDGE_API_URL/api/v1/series/{id}/memory"
+
+# Poll for new completed sessions (events since a timestamp)
+exec curl -s -H "Authorization: Bearer $ECHOBRIDGE_API_KEY" \
+  "$ECHOBRIDGE_API_URL/api/v1/events?since=2026-01-01T00:00:00Z"
+
+# Run agent analysis on a session (uses configured auto-sockets)
+exec curl -s -X POST -H "Authorization: Bearer $ECHOBRIDGE_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"socket_ids": ["action_items", "devils_advocate"]}' \
+  "$ECHOBRIDGE_API_URL/api/v1/sessions/{id}/agent-analyze"
 ```
 
 ## Using results
 1. Answer user's question with specific meeting context
 2. Write durable insights to memory/YYYY-MM-DD.md
 3. Update MEMORY.md with persistent facts discovered
+
+## Event-driven workflow
+
+Agents can poll for completed sessions instead of checking the session list:
+
+1. Store your last-seen timestamp
+2. Poll: `GET /api/v1/events?since=<timestamp>`
+3. For each `session.complete` event:
+   - Fetch transcript: `GET /api/v1/sessions/{id}/transcript`
+   - Run analysis: `POST /api/v1/sessions/{id}/interpret/socket/action_items`
+   - Or trigger all configured sockets: `POST /api/v1/sessions/{id}/agent-analyze`
+4. Update your timestamp to the latest event's `created_at`

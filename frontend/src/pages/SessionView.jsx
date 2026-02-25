@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Pencil, Download, MessageSquare, X, Mic, Check } from 'lucide-react';
+import { Pencil, Download, MessageSquare, X, Mic, Check, Bot } from 'lucide-react';
 import {
   getSession,
   getInterpretations,
@@ -11,6 +11,8 @@ import {
   listSeries,
   addSessionToSeries,
   getConversations,
+  runAgentAnalysis,
+  listSockets,
 } from '../lib/api';
 import {
   contextLabel,
@@ -70,6 +72,8 @@ export default function SessionView() {
   const [editingInterpretation, setEditingInterpretation] = useState(false);
   const [noteDraft, setNoteDraft] = useState('');
   const [savingNote, setSavingNote] = useState(false);
+  const [analyzingAgent, setAnalyzingAgent] = useState(false);
+  const [agentAnalyzeError, setAgentAnalyzeError] = useState(null);
 
   useEffect(() => {
     async function load() {
@@ -176,6 +180,25 @@ export default function SessionView() {
       }
     } finally {
       setInterpreting(false);
+    }
+  }
+
+  async function handleAgentAnalyze() {
+    setAnalyzingAgent(true);
+    setAgentAnalyzeError(null);
+    try {
+      const result = await runAgentAnalysis(id);
+      // Refresh interpretations to show new results
+      const interps = await getInterpretations(id);
+      setInterpretations(Array.isArray(interps) ? interps : []);
+    } catch (err) {
+      if (err.message && err.message.includes('401')) {
+        setAgentAnalyzeError('API key required for agent analysis.');
+      } else {
+        setAgentAnalyzeError(err.message || 'Agent analysis failed.');
+      }
+    } finally {
+      setAnalyzingAgent(false);
     }
   }
 
@@ -494,9 +517,9 @@ export default function SessionView() {
               )}
             </div>
 
-            {/* Continue Recording */}
+            {/* Actions */}
             {session.status === 'complete' && (
-              <div className="mt-8 pt-8 border-t border-border">
+              <div className="mt-8 pt-8 border-t border-border flex flex-wrap items-center gap-4">
                 <button
                   onClick={() => navigate(`/recording/${session.id}?mode=append`)}
                   className="btn-secondary inline-flex items-center gap-2 text-sm"
@@ -504,7 +527,18 @@ export default function SessionView() {
                   <Mic size={16} strokeWidth={1.5} />
                   Continue Recording
                 </button>
+                <button
+                  onClick={handleAgentAnalyze}
+                  disabled={analyzingAgent}
+                  className="btn-secondary inline-flex items-center gap-2 text-sm disabled:opacity-50"
+                >
+                  <Bot size={16} strokeWidth={1.5} />
+                  {analyzingAgent ? 'Analyzing...' : 'Run Agent Analysis'}
+                </button>
               </div>
+            )}
+            {agentAnalyzeError && (
+              <p className="mt-3 text-sm text-red-400">{agentAnalyzeError}</p>
             )}
 
             {/* Tags */}

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Copy, Key, Check, ExternalLink, Cloud, RefreshCw, FileText } from 'lucide-react';
-import { getSettings, updateSettings, createApiKey, testCloudConnection, getStorageStatus, getSkillMd } from '../lib/api';
+import { getSettings, updateSettings, createApiKey, testCloudConnection, getStorageStatus, getSkillMd, listSockets } from '../lib/api';
 
 const WHISPER_MODELS = ['tiny', 'base', 'small', 'medium', 'large'];
 
@@ -99,6 +99,10 @@ export default function SettingsPage() {
   const [connectionResult, setConnectionResult] = useState(null);
   const [syncStatus, setSyncStatus] = useState(null);
 
+  // Auto-sockets state
+  const [autoSockets, setAutoSockets] = useState([]);
+  const [availableSockets, setAvailableSockets] = useState([]);
+
   useEffect(() => {
     async function fetchSettings() {
       setLoading(true);
@@ -135,6 +139,7 @@ export default function SettingsPage() {
         setS3Prefix(data.s3_prefix || 'echobridge/');
         setCloudSyncAudio(data.cloud_sync_audio !== false);
         setCloudSyncExports(data.cloud_sync_exports !== false);
+        setAutoSockets(data.auto_sockets || []);
       } catch (err) {
         setFetchError(err.message || 'Failed to load settings.');
       } finally {
@@ -142,6 +147,17 @@ export default function SettingsPage() {
       }
     }
     fetchSettings();
+
+    // Fetch available sockets for auto-sockets config
+    async function fetchSockets() {
+      try {
+        const sockets = await listSockets();
+        setAvailableSockets(Array.isArray(sockets) ? sockets : []);
+      } catch {
+        // Silently fail socket fetch
+      }
+    }
+    fetchSockets();
   }, []);
 
   // When provider changes, reset model selection to first available for that provider
@@ -225,6 +241,12 @@ export default function SettingsPage() {
       payload.cloud_sync_exports = cloudSyncExports;
     }
 
+    // Auto-sockets
+    const origAutoSockets = original.auto_sockets || [];
+    if (JSON.stringify([...autoSockets].sort()) !== JSON.stringify([...origAutoSockets].sort())) {
+      payload.auto_sockets = autoSockets;
+    }
+
     // Send API keys that have been entered
     if (apiKeys.openrouter) payload.openrouter_api_key = apiKeys.openrouter;
     if (apiKeys.openai) payload.openai_api_key = apiKeys.openai;
@@ -253,6 +275,7 @@ export default function SettingsPage() {
       setDeepgramKeySet(updated.deepgram_api_key_set || false);
       setS3SecretKey('');
       setS3SecretConfigured(updated.s3_secret_configured || false);
+      setAutoSockets(updated.auto_sockets || []);
       setSaveSuccess('Settings saved.');
     } catch (err) {
       setSaveError(err.message || 'Failed to save settings.');
@@ -697,6 +720,43 @@ curl -H "Authorization: Bearer $ECHOBRIDGE_API_KEY" \\
               </p>
             </label>
           </>
+        )}
+      </div>
+
+      {/* AUTO SOCKETS section */}
+      <div className="card-lg p-4 md:p-6 mt-8">
+        <span className="text-sm font-semibold text-zinc-200 uppercase tracking-wider">
+          Auto Sockets
+        </span>
+        <p className="text-sm text-zinc-400 mt-1">
+          Automatically run these analysis sockets after every recording completes (in addition to smart notes).
+        </p>
+
+        {availableSockets.length === 0 ? (
+          <p className="mt-4 text-sm text-zinc-500">No sockets available.</p>
+        ) : (
+          <div className="mt-4 space-y-3">
+            {availableSockets.map((socket) => (
+              <label key={socket.id} className="flex items-center gap-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={autoSockets.includes(socket.id)}
+                  onChange={(e) => {
+                    if (e.target.checked) {
+                      setAutoSockets((prev) => [...prev, socket.id]);
+                    } else {
+                      setAutoSockets((prev) => prev.filter((s) => s !== socket.id));
+                    }
+                  }}
+                  className="h-4 w-4 accent-lime-400"
+                />
+                <div>
+                  <span className="text-sm text-zinc-300">{socket.name}</span>
+                  <p className="text-xs text-zinc-500">{socket.description}</p>
+                </div>
+              </label>
+            ))}
+          </div>
         )}
       </div>
 

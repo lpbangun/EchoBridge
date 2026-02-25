@@ -21,6 +21,7 @@ PREFERENCE_FIELDS = {
     "deepgram_model",
     "auto_interpret",
     "auto_interpret_model",
+    "auto_sockets",
     "cloud_storage_enabled",
     "s3_endpoint_url",
     "s3_access_key_id",

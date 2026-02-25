@@ -122,6 +122,7 @@ Green:  text-green-400    — Complete, success states
 - **TopBar:** Full width, `border-b border-[#27272A]`, px-4 lg:px-10 py-3
 - **Main content:** `flex-1 overflow-y-auto`, content centered with `max-w-4xl mx-auto px-6 py-8`
 - **Recording page:** Full-screen, no sidebar/topbar
+- **Agent meeting page:** Full content area with conversation log, controls at bottom
 - **Mobile:** Sidebar hidden by default, toggle via hamburger in TopBar
 
 ---
@@ -219,6 +220,8 @@ text-accent border-b-2 border-accent font-medium pb-2
 text-zinc-500 hover:text-zinc-300
 ```
 
+Used in: SessionView (Summary/Transcript/Interpretations), SeriesView (Memory/Sessions), SettingsPage config snippets (MCP/OpenClaw/REST), AskPage conversation list.
+
 ---
 
 ## Spacing
@@ -235,6 +238,141 @@ p-6  = 24px    gap-6  = 24px
 p-8  = 32px    gap-8  = 32px
 p-10 = 40px
 p-12 = 48px
+```
+
+---
+
+## Agent Meeting UI
+
+### Conversation Log
+```css
+/* Message bubble */
+.meeting-message {
+  border-l-2 border-accent px-4 py-2
+}
+
+/* Speaker label */
+.speaker-label {
+  font-mono text-xs text-accent font-medium
+}
+
+/* System message (directive, status) */
+.system-message {
+  text-xs text-zinc-500 italic border-l-2 border-zinc-700 px-4 py-1
+}
+```
+
+### Agent Persona Cards
+```css
+/* Agent card in meeting setup */
+.agent-card {
+  bg-surface border border-border rounded-[14px] p-4
+}
+
+/* Internal agent indicator */
+.agent-internal {
+  text-xs text-zinc-400 font-mono
+}
+
+/* External agent indicator */
+.agent-external {
+  text-xs text-amber-400 font-mono
+}
+```
+
+---
+
+## Settings Patterns
+
+### Checkbox List (Auto Sockets, Sync Toggles)
+```css
+/* Checkbox group container */
+.checkbox-group {
+  space-y-3 mt-4
+}
+
+/* Single checkbox row */
+.checkbox-row {
+  flex items-center gap-3 cursor-pointer
+}
+
+/* Checkbox input */
+input[type="checkbox"] {
+  h-4 w-4 accent-lime-400
+}
+
+/* Label with description */
+.checkbox-label {
+  text-sm text-zinc-300
+}
+.checkbox-description {
+  text-xs text-zinc-500
+}
+```
+
+### Settings Section Card
+```css
+/* Reused across all settings sections */
+.settings-section {
+  card-lg p-4 md:p-6 mt-8
+}
+.settings-title {
+  text-sm font-semibold text-zinc-200 uppercase tracking-wider
+}
+.settings-description {
+  text-sm text-zinc-400 mt-1
+}
+```
+
+---
+
+## Action Buttons (Session View)
+
+### Grouped Actions
+```css
+/* Button row for session actions */
+.action-row {
+  flex flex-wrap items-center gap-4 mt-8 pt-8 border-t border-border
+}
+```
+
+### Agent Analysis Button
+```css
+/* Uses btn-secondary with Bot icon */
+.btn-agent-analyze {
+  btn-secondary inline-flex items-center gap-2 text-sm disabled:opacity-50
+}
+/* Loading state: text changes to "Analyzing...", button disabled */
+```
+
+---
+
+## Cloud Storage Section
+
+### Connection Test
+```css
+/* Test result badge */
+.connection-ok {
+  text-sm text-green-400
+}
+.connection-fail {
+  text-sm text-red-400
+}
+```
+
+### Sync Status Grid
+```css
+/* Three-column stats */
+.sync-grid {
+  grid grid-cols-3 gap-4 text-center
+  bg-surface-dark border border-border rounded-xl p-4
+}
+.sync-value {
+  text-2xl font-semibold text-white
+}
+.sync-label {
+  text-xs text-zinc-400 mt-1
+}
 ```
 
 ---

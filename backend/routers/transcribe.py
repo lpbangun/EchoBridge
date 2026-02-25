@@ -5,6 +5,7 @@ import json
 import logging
 import os
 import uuid
+from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 
@@ -106,6 +107,52 @@ async def _run_auto_pipeline(session_id: str):
                         settings.auto_interpret_model or settings.default_model,
                     )
                 )
+
+            # Run auto-sockets if configured
+            if settings.auto_sockets:
+                from services.interpret_service import get_socket_data, interpret_with_socket
+                from services.memory_service import get_memory_context_for_session
+                socket_ids = [s.strip() for s in settings.auto_sockets.split(",") if s.strip()]
+                model = settings.auto_interpret_model or settings.default_model
+                memory_context = await get_memory_context_for_session(session_id, db)
+                cursor = await db.execute("SELECT transcript FROM sessions WHERE id = ?", (session_id,))
+                t_row = await cursor.fetchone()
+                transcript = t_row["transcript"] if t_row else ""
+                for socket_id in socket_ids:
+                    try:
+                        socket_data = await get_socket_data(db, socket_id)
+                        if socket_data:
+                            await interpret_with_socket(
+                                session_id=session_id,
+                                transcript=transcript,
+                                socket_data=socket_data,
+                                model=model,
+                                source_type="system",
+                                source_name="AutoSocket",
+                                db=db,
+                                memory_context=memory_context,
+                            )
+                    except Exception:
+                        logger.exception("Auto-socket %s failed for session %s", socket_id, session_id)
+
+            # Insert session.complete event for agent polling
+            try:
+                cursor = await db.execute("SELECT * FROM sessions WHERE id = ?", (session_id,))
+                ev_session = dict(await cursor.fetchone())
+                cursor = await db.execute(
+                    "SELECT COUNT(*) as cnt FROM interpretations WHERE session_id = ?", (session_id,)
+                )
+                interp_count = (await cursor.fetchone())["cnt"]
+                event_id = str(uuid.uuid4())
+                now = datetime.now(timezone.utc).isoformat()
+                await db.execute(
+                    """INSERT INTO session_events (id, event_type, session_id, context, title, interpretations_count, created_at)
+                    VALUES (?, 'session.complete', ?, ?, ?, ?, ?)""",
+                    (event_id, session_id, ev_session.get("context"), ev_session.get("title"), interp_count, now),
+                )
+                await db.commit()
+            except Exception:
+                logger.exception("Failed to insert session event for %s", session_id)
 
             # Auto-export if enabled
             if settings.auto_export:
