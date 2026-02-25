@@ -108,6 +108,20 @@ async def _run_auto_pipeline(session_id: str):
             await db.close()
     except Exception:
         logger.exception("Auto-pipeline failed for session %s", session_id)
+        # Ensure session doesn't stay stuck in 'processing'
+        try:
+            from database import get_db_connection as _get_db
+            err_db = await _get_db()
+            try:
+                await err_db.execute(
+                    "UPDATE sessions SET status = 'complete' WHERE id = ? AND status = 'processing'",
+                    (session_id,),
+                )
+                await err_db.commit()
+            finally:
+                await err_db.close()
+        except Exception:
+            logger.exception("Failed to update session status after pipeline error")
 
 router = APIRouter(prefix="/api/sessions", tags=["transcription"])
 
