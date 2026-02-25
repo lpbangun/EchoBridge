@@ -58,10 +58,13 @@ async def get_settings():
 
 
 @router.put("/settings", response_model=SettingsResponse)
-async def update_settings(body: SettingsUpdate):
-    """Update runtime settings (non-persistent, session-only)."""
+async def update_settings(body: SettingsUpdate, db=Depends(get_db)):
+    """Update runtime settings and persist preferences to SQLite."""
+    changed: dict = {}
+
     if body.ai_provider is not None:
         settings.ai_provider = body.ai_provider
+        changed["ai_provider"] = body.ai_provider
     if body.openrouter_api_key is not None:
         settings.openrouter_api_key = body.openrouter_api_key
     if body.openai_api_key is not None:
@@ -74,44 +77,67 @@ async def update_settings(body: SettingsUpdate):
         settings.xai_api_key = body.xai_api_key
     if body.user_display_name is not None:
         settings.user_display_name = body.user_display_name
+        changed["user_display_name"] = body.user_display_name
     if body.output_dir is not None:
         settings.output_dir = body.output_dir
+        changed["output_dir"] = body.output_dir
     if body.auto_export is not None:
         settings.auto_export = body.auto_export
+        changed["auto_export"] = body.auto_export
     if body.include_transcript_in_md is not None:
         settings.include_transcript_in_md = body.include_transcript_in_md
+        changed["include_transcript_in_md"] = body.include_transcript_in_md
     if body.stt_provider is not None:
         settings.stt_provider = body.stt_provider
+        changed["stt_provider"] = body.stt_provider
     if body.whisper_model is not None:
         settings.whisper_model = body.whisper_model
+        changed["whisper_model"] = body.whisper_model
     if body.openai_stt_model is not None:
         settings.openai_stt_model = body.openai_stt_model
+        changed["openai_stt_model"] = body.openai_stt_model
     if body.default_model is not None:
         settings.default_model = body.default_model
+        changed["default_model"] = body.default_model
     if body.deepgram_api_key is not None:
         settings.deepgram_api_key = body.deepgram_api_key
     if body.deepgram_model is not None:
         settings.deepgram_model = body.deepgram_model
+        changed["deepgram_model"] = body.deepgram_model
     if body.auto_interpret is not None:
         settings.auto_interpret = body.auto_interpret
+        changed["auto_interpret"] = body.auto_interpret
     if body.cloud_storage_enabled is not None:
         settings.cloud_storage_enabled = body.cloud_storage_enabled
+        changed["cloud_storage_enabled"] = body.cloud_storage_enabled
     if body.s3_endpoint_url is not None:
         settings.s3_endpoint_url = body.s3_endpoint_url
+        changed["s3_endpoint_url"] = body.s3_endpoint_url
     if body.s3_access_key_id is not None:
         settings.s3_access_key_id = body.s3_access_key_id
+        changed["s3_access_key_id"] = body.s3_access_key_id
     if body.s3_secret_access_key is not None:
         settings.s3_secret_access_key = body.s3_secret_access_key
     if body.s3_bucket_name is not None:
         settings.s3_bucket_name = body.s3_bucket_name
+        changed["s3_bucket_name"] = body.s3_bucket_name
     if body.s3_region is not None:
         settings.s3_region = body.s3_region
+        changed["s3_region"] = body.s3_region
     if body.s3_prefix is not None:
         settings.s3_prefix = body.s3_prefix
+        changed["s3_prefix"] = body.s3_prefix
     if body.cloud_sync_audio is not None:
         settings.cloud_sync_audio = body.cloud_sync_audio
+        changed["cloud_sync_audio"] = body.cloud_sync_audio
     if body.cloud_sync_exports is not None:
         settings.cloud_sync_exports = body.cloud_sync_exports
+        changed["cloud_sync_exports"] = body.cloud_sync_exports
+
+    # Persist preference fields to SQLite
+    if changed:
+        from services.settings_service import save_preferences
+        await save_preferences(db, changed)
 
     return _build_settings_response()
 

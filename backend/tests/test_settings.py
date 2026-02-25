@@ -1,5 +1,7 @@
 """Tests for settings, API keys, lenses, and search endpoints."""
 
+import json
+
 import pytest
 
 
@@ -219,6 +221,68 @@ async def test_search_missing_query(client):
     """Searching without a query parameter returns 422."""
     res = await client.get("/api/search")
     assert res.status_code == 422
+
+
+# ---------------------------------------------------------------------------
+# Settings persistence (SQLite hybrid)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_settings_persist_after_save(client, db):
+    """PUT a preference → verify the row exists in app_settings."""
+    await client.put("/api/settings", json={"user_display_name": "Persisted"})
+
+    cursor = await db.execute(
+        "SELECT value FROM app_settings WHERE key = ?", ("user_display_name",)
+    )
+    row = await cursor.fetchone()
+    assert row is not None
+    assert json.loads(row[0]) == "Persisted"
+
+
+@pytest.mark.asyncio
+async def test_settings_secrets_not_persisted(client, db):
+    """API keys must NOT be written to the app_settings table."""
+    await client.put(
+        "/api/settings",
+        json={"openrouter_api_key": "sk-secret-value", "user_display_name": "OK"},
+    )
+
+    cursor = await db.execute(
+        "SELECT key FROM app_settings WHERE key = ?", ("openrouter_api_key",)
+    )
+    row = await cursor.fetchone()
+    assert row is None  # Secret must not be persisted
+
+    # But the preference should be there
+    cursor = await db.execute(
+        "SELECT value FROM app_settings WHERE key = ?", ("user_display_name",)
+    )
+    row = await cursor.fetchone()
+    assert row is not None
+
+
+@pytest.mark.asyncio
+async def test_settings_load_on_startup(db):
+    """Insert a row into app_settings directly, call load_preferences, verify singleton."""
+    from config import settings
+    from services.settings_service import load_preferences
+
+    original = settings.user_display_name
+
+    # Directly insert a preference into the DB
+    await db.execute(
+        "INSERT INTO app_settings (key, value) VALUES (?, ?)",
+        ("user_display_name", json.dumps("LoadedFromDB")),
+    )
+    await db.commit()
+
+    await load_preferences(db)
+    assert settings.user_display_name == "LoadedFromDB"
+
+    # Restore original to avoid polluting other tests
+    settings.user_display_name = original
 
 
 @pytest.mark.asyncio

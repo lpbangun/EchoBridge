@@ -85,6 +85,11 @@ CREATE TABLE IF NOT EXISTS api_keys (
     last_used_at TIMESTAMP
 );
 
+CREATE TABLE IF NOT EXISTS app_settings (
+    key TEXT PRIMARY KEY,
+    value TEXT NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS conversations (
     id TEXT PRIMARY KEY,
     session_id TEXT REFERENCES sessions(id) ON DELETE CASCADE,

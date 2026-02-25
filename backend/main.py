@@ -13,7 +13,11 @@ from routers import sessions, transcribe, interpret, export, settings, rooms, so
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup: ensure DB is initialized
-    await get_db()
+    db = await get_db()
+
+    # Load persisted user preferences from SQLite
+    from services.settings_service import load_preferences
+    await load_preferences(db)
 
     # Start cloud sync service
     from config import settings as app_settings
