@@ -1,11 +1,12 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { Pause, Square, Play, WifiOff, ArrowLeft } from 'lucide-react';
+import { Pause, Square, Play, WifiOff, ArrowLeft, Eye, EyeOff } from 'lucide-react';
 import { getSession, submitTranscript } from '../lib/api';
 import { formatDuration, contextLabel } from '../lib/utils';
 import { savePendingRecording } from '../lib/offlineStorage';
 import { createSpeechRecognition } from '../lib/speechRecognition';
 import useOnlineStatus from '../hooks/useOnlineStatus';
+import LiveTranscript from '../components/LiveTranscript';
 
 export default function Recording() {
   const navigate = useNavigate();
@@ -17,8 +18,10 @@ export default function Recording() {
   const [isRecording, setIsRecording] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
   const [elapsed, setElapsed] = useState(0);
-  const [audioLevel, setAudioLevel] = useState(0);
+  const [freqBars, setFreqBars] = useState(() => new Array(24).fill(0.02));
   const [transcript, setTranscript] = useState('');
+  const [liveChunks, setLiveChunks] = useState([]);
+  const [showTranscript, setShowTranscript] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
   const [savedOffline, setSavedOffline] = useState(false);
@@ -31,6 +34,8 @@ export default function Recording() {
   const analyserRef = useRef(null);
   const animFrameRef = useRef(null);
   const mediaStreamRef = useRef(null);
+  const freqBarsRef = useRef(new Float32Array(24));
+  const binMappingRef = useRef(null);
 
   // Fetch session info
   useEffect(() => {
@@ -50,12 +55,24 @@ export default function Recording() {
       const recognition = createSpeechRecognition({
         onChunk: (chunk) => {
           if (cancelled) return;
+          const normalized = {
+            text: chunk.text,
+            is_final: chunk.isFinal,
+            timestamp_ms: chunk.timestampMs,
+          };
           if (chunk.isFinal) {
             transcriptRef.current = transcriptRef.current
               ? transcriptRef.current + ' ' + chunk.text
               : chunk.text;
             setTranscript(transcriptRef.current);
           }
+          setLiveChunks((prev) => {
+            // If the last chunk was interim, replace it; otherwise append
+            if (prev.length > 0 && !prev[prev.length - 1].is_final) {
+              return [...prev.slice(0, -1), normalized];
+            }
+            return [...prev, normalized];
+          });
         },
         onError: (err) => {
           console.error('Speech recognition error:', err);
@@ -65,7 +82,7 @@ export default function Recording() {
       recognitionRef.current = recognition;
       recognition.start();
 
-      // Start audio level metering via getUserMedia + AnalyserNode
+      // Start frequency-domain audio visualization via getUserMedia + AnalyserNode
       try {
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
         if (cancelled) {
@@ -77,21 +94,50 @@ export default function Recording() {
         audioContextRef.current = audioCtx;
         const source = audioCtx.createMediaStreamSource(stream);
         const analyser = audioCtx.createAnalyser();
-        analyser.fftSize = 256;
+        analyser.fftSize = 512;
+        analyser.smoothingTimeConstant = 0.4;
         source.connect(analyser);
         analyserRef.current = analyser;
 
-        const dataArray = new Uint8Array(analyser.fftSize);
+        // Compute logarithmic bin mapping once: 24 bars spanning 80 Hz – 8000 Hz
+        const sampleRate = audioCtx.sampleRate;
+        const binCount = analyser.frequencyBinCount; // 256
+        const fMin = 80;
+        const fMax = 8000;
+        const numBars = 24;
+        const mapping = [];
+        for (let i = 0; i < numBars; i++) {
+          const f0 = fMin * Math.pow(fMax / fMin, i / numBars);
+          const f1 = fMin * Math.pow(fMax / fMin, (i + 1) / numBars);
+          const startBin = Math.max(0, Math.floor(f0 / (sampleRate / analyser.fftSize)));
+          const endBin = Math.min(binCount - 1, Math.floor(f1 / (sampleRate / analyser.fftSize)));
+          mapping.push([startBin, Math.max(startBin, endBin)]);
+        }
+        binMappingRef.current = mapping;
+
+        const dataArray = new Uint8Array(binCount);
+        const smoothed = freqBarsRef.current;
+        const alpha = 0.3;
+
         function updateLevel() {
           if (cancelled) return;
-          analyser.getByteTimeDomainData(dataArray);
-          let sumSq = 0;
-          for (let i = 0; i < dataArray.length; i++) {
-            const d = (dataArray[i] - 128) / 128;
-            sumSq += d * d;
+          analyser.getByteFrequencyData(dataArray);
+          let changed = false;
+          for (let i = 0; i < numBars; i++) {
+            const [s, e] = mapping[i];
+            let peak = 0;
+            for (let b = s; b <= e; b++) {
+              if (dataArray[b] > peak) peak = dataArray[b];
+            }
+            const raw = peak / 255;
+            const next = smoothed[i] * (1 - alpha) + raw * alpha;
+            const clamped = Math.max(0.02, next);
+            if (Math.abs(clamped - smoothed[i]) > 0.005) changed = true;
+            smoothed[i] = clamped;
           }
-          const rms = Math.sqrt(sumSq / dataArray.length);
-          setAudioLevel(Math.min(1, rms * 3));
+          if (changed) {
+            setFreqBars(Array.from(smoothed));
+          }
           animFrameRef.current = requestAnimationFrame(updateLevel);
         }
         updateLevel();
@@ -209,15 +255,7 @@ export default function Recording() {
     }
   }
 
-  // Generate waveform bars based on audio level
-  const barCount = 24;
-  const bars = Array.from({ length: barCount }, (_, i) => {
-    const centerDist = Math.abs(i - barCount / 2) / (barCount / 2);
-    const baseHeight = 0.1 + (1 - centerDist) * 0.6;
-    const level = isPaused ? 0.05 : audioLevel;
-    const height = Math.max(0.05, baseHeight * level + Math.random() * 0.1 * level);
-    return height;
-  });
+  // freqBars is already a 24-element array driven by frequency data
 
   return (
     <div className="w-full min-h-screen bg-[#0A0A0A] flex flex-col items-center justify-center px-4 md:px-6 safe-area-inset">
@@ -257,19 +295,16 @@ export default function Recording() {
 
         {/* Waveform visualization */}
         <div className="mt-8 flex items-end gap-0.5 h-16">
-          {bars.map((height, i) => {
-            const centerDist = Math.abs(i - barCount / 2) / (barCount / 2);
-            const isCenterBar = centerDist < 0.4;
-            return (
-              <div
-                key={i}
-                className={`w-1.5 rounded-full transition-all duration-75 ${
-                  isCenterBar ? 'bg-[#C4F82A]' : 'bg-[#C4F82A]/60'
-                }`}
-                style={{ height: `${height * 64}px` }}
-              />
-            );
-          })}
+          {freqBars.map((height, i) => (
+            <div
+              key={i}
+              className="w-1.5 rounded-full bg-[#C4F82A]"
+              style={{
+                height: `${Math.max(2, height * 64)}px`,
+                opacity: 0.4 + height * 0.6,
+              }}
+            />
+          ))}
         </div>
 
         {/* Guidance text */}
@@ -289,6 +324,14 @@ export default function Recording() {
         <div className="mt-8 flex items-center gap-4">
           {!submitting && isRecording && (
             <>
+              <button
+                onClick={() => setShowTranscript((v) => !v)}
+                className="btn-secondary inline-flex items-center gap-2 touch-target"
+                aria-label={showTranscript ? 'Hide transcript' : 'Show transcript'}
+              >
+                {showTranscript ? <EyeOff size={16} strokeWidth={1.5} /> : <Eye size={16} strokeWidth={1.5} />}
+                Transcript
+              </button>
               <button
                 onClick={handlePause}
                 className="btn-secondary inline-flex items-center gap-2 touch-target"
@@ -330,6 +373,19 @@ export default function Recording() {
           )}
         </div>
       </div>
+
+      {/* Live Transcript */}
+      {isRecording && showTranscript && (
+        <div className="mt-6 w-full max-w-lg">
+          <div className="flex items-center justify-between mb-2">
+            <span className="section-label">Live Transcript</span>
+            <span className="text-xs text-zinc-500">
+              {liveChunks.filter((c) => c.is_final).length} phrases
+            </span>
+          </div>
+          <LiveTranscript chunks={liveChunks} />
+        </div>
+      )}
 
       {/* Error */}
       {error && (
