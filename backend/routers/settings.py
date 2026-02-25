@@ -175,15 +175,26 @@ async def create_api_key(body: ApiKeyCreate, db=Depends(get_db)):
     )
 
 
-_SKILL_MD_PATH = Path(__file__).resolve().parent.parent.parent / "openclaw-skill" / "echobridge" / "SKILL.md"
+_SKILL_MD_CANDIDATES = [
+    Path(__file__).resolve().parent.parent / "SKILL.md",  # Docker: /app/SKILL.md
+    Path(__file__).resolve().parent.parent.parent / "openclaw-skill" / "echobridge" / "SKILL.md",  # Dev
+]
+
+
+def _find_skill_md() -> Path | None:
+    for p in _SKILL_MD_CANDIDATES:
+        if p.exists():
+            return p
+    return None
 
 
 @router.get("/skill", response_class=PlainTextResponse)
 async def get_skill_file():
     """Return SKILL.md content (unauthenticated) for the Settings UI."""
-    if not _SKILL_MD_PATH.exists():
+    path = _find_skill_md()
+    if not path:
         raise HTTPException(404, "SKILL.md not found")
-    return _SKILL_MD_PATH.read_text(encoding="utf-8")
+    return path.read_text(encoding="utf-8")
 
 
 @router.get("/lenses")

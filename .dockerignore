@@ -26,6 +26,7 @@ coverage
 .env.*
 docker-compose.dev.yml
 *.md
+!openclaw-skill/echobridge/SKILL.md
 .claude
 .ruff_cache
 

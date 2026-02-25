@@ -23,8 +23,18 @@ from services.search_service import search
 
 router = APIRouter(prefix="/api/v1", tags=["agent-api"])
 
-# Path to SKILL.md relative to project root
-_SKILL_MD_PATH = Path(__file__).resolve().parent.parent.parent / "openclaw-skill" / "echobridge" / "SKILL.md"
+# Path candidates: Docker (/app/SKILL.md) first, dev layout second
+_SKILL_MD_CANDIDATES = [
+    Path(__file__).resolve().parent.parent / "SKILL.md",  # Docker: /app/SKILL.md
+    Path(__file__).resolve().parent.parent.parent / "openclaw-skill" / "echobridge" / "SKILL.md",  # Dev
+]
+
+
+def _find_skill_md() -> Path | None:
+    for p in _SKILL_MD_CANDIDATES:
+        if p.exists():
+            return p
+    return None
 
 _AVAILABLE_ENDPOINTS = [
     "/api/v1/sessions",
@@ -66,9 +76,10 @@ async def ping(api_key=Depends(verify_api_key)):
 @router.get("/skill", response_class=PlainTextResponse)
 async def get_skill(api_key=Depends(verify_api_key)):
     """Return SKILL.md content so agents can self-discover EchoBridge capabilities."""
-    if not _SKILL_MD_PATH.exists():
+    path = _find_skill_md()
+    if not path:
         raise HTTPException(404, "SKILL.md not found")
-    return _SKILL_MD_PATH.read_text(encoding="utf-8")
+    return path.read_text(encoding="utf-8")
 
 
 @router.get("/sessions")

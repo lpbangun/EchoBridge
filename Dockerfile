@@ -17,5 +17,6 @@ COPY backend/ .
 # Stage 3: Production image
 FROM backend AS production
 COPY --from=frontend /app/dist /app/static
+COPY openclaw-skill/echobridge/SKILL.md /app/SKILL.md
 EXPOSE 8000
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]

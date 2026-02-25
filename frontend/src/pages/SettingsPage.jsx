@@ -383,13 +383,23 @@ curl -H "Authorization: Bearer $ECHOBRIDGE_API_KEY" \\
   }
 
   async function handleCopySkill() {
+    let skillText;
     try {
-      const skillText = await getSkillMd();
+      skillText = await getSkillMd();
+    } catch {
+      setKeyError('Could not load skill file from server. Make sure the backend is running.');
+      return;
+    }
+    try {
       await navigator.clipboard.writeText(skillText);
       setCopiedSkill(true);
       setTimeout(() => setCopiedSkill(false), 2000);
     } catch {
-      setKeyError('Failed to copy skill file.');
+      // Clipboard blocked — open in new tab so user can copy manually
+      const blob = new Blob([skillText], { type: 'text/plain' });
+      const url = URL.createObjectURL(blob);
+      window.open(url, '_blank');
+      setKeyError('Clipboard access denied. Opened skill file in a new tab — copy from there.');
     }
   }
 
