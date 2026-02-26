@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { Mic, Cpu, FolderOpen, ChevronRight, Check, ExternalLink } from 'lucide-react';
-import { updateSettings } from '../lib/api';
+import { Mic, Cpu, FolderOpen, ChevronRight, Check, ExternalLink, Link, FileText, Copy } from 'lucide-react';
+import { updateSettings, createInvite, getSkillMd } from '../lib/api';
 
 const STT_OPTIONS = [
   { id: 'local', name: 'Local (Whisper)', description: 'Runs on your machine. No API key needed. Moderate accuracy.', recommended: false },
@@ -26,11 +26,63 @@ export default function SetupWizard({ onComplete }) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
 
+  // Agent setup state
+  const [creatingInvite, setCreatingInvite] = useState(false);
+  const [inviteUrl, setInviteUrl] = useState(null);
+  const [copiedInvite, setCopiedInvite] = useState(false);
+  const [copiedSkill, setCopiedSkill] = useState(false);
+  const [agentError, setAgentError] = useState(null);
+
   const steps = [
     { icon: Mic, label: 'Transcription' },
     { icon: Cpu, label: 'AI Provider' },
     { icon: FolderOpen, label: 'Agent Bridge' },
   ];
+
+  async function handleCreateInvite() {
+    setCreatingInvite(true);
+    setAgentError(null);
+    try {
+      const invite = await createInvite('Setup wizard');
+      setInviteUrl(invite.invite_url);
+    } catch (err) {
+      setAgentError(err.message || 'Failed to create invite.');
+    } finally {
+      setCreatingInvite(false);
+    }
+  }
+
+  async function handleCopyInviteUrl() {
+    if (!inviteUrl) return;
+    try {
+      await navigator.clipboard.writeText(inviteUrl);
+      setCopiedInvite(true);
+      setTimeout(() => setCopiedInvite(false), 2000);
+    } catch {
+      setAgentError('Failed to copy. Please select and copy manually.');
+    }
+  }
+
+  async function handleCopySkill() {
+    setAgentError(null);
+    let skillText;
+    try {
+      skillText = await getSkillMd();
+    } catch {
+      setAgentError('Could not load skill file. Make sure the backend is running.');
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(skillText);
+      setCopiedSkill(true);
+      setTimeout(() => setCopiedSkill(false), 2000);
+    } catch {
+      const blob = new Blob([skillText], { type: 'text/plain' });
+      const url = URL.createObjectURL(blob);
+      window.open(url, '_blank');
+      setAgentError('Clipboard blocked. Opened skill file in a new tab.');
+    }
+  }
 
   async function handleComplete() {
     setSaving(true);
@@ -244,9 +296,9 @@ export default function SetupWizard({ onComplete }) {
           {/* Step 2: Agent Bridge */}
           {step === 2 && (
             <div>
-              <h2 className="text-base font-semibold text-zinc-200">Where should meeting notes be saved?</h2>
+              <h2 className="text-base font-semibold text-zinc-200">Connect your agent</h2>
               <p className="text-sm text-zinc-400 mt-1">
-                Point this to any folder. Works great with Obsidian, Notion sync folders, or a directory your AI agent watches.
+                Set up where notes are saved and optionally connect an AI agent now.
               </p>
 
               <label className="block mt-6">
@@ -259,13 +311,81 @@ export default function SetupWizard({ onComplete }) {
                   className="eb-input w-full text-sm px-4 py-2.5 rounded-lg mt-2"
                 />
                 <p className="text-xs text-zinc-400 mt-1">
-                  Tip: If using OpenClaw locally, point this to a folder in your agent's <code className="text-zinc-400">extraPaths</code>.
-                </p>
-                <p className="text-xs text-zinc-400 mt-2">
-                  Remote agent? It connects via API instead — generate a key in{' '}
-                  <span className="text-zinc-300">Settings → Agent Connections</span> after setup.
+                  Point this to any folder — Obsidian, Notion sync, or a directory your agent watches.
                 </p>
               </label>
+
+              {/* Agent connection options */}
+              <div className="mt-6 pt-5 border-t border-border">
+                <span className="section-label">Agent Setup (optional)</span>
+                <p className="text-xs text-zinc-400 mt-1 mb-4">
+                  Connect an AI agent now, or do it later in Settings.
+                </p>
+
+                <div className="space-y-3">
+                  {/* Invite link */}
+                  {!inviteUrl ? (
+                    <button
+                      onClick={handleCreateInvite}
+                      disabled={creatingInvite}
+                      className="w-full text-left p-4 rounded-lg border border-border bg-zinc-800/50 hover:bg-zinc-800 transition-all disabled:opacity-50"
+                    >
+                      <div className="flex items-center gap-3">
+                        <Link size={18} strokeWidth={1.5} className="text-accent flex-shrink-0" />
+                        <div>
+                          <span className="text-sm font-medium text-zinc-200">
+                            {creatingInvite ? 'Creating...' : 'Create Invite Link'}
+                          </span>
+                          <p className="text-xs text-zinc-400 mt-0.5">
+                            Generate a URL your agent operator visits to auto-configure with a key + SKILL.md.
+                          </p>
+                        </div>
+                      </div>
+                    </button>
+                  ) : (
+                    <div className="p-4 rounded-lg border border-accent-border bg-accent-muted">
+                      <p className="text-xs text-amber-400 font-medium">Single-use — expires in 7 days</p>
+                      <p className="mt-2 font-mono text-xs text-zinc-300 break-all select-all">{inviteUrl}</p>
+                      <button
+                        onClick={handleCopyInviteUrl}
+                        className="mt-3 btn-secondary inline-flex items-center gap-2 text-sm"
+                      >
+                        {copiedInvite ? (
+                          <><Check size={14} strokeWidth={1.5} /> Copied!</>
+                        ) : (
+                          <><Copy size={14} strokeWidth={1.5} /> Copy URL</>
+                        )}
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Copy Skill File */}
+                  <button
+                    onClick={handleCopySkill}
+                    className="w-full text-left p-4 rounded-lg border border-border bg-zinc-800/50 hover:bg-zinc-800 transition-all"
+                  >
+                    <div className="flex items-center gap-3">
+                      {copiedSkill ? (
+                        <Check size={18} strokeWidth={1.5} className="text-green-400 flex-shrink-0" />
+                      ) : (
+                        <FileText size={18} strokeWidth={1.5} className="text-zinc-400 flex-shrink-0" />
+                      )}
+                      <div>
+                        <span className="text-sm font-medium text-zinc-200">
+                          {copiedSkill ? 'Skill File Copied!' : 'Copy Skill File'}
+                        </span>
+                        <p className="text-xs text-zinc-400 mt-0.5">
+                          Copy SKILL.md to your clipboard — paste into your agent's skills directory.
+                        </p>
+                      </div>
+                    </div>
+                  </button>
+                </div>
+
+                {agentError && (
+                  <p className="mt-3 text-xs text-red-400">{agentError}</p>
+                )}
+              </div>
             </div>
           )}
 

@@ -1367,30 +1367,34 @@ curl -H "Authorization: Bearer $ECHOBRIDGE_API_KEY" \\
                 </button>
               </div>
 
-              <div className="mt-6 pt-4 border-t border-zinc-700">
-                <p className="text-xs text-zinc-500 mb-3">
-                  Share the EchoBridge skill file with your agent. Paste this into your
-                  agent's skills directory or knowledge base.
-                </p>
-                <button
-                  onClick={handleCopySkill}
-                  className="btn-secondary inline-flex items-center gap-2 touch-target"
-                >
-                  {copiedSkill ? (
-                    <>
-                      <Check size={16} strokeWidth={1.5} />
-                      Copied!
-                    </>
-                  ) : (
-                    <>
-                      <FileText size={16} strokeWidth={1.5} />
-                      Copy Skill File
-                    </>
-                  )}
-                </button>
-              </div>
             </div>
           )}
+        </div>
+
+        {/* Skill File (always visible) */}
+        <div className="mt-8 pt-6 border-t border-zinc-700">
+          <span className="text-sm font-semibold text-zinc-200 uppercase tracking-wider">
+            Skill File
+          </span>
+          <p className="text-sm text-zinc-400 mt-1">
+            Share the EchoBridge skill file with your agent. Paste this into your agent's skills directory or knowledge base.
+          </p>
+          <button
+            onClick={handleCopySkill}
+            className="mt-4 btn-secondary inline-flex items-center gap-2 touch-target"
+          >
+            {copiedSkill ? (
+              <>
+                <Check size={16} strokeWidth={1.5} />
+                Copied!
+              </>
+            ) : (
+              <>
+                <FileText size={16} strokeWidth={1.5} />
+                Copy Skill File
+              </>
+            )}
+          </button>
         </div>
       </div>
     </div>
