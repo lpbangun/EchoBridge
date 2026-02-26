@@ -37,8 +37,17 @@ export default function AgentPersonaCard({
         />
 
         {/* Type badge */}
-        <span className="text-[10px] uppercase tracking-wider text-zinc-500 font-medium">
-          {agent.type === 'external' ? 'EXT' : 'INT'}
+        <span
+          className={`text-xs font-mono uppercase tracking-wider shrink-0 ${
+            agent.type === 'external' ? 'text-amber-400' : 'text-zinc-400'
+          }`}
+          title={
+            agent.type === 'external'
+              ? 'External: A real agent connecting via API — waits for responses from an external system'
+              : "Internal: Simulated by EchoBridge's AI — participates automatically"
+          }
+        >
+          {agent.type === 'external' ? 'EXTERNAL' : 'INTERNAL'}
         </span>
 
         {/* Expand/collapse */}
@@ -89,6 +98,11 @@ export default function AgentPersonaCard({
                 External (API)
               </button>
             </div>
+            <p className="text-[11px] text-zinc-500 mt-2">
+              {agent.type === 'external'
+                ? "External: A real agent connecting via the API. EchoBridge pauses at this agent's turn until a response is submitted."
+                : "Internal: Simulated by EchoBridge's AI using the configured model. Participates automatically."}
+            </p>
           </div>
 
           {/* Socket selector (only for internal agents) */}

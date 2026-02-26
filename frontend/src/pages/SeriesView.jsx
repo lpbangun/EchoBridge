@@ -77,6 +77,7 @@ export default function SeriesView() {
       setSeries((prev) => ({
         ...prev,
         memory_document: result.memory_document,
+        memory_error: result.memory_error || null,
         updated_at: result.updated_at,
       }));
     } catch (err) {
@@ -232,6 +233,20 @@ export default function SeriesView() {
 
             {error && (
               <p className="text-sm text-red-400 mb-4">{error}</p>
+            )}
+
+            {series.memory_error && (
+              <div className="mb-4 p-3 border border-amber-400/30 bg-amber-400/5">
+                <p className="font-mono text-[10px] uppercase tracking-[1px] text-amber-400">
+                  Memory Synthesis Failed
+                </p>
+                <p className="text-sm text-zinc-400 mt-1">
+                  {series.memory_error}
+                </p>
+                <p className="text-xs text-zinc-500 mt-1">
+                  Use &quot;Refresh Memory&quot; to retry. Existing memory is preserved.
+                </p>
+              </div>
             )}
 
             {series.memory_document ? (

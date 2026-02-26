@@ -149,9 +149,20 @@ export default function AgentMeetingCreate() {
               </button>
             )}
           </div>
-          <p className="text-xs text-zinc-500 mt-1">
-            Each agent participates as a distinct persona. Assign sockets for specialized expertise.
-          </p>
+          <div className="mt-3 grid grid-cols-2 gap-3">
+            <div className="p-3 border border-[#27272A]">
+              <span className="text-xs font-mono text-zinc-400 uppercase tracking-wider">Internal</span>
+              <p className="text-[11px] text-zinc-500 mt-1">
+                Simulated by EchoBridge&apos;s AI. Responds automatically each round using the configured model and persona.
+              </p>
+            </div>
+            <div className="p-3 border border-[#27272A]">
+              <span className="text-xs font-mono text-amber-400 uppercase tracking-wider">External</span>
+              <p className="text-[11px] text-zinc-500 mt-1">
+                A real agent connecting via API. The meeting pauses at this agent&apos;s turn until a response arrives.
+              </p>
+            </div>
+          </div>
           <div className="mt-4 space-y-3">
             {agents.map((agent, i) => (
               <AgentPersonaCard
