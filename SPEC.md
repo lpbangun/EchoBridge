@@ -572,9 +572,12 @@ POST /api/rooms/meeting
     "task_description": "Decide top 3 priorities for Q3",
     "cooldown_seconds": 3.0,
     "max_rounds": 20,
-    "title": "Q3 Roadmap Meeting"
+    "title": "Q3 Roadmap Meeting",
+    "auto_start": true
 }
 ```
+
+**auto_start** (optional, default `true`): When `true`, the meeting starts immediately after creation — no separate `/start` call required. When `false`, the meeting waits in `waiting` state until the host explicitly calls `/start`.
 
 ### Agent types:
 - **Internal**: EchoBridge generates responses using the persona prompt + conversation context. Can reference a socket for persona.
@@ -585,6 +588,8 @@ POST /api/rooms/meeting
 waiting → active → paused → active → closed
 ```
 
+By default (`auto_start: true`), meetings transition directly from creation to `active`. If `auto_start: false`, the meeting starts in `waiting` state and waits for the host to call `/start`.
+
 ### Orchestrator features:
 - **Turn-taking**: Cycles through agents in order, one response per round
 - **Directives**: Host can inject steering instructions mid-conversation
@@ -593,6 +598,8 @@ waiting → active → paused → active → closed
 - **Idle detection**: Automatically ends if no new messages after 2 idle rounds
 - **Auto-interpret**: Generates smart notes from the conversation transcript on completion
 - **Speaker-attributed transcript**: Full transcript stored with `[Speaker]: message` format
+- **Crash resilience**: The orchestrator's run loop is wrapped in try/finally so finalization always runs, even if the orchestrator crashes. Finalization includes per-section error handling to ensure transcript data is preserved.
+- **Session.complete event**: After meeting finalization, a `session.complete` event is fired to `session_events` for downstream processing (e.g., alerts, archival)
 
 ### Meeting endpoints:
 ```
@@ -886,6 +893,8 @@ PATCH  /api/sessions/{id}                Update title, metadata
 DELETE /api/sessions/{id}                Delete session + audio + interpretations
 ```
 
+`GET /api/sessions` accepts an optional `exclude_agent_meetings` query parameter (default `false`). When `true`, sessions created by agent meetings are filtered out of the response.
+
 ### Transcription:
 ```
 POST   /api/sessions/{id}/audio          Upload audio → run STT
@@ -967,7 +976,7 @@ POST   /api/sessions/{id}/agent-analyze  Run sockets on demand (frontend)
 ### Agent API (/api/v1/):
 ```
 # Sessions
-GET    /api/v1/sessions                  List sessions (filter, paginate)
+GET    /api/v1/sessions                  List sessions (filter, paginate, exclude_agent_meetings)
 GET    /api/v1/sessions/{id}             Get session + transcript
 GET    /api/v1/sessions/{id}/transcript  Raw transcript only
 
@@ -1165,6 +1174,7 @@ Features:
 - Context filter chips + Series filter chips
 - Active sessions (recording/transcribing/processing) sort to top
 - 10-second polling when active sessions exist
+- Agent meeting sessions are excluded from the Dashboard (see Rooms page for agent meetings)
 
 ### New Session (Upload / Room)
 ```
@@ -1732,6 +1742,11 @@ ECHOBRIDGE_AGENT_API_KEY=
 
 # Auto-sockets (comma-separated socket IDs to auto-run)
 AUTO_SOCKETS=
+
+# Onboarding (resets to false when API keys are set via environment)
+# Note: When OPENROUTER_API_KEY is set in .env (Docker/Railway deployments),
+# onboarding_complete is automatically reset to false on startup, ensuring the
+# setup wizard shows after each redeployment for key management verification.
 
 # Cloud Storage (S3-compatible)
 CLOUD_STORAGE_ENABLED=false
