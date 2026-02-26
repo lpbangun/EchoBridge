@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from datetime import datetime
 from enum import Enum
 
@@ -275,12 +275,25 @@ class SettingsUpdate(BaseModel):
 
 class ApiKeyCreate(BaseModel):
     name: str
+    scopes: list[str] | None = None  # None = full access
+
+    @field_validator("scopes")
+    @classmethod
+    def validate_scopes(cls, v):
+        if v is None:
+            return v
+        from services.auth_service import ALL_SCOPES
+        invalid = set(v) - ALL_SCOPES
+        if invalid:
+            raise ValueError(f"Invalid scopes: {invalid}")
+        return v
 
 
 class ApiKeyResponse(BaseModel):
     id: str
     name: str
     key: str  # Only returned on creation
+    scopes: list[str] | None = None
     created_at: str
 
 
@@ -310,6 +323,7 @@ class SeriesResponse(BaseModel):
     name: str
     description: str
     memory_document: str
+    memory_error: str | None = None
     session_count: int
     created_at: str
     updated_at: str
@@ -328,6 +342,7 @@ class MemoryDocumentResponse(BaseModel):
     series_id: str
     series_name: str
     memory_document: str
+    memory_error: str | None = None
     updated_at: str
     session_count: int
 
@@ -381,6 +396,7 @@ class AgentMeetingResponse(BaseModel):
     host_name: str
     topic: str
     agents: list[dict] = Field(default_factory=list)
+    join_url: str | None = None
     created_at: str
 
 

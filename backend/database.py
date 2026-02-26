@@ -10,6 +10,7 @@ CREATE TABLE IF NOT EXISTS series (
     name TEXT NOT NULL,
     description TEXT DEFAULT '',
     memory_document TEXT DEFAULT '',
+    memory_error TEXT DEFAULT NULL,
     session_count INTEGER DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -100,6 +101,7 @@ CREATE TABLE IF NOT EXISTS api_keys (
     id TEXT PRIMARY KEY,
     name TEXT NOT NULL,
     key_hash TEXT NOT NULL UNIQUE,
+    scopes TEXT DEFAULT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     last_used_at TIMESTAMP
 );
@@ -320,6 +322,18 @@ async def get_db() -> aiosqlite.Connection:
                 ON wall_posts(created_at)
         """)
         await _db.commit()
+        # Migration: add scopes column to api_keys
+        try:
+            await _db.execute("ALTER TABLE api_keys ADD COLUMN scopes TEXT DEFAULT NULL")
+            await _db.commit()
+        except Exception:
+            pass  # Column already exists
+        # Migration: add memory_error column to series
+        try:
+            await _db.execute("ALTER TABLE series ADD COLUMN memory_error TEXT DEFAULT NULL")
+            await _db.commit()
+        except Exception:
+            pass  # Column already exists
     return _db
 
 
