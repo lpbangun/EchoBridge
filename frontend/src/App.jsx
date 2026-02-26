@@ -18,6 +18,7 @@ import RoomsPage from './pages/RoomsPage';
 import AgentMeetingCreate from './pages/AgentMeetingCreate';
 import AgentMeetingView from './pages/AgentMeetingView';
 import OfflineBanner from './components/OfflineBanner';
+import InvitePage from './pages/InvitePage';
 import InstallPrompt from './components/InstallPrompt';
 import SetupWizard from './components/SetupWizard';
 import WelcomeLanding from './components/WelcomeLanding';
@@ -87,6 +88,7 @@ export default function App() {
       <OfflineBanner />
       <Routes>
         {/* Full-screen routes (no sidebar) */}
+        <Route path="/invite/:token" element={<InvitePage />} />
         <Route path="/recording/:sessionId" element={<Recording />} />
 
         {/* Layout routes (sidebar + top bar) */}

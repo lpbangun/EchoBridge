@@ -381,3 +381,31 @@ class AgentMeetingResponse(BaseModel):
     topic: str
     agents: list[dict] = Field(default_factory=list)
     created_at: str
+
+
+# --- Invite schemas ---
+
+class InviteCreate(BaseModel):
+    label: str = ""
+
+
+class InviteResponse(BaseModel):
+    id: str
+    token: str
+    label: str
+    created_at: str
+    expires_at: str | None
+    claimed_at: str | None
+    api_key_id: str | None
+    invite_url: str | None = None
+
+
+class InviteClaimRequest(BaseModel):
+    agent_name: str
+
+
+class InviteClaimResponse(BaseModel):
+    api_key: str
+    api_key_id: str
+    agent_name: str
+    skill_md: str

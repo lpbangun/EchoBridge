@@ -25,7 +25,7 @@ router = APIRouter(prefix="/api/v1", tags=["agent-api"])
 
 # Path candidates: Docker (/app/SKILL.md) first, dev layout second
 _SKILL_MD_CANDIDATES = [
-    Path(__file__).resolve().parent.parent / "SKILL.md",  # Docker: /app/SKILL.md
+    Path(__file__).resolve().parent.parent.parent / "SKILL.md",  # Docker: /app/SKILL.md
     Path(__file__).resolve().parent.parent.parent / "openclaw-skill" / "echobridge" / "SKILL.md",  # Dev
 ]
 

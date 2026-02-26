@@ -7,7 +7,7 @@ from fastapi.responses import FileResponse, Response
 from fastapi.staticfiles import StaticFiles
 
 from database import get_db, close_db
-from routers import sessions, transcribe, interpret, export, settings, rooms, sockets, stream, agent, storage, series, chat
+from routers import sessions, transcribe, interpret, export, settings, rooms, sockets, stream, agent, storage, series, chat, invites
 
 
 @asynccontextmanager
@@ -76,6 +76,9 @@ app.include_router(series.router)
 
 # Chat router
 app.include_router(chat.router)
+
+# Invite links router
+app.include_router(invites.router)
 
 # Cloud storage router
 app.include_router(storage.router)

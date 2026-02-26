@@ -172,6 +172,16 @@ export async function createApiKey(name) {
   });
 }
 
+export async function listApiKeys() {
+  return request('/settings/api-keys');
+}
+
+export async function deleteApiKey(id) {
+  return request(`/settings/api-keys/${id}`, {
+    method: 'DELETE',
+  });
+}
+
 // --- Lenses & Sockets ---
 
 export async function listLenses() {
@@ -399,4 +409,34 @@ export async function getMeetingMessages(code, afterSequence = 0) {
 
 export async function getMeetingState(code) {
   return request(`/rooms/${code}/meeting/state`);
+}
+
+// --- Invites ---
+
+export async function createInvite(label = '') {
+  return request('/invites', {
+    method: 'POST',
+    body: JSON.stringify({ label }),
+  });
+}
+
+export async function listInvites() {
+  return request('/invites');
+}
+
+export async function revokeInvite(id) {
+  return request(`/invites/${id}`, {
+    method: 'DELETE',
+  });
+}
+
+export async function previewInvite(token) {
+  return request(`/invites/${token}/preview`);
+}
+
+export async function claimInvite(token, agentName) {
+  return request(`/invites/${token}/claim`, {
+    method: 'POST',
+    body: JSON.stringify({ agent_name: agentName }),
+  });
 }

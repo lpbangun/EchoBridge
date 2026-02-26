@@ -306,6 +306,71 @@ async def test_onboarding_complete_persists(client, db):
     assert res.json()["onboarding_complete"] is True
 
 
+# ---------------------------------------------------------------------------
+# GET /api/settings/api-keys — List agent API keys
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_list_api_keys_empty(client):
+    """Listing API keys when none exist returns an empty list."""
+    res = await client.get("/api/settings/api-keys")
+    assert res.status_code == 200
+    assert res.json() == []
+
+
+@pytest.mark.asyncio
+async def test_list_api_keys_returns_created_keys(client):
+    """Created keys appear in the list with name and dates, but no secret."""
+    await client.post("/api/settings/api-keys", json={"name": "Agent Alpha"})
+    await client.post("/api/settings/api-keys", json={"name": "Agent Beta"})
+
+    res = await client.get("/api/settings/api-keys")
+    assert res.status_code == 200
+    data = res.json()
+    assert len(data) == 2
+    names = {k["name"] for k in data}
+    assert names == {"Agent Alpha", "Agent Beta"}
+
+    # Each item has expected fields
+    for item in data:
+        assert "id" in item
+        assert "name" in item
+        assert "created_at" in item
+        assert "last_used_at" in item
+        # Secret key must not be exposed
+        assert "key" not in item
+        assert "key_hash" not in item
+
+
+# ---------------------------------------------------------------------------
+# DELETE /api/settings/api-keys/{id} — Revoke an agent API key
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_delete_api_key(client):
+    """Revoking a key removes it from the list."""
+    res = await client.post("/api/settings/api-keys", json={"name": "Temp Agent"})
+    key_id = res.json()["id"]
+
+    # Delete it
+    res = await client.delete(f"/api/settings/api-keys/{key_id}")
+    assert res.status_code == 204
+
+    # Verify it's gone
+    res = await client.get("/api/settings/api-keys")
+    ids = [k["id"] for k in res.json()]
+    assert key_id not in ids
+
+
+@pytest.mark.asyncio
+async def test_delete_api_key_not_found(client):
+    """Deleting a non-existent key returns 404."""
+    res = await client.delete("/api/settings/api-keys/nonexistent-id")
+    assert res.status_code == 404
+
+
 @pytest.mark.asyncio
 async def test_search_matches_session_transcript(client, sample_session):
     """Search finds a session by transcript content."""

@@ -104,6 +104,17 @@ CREATE TABLE IF NOT EXISTS api_keys (
     last_used_at TIMESTAMP
 );
 
+CREATE TABLE IF NOT EXISTS invites (
+    id TEXT PRIMARY KEY,
+    token TEXT NOT NULL UNIQUE,
+    label TEXT NOT NULL DEFAULT '',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    expires_at TIMESTAMP,
+    claimed_at TIMESTAMP,
+    api_key_id TEXT REFERENCES api_keys(id) ON DELETE SET NULL
+);
+CREATE INDEX IF NOT EXISTS idx_invites_token ON invites(token);
+
 CREATE TABLE IF NOT EXISTS app_settings (
     key TEXT PRIMARY KEY,
     value TEXT NOT NULL
@@ -242,6 +253,22 @@ async def get_db() -> aiosqlite.Connection:
         await _db.execute("""
             CREATE INDEX IF NOT EXISTS idx_session_events_created
                 ON session_events(created_at)
+        """)
+        await _db.commit()
+        # Migration: create invites table
+        await _db.execute("""
+            CREATE TABLE IF NOT EXISTS invites (
+                id TEXT PRIMARY KEY,
+                token TEXT NOT NULL UNIQUE,
+                label TEXT NOT NULL DEFAULT '',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                expires_at TIMESTAMP,
+                claimed_at TIMESTAMP,
+                api_key_id TEXT REFERENCES api_keys(id) ON DELETE SET NULL
+            )
+        """)
+        await _db.execute("""
+            CREATE INDEX IF NOT EXISTS idx_invites_token ON invites(token)
         """)
         await _db.commit()
         # Migration: create meeting_messages table

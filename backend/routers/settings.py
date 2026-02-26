@@ -8,6 +8,7 @@ from pathlib import Path
 
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import PlainTextResponse
+from starlette.responses import Response
 
 from config import settings
 from database import get_db
@@ -175,8 +176,27 @@ async def create_api_key(body: ApiKeyCreate, db=Depends(get_db)):
     )
 
 
+@router.get("/settings/api-keys")
+async def list_api_keys(db=Depends(get_db)):
+    """List all agent API keys (no secret data exposed)."""
+    cursor = await db.execute(
+        "SELECT id, name, created_at, last_used_at FROM api_keys ORDER BY created_at DESC"
+    )
+    return [dict(row) for row in await cursor.fetchall()]
+
+
+@router.delete("/settings/api-keys/{key_id}", status_code=204)
+async def delete_api_key(key_id: str, db=Depends(get_db)):
+    """Revoke an agent API key."""
+    cursor = await db.execute("DELETE FROM api_keys WHERE id = ?", (key_id,))
+    await db.commit()
+    if cursor.rowcount == 0:
+        raise HTTPException(404, "API key not found")
+    return Response(status_code=204)
+
+
 _SKILL_MD_CANDIDATES = [
-    Path(__file__).resolve().parent.parent / "SKILL.md",  # Docker: /app/SKILL.md
+    Path(__file__).resolve().parent.parent.parent / "SKILL.md",  # Docker: /app/SKILL.md
     Path(__file__).resolve().parent.parent.parent / "openclaw-skill" / "echobridge" / "SKILL.md",  # Dev
 ]
 

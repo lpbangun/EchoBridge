@@ -145,6 +145,18 @@ async def stream_meeting(websocket: WebSocket, code: str):
     await websocket.accept()
     room_key = f"meeting:{code}"
 
+    # Optional token-based auth (mirrors room stream pattern)
+    token = websocket.query_params.get("token")
+    if token:
+        db = await get_db_connection()
+        try:
+            agent_info = await verify_api_key_token(token, db)
+        finally:
+            await db.close()
+        if not agent_info:
+            await websocket.close(code=4001, reason="unauthorized")
+            return
+
     await stream_manager.subscribe(room_key, websocket)
     try:
         while True:

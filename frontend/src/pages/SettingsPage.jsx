@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Copy, Key, Check, ExternalLink, Cloud, RefreshCw, FileText } from 'lucide-react';
-import { getSettings, updateSettings, createApiKey, testCloudConnection, getStorageStatus, getSkillMd, listSockets } from '../lib/api';
+import { Copy, Key, Check, ExternalLink, Cloud, RefreshCw, FileText, Link, Trash2 } from 'lucide-react';
+import { getSettings, updateSettings, createApiKey, listApiKeys, deleteApiKey, testCloudConnection, getStorageStatus, getSkillMd, listSockets, createInvite, listInvites, revokeInvite } from '../lib/api';
 
 const WHISPER_MODELS = ['tiny', 'base', 'small', 'medium', 'large'];
 
@@ -103,6 +103,18 @@ export default function SettingsPage() {
   const [autoSockets, setAutoSockets] = useState([]);
   const [availableSockets, setAvailableSockets] = useState([]);
 
+  // Invite state
+  const [inviteLabel, setInviteLabel] = useState('');
+  const [creatingInvite, setCreatingInvite] = useState(false);
+  const [latestInvite, setLatestInvite] = useState(null);
+  const [copiedInvite, setCopiedInvite] = useState(false);
+  const [pendingInvites, setPendingInvites] = useState([]);
+  const [inviteError, setInviteError] = useState(null);
+
+  // Connected agents state
+  const [connectedAgents, setConnectedAgents] = useState([]);
+  const [revokingKeyId, setRevokingKeyId] = useState(null);
+
   useEffect(() => {
     async function fetchSettings() {
       setLoading(true);
@@ -158,6 +170,28 @@ export default function SettingsPage() {
       }
     }
     fetchSockets();
+
+    // Fetch pending invites
+    async function fetchInvites() {
+      try {
+        const invites = await listInvites();
+        setPendingInvites((invites || []).filter(i => !i.claimed_at));
+      } catch {
+        // Silently fail invite fetch
+      }
+    }
+    fetchInvites();
+
+    // Fetch connected agents (API keys)
+    async function fetchAgentKeys() {
+      try {
+        const keys = await listApiKeys();
+        setConnectedAgents(Array.isArray(keys) ? keys : []);
+      } catch {
+        // Silently fail
+      }
+    }
+    fetchAgentKeys();
   }, []);
 
   // When provider changes, reset model selection to first available for that provider
@@ -295,10 +329,29 @@ export default function SettingsPage() {
       const result = await createApiKey(keyName.trim());
       setGeneratedKey(result);
       setKeyName('');
+      // Refresh connected agents list
+      try {
+        const keys = await listApiKeys();
+        setConnectedAgents(Array.isArray(keys) ? keys : []);
+      } catch {
+        // Silently fail
+      }
     } catch (err) {
       setKeyError(err.message || 'Failed to generate API key.');
     } finally {
       setGeneratingKey(false);
+    }
+  }
+
+  async function handleRevokeAgentKey(keyId) {
+    setRevokingKeyId(keyId);
+    try {
+      await deleteApiKey(keyId);
+      setConnectedAgents(prev => prev.filter(k => k.id !== keyId));
+    } catch (err) {
+      setKeyError(err.message || 'Failed to revoke key.');
+    } finally {
+      setRevokingKeyId(null);
     }
   }
 
@@ -400,6 +453,46 @@ curl -H "Authorization: Bearer $ECHOBRIDGE_API_KEY" \\
       const url = URL.createObjectURL(blob);
       window.open(url, '_blank');
       setKeyError('Clipboard access denied. Opened skill file in a new tab — copy from there.');
+    }
+  }
+
+  async function handleCreateInvite() {
+    setCreatingInvite(true);
+    setInviteError(null);
+    setLatestInvite(null);
+    setCopiedInvite(false);
+    try {
+      const invite = await createInvite(inviteLabel.trim());
+      setLatestInvite(invite);
+      setInviteLabel('');
+      // Refresh pending list
+      const invites = await listInvites();
+      setPendingInvites((invites || []).filter(i => !i.claimed_at));
+    } catch (err) {
+      setInviteError(err.message || 'Failed to create invite.');
+    } finally {
+      setCreatingInvite(false);
+    }
+  }
+
+  async function handleRevokeInvite(id) {
+    try {
+      await revokeInvite(id);
+      setPendingInvites(prev => prev.filter(i => i.id !== id));
+      if (latestInvite?.id === id) setLatestInvite(null);
+    } catch (err) {
+      setInviteError(err.message || 'Failed to revoke invite.');
+    }
+  }
+
+  async function handleCopyInviteUrl() {
+    if (!latestInvite?.invite_url) return;
+    try {
+      await navigator.clipboard.writeText(latestInvite.invite_url);
+      setCopiedInvite(true);
+      setTimeout(() => setCopiedInvite(false), 2000);
+    } catch {
+      setInviteError('Failed to copy. Please select and copy manually.');
     }
   }
 
@@ -1025,105 +1118,186 @@ curl -H "Authorization: Bearer $ECHOBRIDGE_API_KEY" \\
         <span className="text-sm font-semibold text-zinc-200 uppercase tracking-wider">
           Agent Connections
         </span>
-        <p className="text-sm text-zinc-400 mt-1">Let external AI agents connect to EchoBridge programmatically. Generate a key, then grab the config snippet for your platform.</p>
-
-        <label className="block mt-6">
-          <span className="section-label">
-            Key Name
-          </span>
-          <input
-            type="text"
-            value={keyName}
-            onChange={(e) => setKeyName(e.target.value)}
-            placeholder="my-agent"
-            className="eb-input w-full text-base px-4 py-3 rounded-xl mt-2"
-          />
-        </label>
-
-        <div className="mt-4">
-          <button
-            onClick={handleGenerateKey}
-            disabled={generatingKey || !keyName.trim()}
-            className="btn-secondary inline-flex items-center gap-2 disabled:opacity-50 touch-target"
-          >
-            <Key size={16} strokeWidth={1.5} />
-            {generatingKey ? 'Generating...' : 'Generate Key'}
-          </button>
-        </div>
+        <p className="text-sm text-zinc-400 mt-1">Let external AI agents connect to EchoBridge programmatically.</p>
 
         {keyError && (
           <p className="mt-4 text-sm text-red-400">{keyError}</p>
         )}
 
-        {generatedKey && (
-          <div className="bg-surface-dark border border-border rounded-xl p-4 md:p-6 mt-6">
-            <p className="text-sm text-amber-400 font-medium">
-              Copy now — this key will not be shown again
-            </p>
-            <p className="mt-3 font-mono text-sm text-zinc-300 break-all">
-              {generatedKey.key}
-            </p>
-            <button
-              onClick={handleCopyKey}
-              className="mt-4 btn-secondary inline-flex items-center gap-2 touch-target"
-            >
-              {copied ? (
-                <>
-                  <Check size={16} strokeWidth={1.5} />
-                  Copied!
-                </>
-              ) : (
-                <>
-                  <Copy size={16} strokeWidth={1.5} />
-                  Copy Key
-                </>
-              )}
-            </button>
-
-            {/* Tabbed config snippets */}
-            <div className="mt-6 border-t border-zinc-700 pt-6">
-              <span className="section-label">Connection Config</span>
-              <div className="flex flex-wrap gap-2 mt-3">
-                {[
-                  { id: 'mcp', label: 'MCP Client' },
-                  { id: 'openclaw', label: 'OpenClaw' },
-                  { id: 'rest', label: 'REST API' },
-                ].map((tab) => (
-                  <button
-                    key={tab.id}
-                    onClick={() => { setConfigTab(tab.id); setCopiedConfig(false); }}
-                    className={`px-3 md:px-4 py-2 text-sm font-medium rounded-lg transition-colors touch-target whitespace-nowrap ${
-                      configTab === tab.id
-                        ? 'bg-accent-muted text-accent border border-accent-border'
-                        : 'text-zinc-400 border border-zinc-700 hover:border-zinc-500 hover:text-zinc-300'
-                    }`}
+        {/* 1. Connected Agents list */}
+        <div className="mt-6">
+          <span className="section-label">Connected Agents</span>
+          {connectedAgents.length === 0 ? (
+            <p className="mt-3 text-sm text-zinc-500">No agents connected yet. Use an invite link or generate a key below.</p>
+          ) : (
+            <div className="mt-3 space-y-2">
+              {connectedAgents.map((agent) => {
+                const lastUsed = agent.last_used_at ? new Date(agent.last_used_at) : null;
+                const isActive = lastUsed && (Date.now() - lastUsed.getTime()) < 24 * 60 * 60 * 1000;
+                return (
+                  <div
+                    key={agent.id}
+                    className="flex items-center justify-between p-3 bg-zinc-900/40 border border-zinc-700 rounded-lg"
                   >
-                    {tab.label}
-                  </button>
-                ))}
-              </div>
+                    <div className="flex items-center gap-3 min-w-0">
+                      <span
+                        className={`flex-shrink-0 w-2 h-2 rounded-full ${isActive ? 'bg-green-400' : 'bg-zinc-600'}`}
+                        title={isActive ? 'Active in last 24h' : 'Inactive'}
+                      />
+                      <div className="min-w-0">
+                        <p className="text-sm text-zinc-300 font-medium truncate">{agent.name}</p>
+                        <p className="text-xs text-zinc-500">
+                          Created {new Date(agent.created_at).toLocaleDateString()}
+                          {lastUsed && (
+                            <> · Last active {lastUsed.toLocaleDateString()}</>
+                          )}
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => handleRevokeAgentKey(agent.id)}
+                      disabled={revokingKeyId === agent.id}
+                      className="ml-3 p-2 text-zinc-500 hover:text-red-400 transition-colors disabled:opacity-50"
+                      title="Revoke key"
+                    >
+                      <Trash2 size={16} strokeWidth={1.5} />
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
 
-              <pre className="mt-4 p-4 bg-zinc-900/60 border border-zinc-700 rounded-lg font-mono text-sm text-zinc-300 overflow-x-auto whitespace-pre-wrap break-all">
-                {getConfigSnippet(configTab)}
-              </pre>
+        {/* 2. Invite Link (recommended path) */}
+        <div className="mt-8 pt-6 border-t border-zinc-700">
+          <span className="text-sm font-semibold text-zinc-200 uppercase tracking-wider">
+            Invite Link
+          </span>
+          <p className="text-sm text-zinc-400 mt-1">
+            Recommended. Generate a single-use URL — the agent operator visits it, enters a name, and gets a pre-configured SKILL.md with their API key embedded. Zero manual config.
+          </p>
 
-              <p className="mt-2 text-xs text-zinc-400">
-                {configTab === 'mcp' && (
-                  <>Add this to your MCP client config (e.g. <code className="text-zinc-400">~/.claude/settings.json</code> for Claude Code, or Claude Desktop settings).</>
-                )}
-                {configTab === 'openclaw' && (
-                  <>Run these commands on your agent's machine. Step 2 auto-downloads the SKILL.md via the API. Step 3 verifies the connection.</>
-                )}
-                {configTab === 'rest' && (
-                  <>Use this pattern with any HTTP client. Full API: /api/v1/sessions, /api/v1/search, /api/v1/sockets, and more.</>
-                )}
+          <div className="flex flex-col sm:flex-row gap-3 mt-4">
+            <input
+              type="text"
+              value={inviteLabel}
+              onChange={(e) => setInviteLabel(e.target.value)}
+              placeholder="Label (optional, e.g. 'OpenClaw prod')"
+              className="eb-input flex-1 text-base px-4 py-3 rounded-xl"
+            />
+            <button
+              onClick={handleCreateInvite}
+              disabled={creatingInvite}
+              className="btn-primary inline-flex items-center gap-2 disabled:opacity-50 touch-target whitespace-nowrap"
+            >
+              <Link size={16} strokeWidth={1.5} />
+              {creatingInvite ? 'Creating...' : 'Create Invite'}
+            </button>
+          </div>
+
+          {inviteError && (
+            <p className="mt-3 text-sm text-red-400">{inviteError}</p>
+          )}
+
+          {latestInvite && (
+            <div className="mt-4 p-4 bg-zinc-900/60 border border-zinc-700 rounded-lg">
+              <p className="text-sm text-amber-400 font-medium">
+                Single-use — expires in 7 days
               </p>
-
+              <p className="mt-2 font-mono text-sm text-zinc-300 break-all select-all">
+                {latestInvite.invite_url}
+              </p>
               <button
-                onClick={handleCopyConfig}
+                onClick={handleCopyInviteUrl}
                 className="mt-3 btn-secondary inline-flex items-center gap-2 touch-target"
               >
-                {copiedConfig ? (
+                {copiedInvite ? (
+                  <><Check size={16} strokeWidth={1.5} /> Copied!</>
+                ) : (
+                  <><Copy size={16} strokeWidth={1.5} /> Copy URL</>
+                )}
+              </button>
+            </div>
+          )}
+
+          {pendingInvites.length > 0 && (
+            <div className="mt-4">
+              <span className="text-xs font-medium text-zinc-400 uppercase tracking-wider">
+                Pending Invites
+              </span>
+              <div className="mt-2 space-y-2">
+                {pendingInvites.map((inv) => (
+                  <div
+                    key={inv.id}
+                    className="flex items-center justify-between p-3 bg-zinc-900/40 border border-zinc-700 rounded-lg"
+                  >
+                    <div className="min-w-0">
+                      <p className="text-sm text-zinc-300 truncate">
+                        {inv.label || 'Unlabeled invite'}
+                      </p>
+                      <p className="text-xs text-zinc-500">
+                        Expires {inv.expires_at ? new Date(inv.expires_at).toLocaleDateString() : 'never'}
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => handleRevokeInvite(inv.id)}
+                      className="ml-3 p-2 text-zinc-500 hover:text-red-400 transition-colors"
+                      title="Revoke invite"
+                    >
+                      <Trash2 size={16} strokeWidth={1.5} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* 3. Manual Setup (advanced) */}
+        <div className="mt-8 pt-6 border-t border-zinc-700">
+          <span className="text-sm font-semibold text-zinc-200 uppercase tracking-wider">
+            Manual Setup
+          </span>
+          <p className="text-sm text-zinc-400 mt-1">Generate a key directly and configure your agent manually.</p>
+
+          <label className="block mt-4">
+            <span className="section-label">
+              Key Name
+            </span>
+            <input
+              type="text"
+              value={keyName}
+              onChange={(e) => setKeyName(e.target.value)}
+              placeholder="my-agent"
+              className="eb-input w-full text-base px-4 py-3 rounded-xl mt-2"
+            />
+          </label>
+
+          <div className="mt-4">
+            <button
+              onClick={handleGenerateKey}
+              disabled={generatingKey || !keyName.trim()}
+              className="btn-secondary inline-flex items-center gap-2 disabled:opacity-50 touch-target"
+            >
+              <Key size={16} strokeWidth={1.5} />
+              {generatingKey ? 'Generating...' : 'Generate Key'}
+            </button>
+          </div>
+
+          {generatedKey && (
+            <div className="bg-surface-dark border border-border rounded-xl p-4 md:p-6 mt-6">
+              <p className="text-sm text-amber-400 font-medium">
+                Copy now — this key will not be shown again
+              </p>
+              <p className="mt-3 font-mono text-sm text-zinc-300 break-all">
+                {generatedKey.key}
+              </p>
+              <button
+                onClick={handleCopyKey}
+                className="mt-4 btn-secondary inline-flex items-center gap-2 touch-target"
+              >
+                {copied ? (
                   <>
                     <Check size={16} strokeWidth={1.5} />
                     Copied!
@@ -1131,36 +1305,93 @@ curl -H "Authorization: Bearer $ECHOBRIDGE_API_KEY" \\
                 ) : (
                   <>
                     <Copy size={16} strokeWidth={1.5} />
-                    Copy Config
+                    Copy Key
                   </>
                 )}
               </button>
-            </div>
 
-            <div className="mt-6 pt-4 border-t border-zinc-700">
-              <p className="text-xs text-zinc-500 mb-3">
-                Share the EchoBridge skill file with your agent. Paste this into your
-                agent's skills directory or knowledge base.
-              </p>
-              <button
-                onClick={handleCopySkill}
-                className="btn-secondary inline-flex items-center gap-2 touch-target"
-              >
-                {copiedSkill ? (
-                  <>
-                    <Check size={16} strokeWidth={1.5} />
-                    Copied!
-                  </>
-                ) : (
-                  <>
-                    <FileText size={16} strokeWidth={1.5} />
-                    Copy Skill File
-                  </>
-                )}
-              </button>
+              {/* Tabbed config snippets */}
+              <div className="mt-6 border-t border-zinc-700 pt-6">
+                <span className="section-label">Connection Config</span>
+                <div className="flex flex-wrap gap-2 mt-3">
+                  {[
+                    { id: 'mcp', label: 'MCP Client' },
+                    { id: 'openclaw', label: 'OpenClaw' },
+                    { id: 'rest', label: 'REST API' },
+                  ].map((tab) => (
+                    <button
+                      key={tab.id}
+                      onClick={() => { setConfigTab(tab.id); setCopiedConfig(false); }}
+                      className={`px-3 md:px-4 py-2 text-sm font-medium rounded-lg transition-colors touch-target whitespace-nowrap ${
+                        configTab === tab.id
+                          ? 'bg-accent-muted text-accent border border-accent-border'
+                          : 'text-zinc-400 border border-zinc-700 hover:border-zinc-500 hover:text-zinc-300'
+                      }`}
+                    >
+                      {tab.label}
+                    </button>
+                  ))}
+                </div>
+
+                <pre className="mt-4 p-4 bg-zinc-900/60 border border-zinc-700 rounded-lg font-mono text-sm text-zinc-300 overflow-x-auto whitespace-pre-wrap break-all">
+                  {getConfigSnippet(configTab)}
+                </pre>
+
+                <p className="mt-2 text-xs text-zinc-400">
+                  {configTab === 'mcp' && (
+                    <>Add this to your MCP client config (e.g. <code className="text-zinc-400">~/.claude/settings.json</code> for Claude Code, or Claude Desktop settings).</>
+                  )}
+                  {configTab === 'openclaw' && (
+                    <>Run these commands on your agent's machine. Step 2 auto-downloads the SKILL.md via the API. Step 3 verifies the connection.</>
+                  )}
+                  {configTab === 'rest' && (
+                    <>Use this pattern with any HTTP client. Full API: /api/v1/sessions, /api/v1/search, /api/v1/sockets, and more.</>
+                  )}
+                </p>
+
+                <button
+                  onClick={handleCopyConfig}
+                  className="mt-3 btn-secondary inline-flex items-center gap-2 touch-target"
+                >
+                  {copiedConfig ? (
+                    <>
+                      <Check size={16} strokeWidth={1.5} />
+                      Copied!
+                    </>
+                  ) : (
+                    <>
+                      <Copy size={16} strokeWidth={1.5} />
+                      Copy Config
+                    </>
+                  )}
+                </button>
+              </div>
+
+              <div className="mt-6 pt-4 border-t border-zinc-700">
+                <p className="text-xs text-zinc-500 mb-3">
+                  Share the EchoBridge skill file with your agent. Paste this into your
+                  agent's skills directory or knowledge base.
+                </p>
+                <button
+                  onClick={handleCopySkill}
+                  className="btn-secondary inline-flex items-center gap-2 touch-target"
+                >
+                  {copiedSkill ? (
+                    <>
+                      <Check size={16} strokeWidth={1.5} />
+                      Copied!
+                    </>
+                  ) : (
+                    <>
+                      <FileText size={16} strokeWidth={1.5} />
+                      Copy Skill File
+                    </>
+                  )}
+                </button>
+              </div>
             </div>
-          </div>
-        )}
+          )}
+        </div>
       </div>
     </div>
   );
