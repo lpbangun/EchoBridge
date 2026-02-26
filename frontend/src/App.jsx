@@ -19,6 +19,7 @@ import AgentMeetingCreate from './pages/AgentMeetingCreate';
 import AgentMeetingView from './pages/AgentMeetingView';
 import OfflineBanner from './components/OfflineBanner';
 import InvitePage from './pages/InvitePage';
+import WallPage from './pages/WallPage';
 import InstallPrompt from './components/InstallPrompt';
 import SetupWizard from './components/SetupWizard';
 import WelcomeLanding from './components/WelcomeLanding';
@@ -103,6 +104,7 @@ export default function App() {
         <Route path="/rooms" element={<LayoutRoute><RoomsPage /></LayoutRoute>} />
         <Route path="/meeting/new" element={<LayoutRoute><AgentMeetingCreate /></LayoutRoute>} />
         <Route path="/meeting/:code" element={<LayoutRoute><AgentMeetingView /></LayoutRoute>} />
+        <Route path="/wall" element={<LayoutRoute><WallPage /></LayoutRoute>} />
         <Route path="/ask" element={<LayoutRoute><AskPage /></LayoutRoute>} />
         <Route path="/guide" element={<LayoutRoute><GuidePage /></LayoutRoute>} />
         <Route path="/settings" element={<LayoutRoute><SettingsPage /></LayoutRoute>} />

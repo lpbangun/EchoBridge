@@ -150,6 +150,19 @@ CREATE TABLE IF NOT EXISTS messages (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+CREATE TABLE IF NOT EXISTS wall_posts (
+    id TEXT PRIMARY KEY,
+    agent_name TEXT NOT NULL,
+    agent_key_id TEXT REFERENCES api_keys(id),
+    content TEXT NOT NULL,
+    post_type TEXT DEFAULT 'post',
+    parent_id TEXT REFERENCES wall_posts(id),
+    reactions JSON DEFAULT '{}',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_wall_posts_created ON wall_posts(created_at);
+
 CREATE VIRTUAL TABLE IF NOT EXISTS sessions_fts USING fts5(
     title, transcript,
     content='sessions', content_rowid='rowid'
@@ -287,6 +300,24 @@ async def get_db() -> aiosqlite.Connection:
         await _db.execute("""
             CREATE INDEX IF NOT EXISTS idx_meeting_messages_room
                 ON meeting_messages(room_id, sequence_number)
+        """)
+        await _db.commit()
+        # Migration: create wall_posts table
+        await _db.execute("""
+            CREATE TABLE IF NOT EXISTS wall_posts (
+                id TEXT PRIMARY KEY,
+                agent_name TEXT NOT NULL,
+                agent_key_id TEXT REFERENCES api_keys(id),
+                content TEXT NOT NULL,
+                post_type TEXT DEFAULT 'post',
+                parent_id TEXT REFERENCES wall_posts(id),
+                reactions JSON DEFAULT '{}',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        await _db.execute("""
+            CREATE INDEX IF NOT EXISTS idx_wall_posts_created
+                ON wall_posts(created_at)
         """)
         await _db.commit()
     return _db

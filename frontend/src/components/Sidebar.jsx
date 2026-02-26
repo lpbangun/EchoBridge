@@ -1,11 +1,12 @@
 import { useNavigate, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Mic, Folder, Users, MessageSquare, Settings, BookOpen, Bot } from 'lucide-react';
+import { LayoutDashboard, Mic, Folder, Users, MessageSquare, Settings, BookOpen, Bot, Megaphone } from 'lucide-react';
 
 const NAV_ITEMS = [
   { path: '/', icon: LayoutDashboard, label: 'Dashboard' },
   { path: '/recordings', icon: Mic, label: 'Recordings' },
   { path: '/series', icon: Folder, label: 'Series' },
   { path: '/rooms', icon: Users, label: 'Rooms' },
+  { path: '/wall', icon: Megaphone, label: 'Agent Wall' },
   { path: '/meeting', icon: Bot, label: 'Agent Meeting' },
   { path: '/ask', icon: MessageSquare, label: 'Ask' },
 ];

@@ -1,13 +1,13 @@
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, Response
 from fastapi.staticfiles import StaticFiles
 
 from database import get_db, close_db
-from routers import sessions, transcribe, interpret, export, settings, rooms, sockets, stream, agent, storage, series, chat, invites
+from routers import sessions, transcribe, interpret, export, settings, rooms, sockets, stream, agent, storage, series, chat, invites, wall
 
 
 @asynccontextmanager
@@ -83,6 +83,9 @@ app.include_router(invites.router)
 # Cloud storage router
 app.include_router(storage.router)
 
+# Agent Wall router
+app.include_router(wall.router)
+
 # MCP server (optional — only if mcp package is installed)
 try:
     from mcp_server import create_mcp_app
@@ -94,6 +97,79 @@ except ImportError:
 @app.get("/api/health")
 async def health_check():
     return {"status": "ok", "service": "echobridge"}
+
+
+# ---------------------------------------------------------------------------
+# Public agent endpoints — no auth required
+# ---------------------------------------------------------------------------
+
+
+@app.post("/api/agents/register")
+async def register_agent(body: dict, request: Request, db=Depends(get_db)):
+    """Self-registration for agents. No auth required.
+
+    Agents send their name and immediately receive an API key + SKILL.md.
+    This is the zero-friction path for OpenClaw and other agents.
+    """
+    import hashlib
+    import secrets
+    import uuid as _uuid
+    from datetime import datetime, timezone
+    from services.invite_service import _build_skill_content
+
+    agent_name = (body.get("agent_name") or "").strip()
+    if not agent_name:
+        raise HTTPException(400, "agent_name is required")
+
+    # Create API key
+    key_id = str(_uuid.uuid4())
+    raw_key = f"scribe_sk_{secrets.token_urlsafe(32)}"
+    key_hash = hashlib.sha256(raw_key.encode()).hexdigest()
+    now = datetime.now(timezone.utc).isoformat()
+
+    await db.execute(
+        "INSERT INTO api_keys (id, name, key_hash, created_at) VALUES (?, ?, ?, ?)",
+        (key_id, agent_name, key_hash, now),
+    )
+    await db.commit()
+
+    # Build SKILL.md with embedded values
+    base_url = str(request.base_url).rstrip("/")
+    skill_content = _build_skill_content(base_url, raw_key)
+
+    # Auto-post an intro to the wall
+    post_id = str(_uuid.uuid4())
+    await db.execute(
+        """INSERT INTO wall_posts (id, agent_name, agent_key_id, content, post_type, reactions, created_at)
+        VALUES (?, ?, ?, ?, 'intro', '{}', ?)""",
+        (post_id, agent_name, key_id, f"{agent_name} has connected to EchoBridge!", now),
+    )
+    await db.commit()
+
+    return {
+        "api_key": raw_key,
+        "api_key_id": key_id,
+        "agent_name": agent_name,
+        "skill_md": skill_content,
+        "wall_post_id": post_id,
+        "endpoints": {
+            "ping": "/api/v1/ping",
+            "wall": "/api/v1/wall",
+            "sessions": "/api/v1/sessions",
+            "skill": "/api/v1/skill",
+        },
+    }
+
+
+@app.get("/api/skill")
+async def public_skill():
+    """Return SKILL.md content — no auth required for discovery."""
+    from routers.agent import _find_skill_md
+    path = _find_skill_md()
+    if not path:
+        raise HTTPException(404, "SKILL.md not found")
+    from fastapi.responses import PlainTextResponse
+    return PlainTextResponse(path.read_text(encoding="utf-8"))
 
 
 # Production static file serving — must be LAST so API routes take priority

@@ -444,3 +444,17 @@ export async function claimInvite(token, agentName) {
     body: JSON.stringify({ agent_name: agentName }),
   });
 }
+
+// --- Agent Wall ---
+
+export async function getWallFeed(limit = 50, offset = 0) {
+  return request(`/wall?limit=${limit}&offset=${offset}`);
+}
+
+export async function getWallAgents() {
+  return request('/wall/agents');
+}
+
+export async function getWallReplies(postId) {
+  return request(`/wall/${postId}/replies`);
+}

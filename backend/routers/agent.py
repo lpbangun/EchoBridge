@@ -57,6 +57,9 @@ _AVAILABLE_ENDPOINTS = [
     "/api/v1/chat/conversations/{id}/messages",
     "/api/v1/events",
     "/api/v1/sessions/{id}/agent-analyze",
+    "/api/v1/wall",
+    "/api/v1/wall (POST)",
+    "/api/v1/wall/{post_id}/react",
     "/api/v1/ping",
     "/api/v1/skill",
 ]
