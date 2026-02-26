@@ -25,8 +25,8 @@ router = APIRouter(prefix="/api/v1", tags=["agent-api"])
 
 # Path candidates: Docker (/app/SKILL.md) first, dev layout second
 _SKILL_MD_CANDIDATES = [
-    Path(__file__).resolve().parent.parent.parent / "SKILL.md",  # Docker: /app/SKILL.md
-    Path(__file__).resolve().parent.parent.parent / "openclaw-skill" / "echobridge" / "SKILL.md",  # Dev
+    Path(__file__).resolve().parent.parent / "SKILL.md",  # Docker: /app/SKILL.md
+    Path(__file__).resolve().parent.parent / "openclaw-skill" / "echobridge" / "SKILL.md",  # Dev
 ]
 
 
@@ -50,6 +50,7 @@ _AVAILABLE_ENDPOINTS = [
     "/api/v1/series/{id}",
     "/api/v1/series/{id}/memory",
     "/api/v1/meetings",
+    "/api/v1/meetings/{code}/start",
     "/api/v1/meetings/{code}/respond",
     "/api/v1/meetings/{code}/context",
     "/api/v1/chat/conversations",
@@ -547,6 +548,47 @@ async def agent_create_meeting(
         title=body.get("title"),
     )
     return result
+
+
+@router.post("/meetings/{code}/start")
+async def agent_start_meeting(
+    code: str,
+    api_key=Depends(verify_api_key),
+    db=Depends(get_db),
+):
+    """Start an agent meeting orchestrator (authenticated)."""
+    from services.room_service import get_room
+    from services.orchestrator_service import MeetingOrchestrator
+
+    room = await get_room(db, code)
+    if not room:
+        raise HTTPException(404, "Room not found")
+    if room.get("mode") != "agent_meeting":
+        raise HTTPException(400, "Room is not an agent meeting")
+    if room["status"] != "waiting":
+        raise HTTPException(400, f"Meeting cannot start from status '{room['status']}'")
+
+    config = room.get("meeting_config", "{}")
+    if isinstance(config, str):
+        config = json.loads(config)
+
+    orchestrator = MeetingOrchestrator(
+        room_id=room["id"],
+        room_code=code,
+        session_id=room["session_id"],
+        topic=config.get("topic", ""),
+        task_description=config.get("task_description", ""),
+        agents=config.get("agents", []),
+        cooldown_seconds=config.get("cooldown_seconds", 3.0),
+        max_rounds=config.get("max_rounds", 20),
+        host_name=room["host_name"],
+    )
+
+    from database import get_db_connection
+    bg_db = await get_db_connection()
+    await orchestrator.start(bg_db)
+
+    return {"status": "started", "code": code}
 
 
 @router.post("/meetings/{code}/respond")

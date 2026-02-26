@@ -196,8 +196,8 @@ async def delete_api_key(key_id: str, db=Depends(get_db)):
 
 
 _SKILL_MD_CANDIDATES = [
-    Path(__file__).resolve().parent.parent.parent / "SKILL.md",  # Docker: /app/SKILL.md
-    Path(__file__).resolve().parent.parent.parent / "openclaw-skill" / "echobridge" / "SKILL.md",  # Dev
+    Path(__file__).resolve().parent.parent / "SKILL.md",  # Docker: /app/SKILL.md
+    Path(__file__).resolve().parent.parent / "openclaw-skill" / "echobridge" / "SKILL.md",  # Dev
 ]
 
 
