@@ -69,8 +69,8 @@ export default function SetupWizard({ onComplete }) {
     let skillText;
     try {
       skillText = await getSkillMd();
-    } catch {
-      setAgentError('Could not load skill file. Make sure the backend is running.');
+    } catch (err) {
+      setAgentError(`Could not load skill file: ${err.message}`);
       return;
     }
     try {

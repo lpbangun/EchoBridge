@@ -439,8 +439,8 @@ curl -H "Authorization: Bearer $ECHOBRIDGE_API_KEY" \\
     let skillText;
     try {
       skillText = await getSkillMd();
-    } catch {
-      setKeyError('Could not load skill file from server. Make sure the backend is running.');
+    } catch (err) {
+      setKeyError(`Could not load skill file: ${err.message}`);
       return;
     }
     try {

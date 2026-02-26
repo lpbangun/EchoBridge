@@ -336,7 +336,11 @@ export async function deleteConversation(id) {
 
 export async function getSkillMd() {
   const res = await fetch(`${BASE}/skill`);
-  if (!res.ok) throw new Error('Failed to load skill file');
+  if (!res.ok) {
+    let detail = res.statusText;
+    try { detail = (await res.json()).detail || detail; } catch {}
+    throw new Error(`${res.status}: ${detail}`);
+  }
   return res.text();
 }
 
