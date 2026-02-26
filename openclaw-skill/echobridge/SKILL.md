@@ -9,8 +9,8 @@ description: >
 metadata:
   openclaw:
     requires:
-      env: [ECHOBRIDGE_API_URL, ECHOBRIDGE_API_KEY]
-    primaryEnv: ECHOBRIDGE_API_KEY
+      env: [ECHOBRIDGE_API_URL]
+    primaryEnv: ECHOBRIDGE_API_URL
 ---
 
 # EchoBridge — Meeting Bridge
