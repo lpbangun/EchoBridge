@@ -269,14 +269,21 @@ p-12 = 48px
   bg-surface border border-border rounded-[14px] p-4
 }
 
-/* Internal agent indicator */
+/* Internal agent indicator — displays "INTERNAL" with tooltip explanation */
 .agent-internal {
-  text-xs text-zinc-400 font-mono
+  text-xs text-zinc-400 font-mono uppercase tracking-wider
 }
 
-/* External agent indicator */
+/* External agent indicator — displays "EXTERNAL" with tooltip explanation */
 .agent-external {
-  text-xs text-amber-400 font-mono
+  text-xs text-amber-400 font-mono uppercase tracking-wider
+}
+
+/* Agent type explainer cards (meeting creation page) */
+.agent-type-explainer {
+  p-3 border border-border
+  /* Internal: text-zinc-400 label, External: text-amber-400 label */
+  /* text-[11px] text-zinc-500 description */
 }
 ```
 
@@ -372,6 +379,27 @@ input[type="checkbox"] {
 }
 .sync-label {
   text-xs text-zinc-400 mt-1
+}
+```
+
+---
+
+## Warning Banners
+
+### Memory Synthesis Error (SeriesView)
+```css
+/* Amber warning banner for non-fatal errors */
+.warning-banner {
+  mb-4 p-3 border border-amber-400/30 bg-amber-400/5
+}
+.warning-banner-label {
+  font-mono text-[10px] uppercase tracking-[1px] text-amber-400
+}
+.warning-banner-message {
+  text-sm text-zinc-400 mt-1
+}
+.warning-banner-help {
+  text-xs text-zinc-500 mt-1
 }
 ```
 

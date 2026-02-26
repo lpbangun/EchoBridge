@@ -54,7 +54,7 @@ Socket  = "here's a prompt + output schema, give me validated JSON + markdown"
 ```
 
 ### Series
-A group of related sessions (e.g. "Weekly Syncs", "Research Meetings"). Series have an AI-generated memory document that summarizes insights, decisions, and patterns across all sessions in the group. Memory refreshes on demand.
+A group of related sessions (e.g. "Weekly Syncs", "Research Meetings"). Series have an AI-generated memory document that summarizes insights, decisions, and patterns across all sessions in the group. Memory refreshes on demand. If memory synthesis fails, the error is stored in `memory_error` and surfaced in the frontend as an amber warning banner.
 
 ### Conversation
 A persistent chat thread for asking questions about meetings. Conversations can be global (cross-meeting search via /ask) or tied to a specific session (chat sidebar in session view). Messages persist across browser sessions.
@@ -222,6 +222,7 @@ CREATE TABLE api_keys (
     id TEXT PRIMARY KEY,
     name TEXT NOT NULL,
     key_hash TEXT NOT NULL UNIQUE,
+    scopes TEXT DEFAULT NULL,             -- comma-separated permission scopes (NULL = full access)
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     last_used_at TIMESTAMP
 );
@@ -244,6 +245,7 @@ CREATE TABLE series (
     name TEXT NOT NULL,
     description TEXT DEFAULT '',
     memory_document TEXT DEFAULT '',           -- AI-generated cross-session summary
+    memory_error TEXT DEFAULT NULL,            -- last synthesis error (NULL = no error)
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -278,7 +280,7 @@ CREATE VIRTUAL TABLE interpretations_fts USING fts5(
 );
 ```
 
-Note: Sessions have a `series_id TEXT REFERENCES series(id)` column for grouping into series. Rooms have `mode`, `meeting_config`, and `transcript_log` columns for agent meetings. Room participants have `persona_config` and `is_external` columns for agent meeting agents.
+Note: Sessions have a `series_id TEXT REFERENCES series(id)` column for grouping into series. Rooms have `mode`, `meeting_config`, and `transcript_log` columns for agent meetings. Room participants have `persona_config` and `is_external` columns for agent meeting agents. API keys have a `scopes` column for permission scoping (NULL = full access). Series have a `memory_error` column for surfacing synthesis failures.
 
 ---
 
@@ -614,8 +616,8 @@ POST   /api/rooms/{code}/meeting/message     Send a human message
 GET    /api/rooms/{code}/meeting/messages     Get conversation log
 GET    /api/rooms/{code}/meeting/state        Get orchestrator state
 
-# Agent API (authenticated)
-POST   /api/v1/meetings                      Create meeting (agent-initiated)
+# Agent API (authenticated, requires rooms:write scope)
+POST   /api/v1/meetings                      Create meeting (returns join_url)
 GET    /api/v1/meetings/{code}/context        Poll for turn + conversation
 POST   /api/v1/meetings/{code}/respond        Submit turn response
 ```
@@ -811,7 +813,7 @@ When a transcript is submitted (browser STT or audio upload), a background pipel
 
 4. **Session event**: Inserts a `session.complete` event into `session_events` with interpretation count, enabling agents to discover new sessions via polling.
 
-5. **Memory synthesis**: If the session belongs to a series, synthesizes cross-session memory in a background task with its own database connection.
+5. **Memory synthesis**: If the session belongs to a series, synthesizes cross-session memory in a background task with its own database connection. On success, clears any previous `memory_error`. On failure, stores the error message in `series.memory_error` for user visibility in the frontend.
 
 6. **Auto-export**: If `auto_export` is enabled, saves the `.md` file. If cloud storage is enabled, enqueues the export for S3 sync.
 
@@ -967,7 +969,7 @@ GET    /api/storage/status               Get storage status
 GET    /api/search?q=...                 FTS5 across sessions + interpretations
 GET    /api/settings                     Get settings
 PUT    /api/settings                     Update settings
-POST   /api/settings/api-keys            Generate agent API key
+POST   /api/settings/api-keys            Generate agent API key (optional: scopes[])
 GET    /api/lenses                       List preset lenses
 GET    /api/sockets                      List all sockets
 POST   /api/sessions/{id}/agent-analyze  Run sockets on demand (frontend)
@@ -975,44 +977,66 @@ POST   /api/sessions/{id}/agent-analyze  Run sockets on demand (frontend)
 
 ### Agent API (/api/v1/):
 ```
-# Sessions
+# Sessions (scope: sessions:read)
 GET    /api/v1/sessions                  List sessions (filter, paginate, exclude_agent_meetings)
 GET    /api/v1/sessions/{id}             Get session + transcript
 GET    /api/v1/sessions/{id}/transcript  Raw transcript only
-
-# Interpret
-POST   /api/v1/sessions/{id}/interpret   Custom lens or socket interpretation
 GET    /api/v1/sessions/{id}/interpretations  All interpretations
 
-# Sockets
-GET    /api/v1/sockets                   List available sockets
+# Interpret (scope: sessions:write)
+POST   /api/v1/sessions/{id}/interpret   Custom lens or socket interpretation
 POST   /api/v1/sessions/{id}/interpret/socket/{socket_id}  Socket interpretation
+POST   /api/v1/sessions/{id}/agent-analyze   Run sockets on demand + emit event
 
-# Rooms
+# Sockets (no scope required)
+GET    /api/v1/sockets                   List available sockets
+
+# Rooms (scope: rooms:write)
 GET    /api/v1/rooms/{code}              Room status
 WS     /api/v1/stream/room/{code}        Live transcript stream
 
-# Series
+# Meetings (scope: rooms:write)
+GET    /api/v1/meetings                  List open meetings
+GET    /api/v1/meetings/{code}           Get meeting details
+POST   /api/v1/meetings                  Create meeting (returns join_url)
+POST   /api/v1/meetings/{code}/join      Join meeting
+POST   /api/v1/meetings/{code}/start     Start meeting
+POST   /api/v1/meetings/{code}/respond   Submit turn response
+GET    /api/v1/meetings/{code}/context   Poll for turn + conversation
+
+# Series (scope: sessions:read)
 GET    /api/v1/series                    List all series
 GET    /api/v1/series/{id}               Get series details
-GET    /api/v1/series/{id}/memory        Get memory document
+GET    /api/v1/series/{id}/memory        Get memory document (includes memory_error)
 
-# Chat
+# Chat (no scope required)
 GET    /api/v1/chat/conversations        List conversations
 GET    /api/v1/chat/conversations/{id}   Get conversation + messages
 POST   /api/v1/chat/conversations/{id}/messages  Send message
 
-# Search
+# Search (scope: sessions:read)
 GET    /api/v1/search?q=...              FTS5 search
 
-# Events (agent notification queue)
+# Events (scope: sessions:read)
 GET    /api/v1/events?since=<ISO>&context=<filter>&limit=50  Poll for session events
 
-# Agent Analysis
-POST   /api/v1/sessions/{id}/agent-analyze   Run sockets on demand + emit event
+# Wall (scope: wall:read / wall:write)
+GET    /api/v1/wall                      List wall posts (wall:read)
+POST   /api/v1/wall                      Create wall post (wall:write)
+POST   /api/v1/wall/{post_id}/react      React to post (wall:write)
 
 # Auth
 Authorization: Bearer scribe_sk_...     (all /api/v1/ endpoints)
+
+# Scopes (permission-based access control)
+# Keys with NULL scopes have full access (backward-compatible).
+# Keys with explicit scopes are restricted to matching endpoints:
+#   sessions:read  → GET sessions, transcripts, interpretations, search, events, series, memory
+#   sessions:write → POST interpret, socket interpret, agent-analyze
+#   rooms:write    → GET/POST meetings, rooms, join, start, respond, context
+#   wall:read      → GET /api/v1/wall
+#   wall:write     → POST /api/v1/wall, POST /api/v1/wall/{id}/react
+# Unscoped endpoints (any valid key): ping, skill, sockets, chat
 ```
 
 ---
@@ -1739,6 +1763,9 @@ AUDIO_DIR=./data/audio
 
 # Agent API
 ECHOBRIDGE_AGENT_API_KEY=
+
+# Frontend URL (for constructing shareable join links in agent meeting responses)
+FRONTEND_BASE_URL=http://localhost:5173
 
 # Auto-sockets (comma-separated socket IDs to auto-run)
 AUTO_SOCKETS=
