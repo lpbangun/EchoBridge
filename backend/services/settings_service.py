@@ -59,6 +59,17 @@ async def load_preferences(db: aiosqlite.Connection) -> None:
         value = json.loads(raw_value)
         setattr(settings, key, value)
 
+    # When an API key is provided via environment variable (Docker/Railway),
+    # reset onboarding so the user gets the setup wizard on each deployment.
+    # This prevents a stale onboarding_complete=true in the persistent DB
+    # from silently skipping onboarding after redeployment.
+    _API_KEY_ENV_VARS = [
+        "OPENROUTER_API_KEY", "OPENAI_API_KEY", "ANTHROPIC_API_KEY",
+        "GOOGLE_API_KEY", "XAI_API_KEY",
+    ]
+    if any(os.environ.get(k) for k in _API_KEY_ENV_VARS):
+        settings.onboarding_complete = False
+
 
 async def save_preferences(db: aiosqlite.Connection, updates: dict) -> None:
     """UPSERT preference fields into the app_settings table."""
