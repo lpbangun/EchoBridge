@@ -412,6 +412,19 @@ class MeetingOrchestrator:
         """Queue a human message to be injected in the next round."""
         self.human_message_queue.append({"text": text, "from_name": from_name})
 
+    async def add_agent(self, agent: dict, db=None):
+        """Dynamically add an agent to the meeting (e.g. when they join mid-meeting)."""
+        # Avoid duplicates
+        if any(a["name"] == agent["name"] for a in self.agents):
+            return False
+        self.agents.append(agent)
+        await self._add_message(
+            "System", "system", "status",
+            f"{agent['name']} has joined the meeting.",
+            db=db,
+        )
+        return True
+
     def get_state(self) -> dict:
         """Return current meeting state."""
         return {

@@ -50,6 +50,8 @@ _AVAILABLE_ENDPOINTS = [
     "/api/v1/series/{id}",
     "/api/v1/series/{id}/memory",
     "/api/v1/meetings",
+    "/api/v1/meetings/{code}",
+    "/api/v1/meetings/{code}/join",
     "/api/v1/meetings/{code}/start",
     "/api/v1/meetings/{code}/respond",
     "/api/v1/meetings/{code}/context",
@@ -518,24 +520,106 @@ async def agent_send_message(
 # --- Agent Meeting endpoints ---
 
 
+@router.get("/meetings")
+async def agent_list_meetings(
+    status: str = Query(default=None, description="Filter by status: waiting, active, paused"),
+    api_key=Depends(verify_api_key),
+    db=Depends(get_db),
+):
+    """List open/active agent meetings that can be joined."""
+    if status:
+        cursor = await db.execute(
+            """SELECT r.code, r.status, r.host_name, r.created_at, r.meeting_config,
+                      s.id as session_id, s.title
+               FROM rooms r LEFT JOIN sessions s ON s.room_id = r.id
+               WHERE r.mode = 'agent_meeting' AND r.status = ?
+               ORDER BY r.created_at DESC""",
+            (status,),
+        )
+    else:
+        cursor = await db.execute(
+            """SELECT r.code, r.status, r.host_name, r.created_at, r.meeting_config,
+                      s.id as session_id, s.title
+               FROM rooms r LEFT JOIN sessions s ON s.room_id = r.id
+               WHERE r.mode = 'agent_meeting' AND r.status IN ('waiting', 'active', 'paused')
+               ORDER BY r.created_at DESC"""
+        )
+    rows = await cursor.fetchall()
+    meetings = []
+    for row in rows:
+        d = dict(row)
+        config = d.pop("meeting_config", "{}")
+        if isinstance(config, str):
+            config = json.loads(config)
+        d["topic"] = config.get("topic", "")
+        d["agents"] = [a["name"] for a in config.get("agents", [])]
+        d["max_rounds"] = config.get("max_rounds", 20)
+        meetings.append(d)
+    return {"meetings": meetings, "count": len(meetings)}
+
+
+@router.get("/meetings/{code}")
+async def agent_get_meeting(
+    code: str,
+    api_key=Depends(verify_api_key),
+    db=Depends(get_db),
+):
+    """Get details about a specific meeting."""
+    from services.room_service import get_room
+
+    room = await get_room(db, code)
+    if not room:
+        raise HTTPException(404, "Meeting not found")
+    if room.get("mode") != "agent_meeting":
+        raise HTTPException(400, "Not an agent meeting")
+
+    config = room.get("meeting_config", "{}")
+    if isinstance(config, str):
+        config = json.loads(config)
+
+    return {
+        "code": room["code"],
+        "status": room["status"],
+        "host_name": room["host_name"],
+        "session_id": room["session_id"],
+        "topic": config.get("topic", ""),
+        "task_description": config.get("task_description", ""),
+        "agents": config.get("agents", []),
+        "participants": [
+            {"name": p["name"], "type": p["participant_type"]}
+            for p in room.get("participants", [])
+        ],
+        "created_at": room["created_at"],
+    }
+
+
 @router.post("/meetings")
 async def agent_create_meeting(
     body: dict,
     api_key=Depends(verify_api_key),
     db=Depends(get_db),
 ):
-    """External agent creates a meeting room."""
+    """External agent creates a meeting room.
+
+    Agents can create meetings with 1+ agents. If no agents are specified,
+    the creating agent is added as an external participant automatically.
+    Other agents can join later via POST /meetings/{code}/join.
+    """
     from services.room_service import create_agent_meeting_room
 
     topic = body.get("topic")
     if not topic:
         raise HTTPException(400, "Topic is required")
 
-    agents = body.get("agents", [])
-    if len(agents) < 2 or len(agents) > 4:
-        raise HTTPException(400, "2-4 agents required")
-
     agent_name = api_key.get("name", "agent")
+    agents = body.get("agents", [])
+
+    # If no agents specified, add the creating agent as external participant
+    if not agents:
+        agents = [{"name": agent_name, "type": "external"}]
+
+    if len(agents) > 8:
+        raise HTTPException(400, "Maximum 8 agents per meeting")
 
     result = await create_agent_meeting_room(
         db=db,
@@ -547,7 +631,99 @@ async def agent_create_meeting(
         max_rounds=body.get("max_rounds", 20),
         title=body.get("title"),
     )
+
+    # Auto-post to the agent wall so other agents discover this meeting
+    import uuid as _uuid
+    from datetime import datetime as _dt, timezone as _tz
+    post_id = str(_uuid.uuid4())
+    now = _dt.now(_tz.utc).isoformat()
+    wall_content = (
+        f"I just created a meeting: **{topic}**\n\n"
+        f"Join code: `{result['code']}`\n"
+    )
+    if body.get("task_description"):
+        wall_content += f"Task: {body['task_description']}\n"
+    wall_content += f"\nJoin: `POST /api/v1/meetings/{result['code']}/join`"
+
+    await db.execute(
+        """INSERT INTO wall_posts (id, agent_name, agent_key_id, content, post_type, parent_id, reactions, created_at)
+        VALUES (?, ?, ?, ?, 'post', NULL, '{}', ?)""",
+        (post_id, agent_name, api_key["id"], wall_content, now),
+    )
+    await db.commit()
+
     return result
+
+
+@router.post("/meetings/{code}/join")
+async def agent_join_meeting(
+    code: str,
+    body: dict = None,
+    api_key=Depends(verify_api_key),
+    db=Depends(get_db),
+):
+    """Join an existing agent meeting as an external participant.
+
+    Agents can join meetings in 'waiting' or 'active' status.
+    If the meeting is already running, the agent is added to the orchestrator dynamically.
+    """
+    from services.room_service import get_room
+    from services.orchestrator_service import get_orchestrator
+    import uuid as _uuid
+    from datetime import datetime as _dt, timezone as _tz
+
+    room = await get_room(db, code)
+    if not room:
+        raise HTTPException(404, "Meeting not found")
+    if room.get("mode") != "agent_meeting":
+        raise HTTPException(400, "Not an agent meeting")
+    if room["status"] == "closed":
+        raise HTTPException(400, "Meeting is already closed")
+
+    agent_name = api_key.get("name", "agent")
+
+    # Check if already a participant
+    existing = [p for p in room.get("participants", []) if p["name"] == agent_name]
+    if existing:
+        raise HTTPException(400, "Already a participant in this meeting")
+
+    # Add to room_participants
+    pid = str(_uuid.uuid4())
+    now = _dt.now(_tz.utc).isoformat()
+    agent_config = {"name": agent_name, "type": "external"}
+
+    await db.execute(
+        """INSERT INTO room_participants
+        (id, room_id, name, participant_type, connected_at, persona_config, is_external)
+        VALUES (?, ?, ?, 'agent', ?, ?, 1)""",
+        (pid, room["id"], agent_name, now, json.dumps(agent_config)),
+    )
+
+    # Update meeting_config to include the new agent
+    config = room.get("meeting_config", "{}")
+    if isinstance(config, str):
+        config = json.loads(config)
+    config.setdefault("agents", []).append(agent_config)
+    await db.execute(
+        "UPDATE rooms SET meeting_config = ? WHERE id = ?",
+        (json.dumps(config), room["id"]),
+    )
+    await db.commit()
+
+    # If meeting is already running, add to the orchestrator
+    orchestrator = get_orchestrator(code)
+    if orchestrator and orchestrator.status in ("active", "paused"):
+        from database import get_db_connection
+        bg_db = await get_db_connection()
+        await orchestrator.add_agent(agent_config, db=bg_db)
+
+    return {
+        "status": "joined",
+        "code": code,
+        "agent_name": agent_name,
+        "meeting_status": room["status"],
+        "topic": config.get("topic", ""),
+    }
 
 
 @router.post("/meetings/{code}/start")
