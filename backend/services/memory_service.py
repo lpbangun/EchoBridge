@@ -12,12 +12,14 @@ MEMORY_SYNTHESIS_PROMPT = """You are a meeting memory synthesizer. You maintain 
 
 Your job: Given the current memory document and a new session's interpretation, produce an UPDATED memory document.
 
-Rules:
-- PRESERVE all existing information unless it's clearly superseded
-- ADD new decisions, action items, threads, and people from the new session
-- MARK action items as complete ([x]) if the new session indicates they're done
-- REMOVE open threads only when explicitly resolved
-- Keep the document self-contained — someone reading only this document should understand the full history
+CRITICAL RETENTION RULES:
+- STRICTLY RETAIN all existing decisions, action items, open threads, people, timeline entries, and insights VERBATIM unless the new session explicitly supersedes or resolves them.
+- NEVER summarize, shorten, paraphrase, or remove existing entries. They must appear in your output exactly as they appear in the input.
+- The ONLY mutations allowed on existing content:
+  1. Mark an action item [x] if the new session explicitly confirms it is done.
+  2. Move a resolved Open Thread to a resolved note only if the new session explicitly closes it.
+- ADD new decisions, action items, threads, and people from the new session.
+- Keep the document self-contained — someone reading only this document should understand the full history.
 - Be concise but complete. Every entry should have enough context to be useful on its own.
 - Use the exact section structure below. Do not add or rename sections.
 - Temperature is low — be deterministic and factual, not creative.
@@ -33,7 +35,7 @@ Output the complete updated memory document in this exact format:
 <!-- Living checklist: - [ ] or - [x] with owners when known -->
 
 ## Open Threads
-<!-- Recurring topics or unresolved discussions. Remove when resolved. -->
+<!-- Recurring topics or unresolved discussions. Remove only when explicitly resolved. -->
 
 ## Key People & Entities
 <!-- Who's mentioned and their role/context -->
@@ -112,7 +114,11 @@ async def synthesize_and_store_memory(
     model: str | None,
     db,
 ) -> None:
-    """Fire-and-forget wrapper: fetch current memory, synthesize, store result."""
+    """Fire-and-forget wrapper: fetch current memory, synthesize, store result.
+
+    On success: clears any previous memory_error.
+    On failure: stores the error message in memory_error for user visibility.
+    """
     try:
         cursor = await db.execute(
             "SELECT name, memory_document FROM series WHERE id = ?",
@@ -136,12 +142,20 @@ async def synthesize_and_store_memory(
 
         now = datetime.now(timezone.utc).isoformat()
         await db.execute(
-            "UPDATE series SET memory_document = ?, updated_at = ? WHERE id = ?",
+            "UPDATE series SET memory_document = ?, memory_error = NULL, updated_at = ? WHERE id = ?",
             (updated_memory, now, series_id),
         )
         await db.commit()
-    except Exception:
+    except Exception as exc:
         logger.exception("Failed to synthesize memory for series %s", series_id)
+        try:
+            await db.execute(
+                "UPDATE series SET memory_error = ? WHERE id = ?",
+                (str(exc), series_id),
+            )
+            await db.commit()
+        except Exception:
+            logger.exception("Could not persist memory_error for series %s", series_id)
 
 
 async def refresh_memory_from_scratch(

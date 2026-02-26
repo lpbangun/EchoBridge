@@ -421,6 +421,41 @@ async def test_agent_series_unauthorized(client):
 
 
 @pytest.mark.asyncio
+async def test_series_response_includes_memory_error(client, db):
+    resp = await client.post("/api/series", json={"name": "Test", "description": ""})
+    assert resp.status_code == 201
+    data = resp.json()
+    assert "memory_error" in data
+    assert data["memory_error"] is None
+
+
+@pytest.mark.asyncio
+async def test_memory_error_surfaces_after_failure(client, db):
+    resp = await client.post("/api/series", json={"name": "S", "description": ""})
+    series_id = resp.json()["id"]
+    await db.execute(
+        "UPDATE series SET memory_error = ? WHERE id = ?",
+        ("AI timeout", series_id),
+    )
+    await db.commit()
+    resp = await client.get(f"/api/series/{series_id}")
+    assert resp.json()["memory_error"] == "AI timeout"
+
+
+@pytest.mark.asyncio
+async def test_memory_endpoint_includes_memory_error(client, db):
+    resp = await client.post("/api/series", json={"name": "MemErr", "description": ""})
+    series_id = resp.json()["id"]
+    await db.execute(
+        "UPDATE series SET memory_error = ? WHERE id = ?",
+        ("Model unavailable", series_id),
+    )
+    await db.commit()
+    resp = await client.get(f"/api/series/{series_id}/memory")
+    assert resp.json()["memory_error"] == "Model unavailable"
+
+
+@pytest.mark.asyncio
 async def test_agent_list_sessions_by_series(client, db):
     key = await _create_api_key(client)
 

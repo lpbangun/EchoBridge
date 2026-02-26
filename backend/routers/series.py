@@ -118,6 +118,7 @@ async def get_memory(series_id: str, db=Depends(get_db)):
         "series_id": data["id"],
         "series_name": data["name"],
         "memory_document": data["memory_document"] or "",
+        "memory_error": data.get("memory_error"),
         "updated_at": data["updated_at"],
         "session_count": data["session_count"],
     }
@@ -142,6 +143,7 @@ async def refresh_memory(
         "series_id": data["id"],
         "series_name": data["name"],
         "memory_document": data["memory_document"] or "",
+        "memory_error": data.get("memory_error"),
         "updated_at": data["updated_at"],
         "session_count": data["session_count"],
     }
