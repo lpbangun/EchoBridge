@@ -36,7 +36,8 @@ export default function SetupWizard({ onComplete }) {
   const steps = [
     { icon: Mic, label: 'Transcription' },
     { icon: Cpu, label: 'AI Provider' },
-    { icon: FolderOpen, label: 'Agent Bridge' },
+    { icon: FolderOpen, label: 'Output' },
+    { icon: Link, label: 'Agent Connection' },
   ];
 
   async function handleCreateInvite() {
@@ -140,7 +141,7 @@ export default function SetupWizard({ onComplete }) {
           ECHOBRIDGE
         </h1>
         <p className="text-sm text-zinc-400 text-center mb-8">
-          Let's get you set up in 3 quick steps.
+          Let's get you set up in 4 quick steps.
         </p>
 
         {/* Progress steps */}
@@ -293,12 +294,12 @@ export default function SetupWizard({ onComplete }) {
             </div>
           )}
 
-          {/* Step 2: Agent Bridge */}
+          {/* Step 2: Output */}
           {step === 2 && (
             <div>
-              <h2 className="text-base font-semibold text-zinc-200">Connect your agent</h2>
+              <h2 className="text-base font-semibold text-zinc-200">Where should meeting notes be saved?</h2>
               <p className="text-sm text-zinc-400 mt-1">
-                Set up where notes are saved and optionally connect an AI agent now.
+                Choose a directory for exported meeting notes.
               </p>
 
               <label className="block mt-6">
@@ -314,78 +315,84 @@ export default function SetupWizard({ onComplete }) {
                   Point this to any folder — Obsidian, Notion sync, or a directory your agent watches.
                 </p>
               </label>
+            </div>
+          )}
 
-              {/* Agent connection options */}
-              <div className="mt-6 pt-5 border-t border-border">
-                <span className="section-label">Agent Setup (optional)</span>
-                <p className="text-xs text-zinc-400 mt-1 mb-4">
-                  Connect an AI agent now, or do it later in Settings.
-                </p>
+          {/* Step 3: Agent Connection */}
+          {step === 3 && (
+            <div>
+              <h2 className="text-base font-semibold text-zinc-200">Connect an agent</h2>
+              <p className="text-sm text-zinc-400 mt-1">
+                Optional — skip this if you don't use AI agents yet.
+              </p>
 
-                <div className="space-y-3">
-                  {/* Invite link */}
-                  {!inviteUrl ? (
-                    <button
-                      onClick={handleCreateInvite}
-                      disabled={creatingInvite}
-                      className="w-full text-left p-4 rounded-lg border border-border bg-zinc-800/50 hover:bg-zinc-800 transition-all disabled:opacity-50"
-                    >
-                      <div className="flex items-center gap-3">
-                        <Link size={18} strokeWidth={1.5} className="text-accent flex-shrink-0" />
-                        <div>
-                          <span className="text-sm font-medium text-zinc-200">
-                            {creatingInvite ? 'Creating...' : 'Create Invite Link'}
-                          </span>
-                          <p className="text-xs text-zinc-400 mt-0.5">
-                            Generate a URL your agent operator visits to auto-configure with a key + SKILL.md.
-                          </p>
-                        </div>
-                      </div>
-                    </button>
-                  ) : (
-                    <div className="p-4 rounded-lg border border-accent-border bg-accent-muted">
-                      <p className="text-xs text-amber-400 font-medium">Single-use — expires in 7 days</p>
-                      <p className="mt-2 font-mono text-xs text-zinc-300 break-all select-all">{inviteUrl}</p>
-                      <button
-                        onClick={handleCopyInviteUrl}
-                        className="mt-3 btn-secondary inline-flex items-center gap-2 text-sm"
-                      >
-                        {copiedInvite ? (
-                          <><Check size={14} strokeWidth={1.5} /> Copied!</>
-                        ) : (
-                          <><Copy size={14} strokeWidth={1.5} /> Copy URL</>
-                        )}
-                      </button>
+              <div className="mt-6 space-y-3">
+                {/* Copy Skill File */}
+                <button
+                  onClick={handleCopySkill}
+                  className="w-full text-left p-4 rounded-lg border border-border bg-zinc-800/50 hover:bg-zinc-800 transition-all"
+                >
+                  <div className="flex items-center gap-3">
+                    {copiedSkill ? (
+                      <Check size={18} strokeWidth={1.5} className="text-green-400 flex-shrink-0" />
+                    ) : (
+                      <FileText size={18} strokeWidth={1.5} className="text-zinc-400 flex-shrink-0" />
+                    )}
+                    <div>
+                      <span className="text-sm font-medium text-zinc-200">
+                        {copiedSkill ? 'Skill File Copied!' : 'Copy Skill File'}
+                      </span>
+                      <p className="text-xs text-zinc-400 mt-0.5">
+                        Copy SKILL.md to your clipboard — paste into your agent's skills directory.
+                      </p>
                     </div>
-                  )}
+                  </div>
+                </button>
 
-                  {/* Copy Skill File */}
+                {/* Invite link */}
+                {!inviteUrl ? (
                   <button
-                    onClick={handleCopySkill}
-                    className="w-full text-left p-4 rounded-lg border border-border bg-zinc-800/50 hover:bg-zinc-800 transition-all"
+                    onClick={handleCreateInvite}
+                    disabled={creatingInvite}
+                    className="w-full text-left p-4 rounded-lg border border-border bg-zinc-800/50 hover:bg-zinc-800 transition-all disabled:opacity-50"
                   >
                     <div className="flex items-center gap-3">
-                      {copiedSkill ? (
-                        <Check size={18} strokeWidth={1.5} className="text-green-400 flex-shrink-0" />
-                      ) : (
-                        <FileText size={18} strokeWidth={1.5} className="text-zinc-400 flex-shrink-0" />
-                      )}
+                      <Link size={18} strokeWidth={1.5} className="text-accent flex-shrink-0" />
                       <div>
                         <span className="text-sm font-medium text-zinc-200">
-                          {copiedSkill ? 'Skill File Copied!' : 'Copy Skill File'}
+                          {creatingInvite ? 'Creating...' : 'Create Invite Link'}
                         </span>
                         <p className="text-xs text-zinc-400 mt-0.5">
-                          Copy SKILL.md to your clipboard — paste into your agent's skills directory.
+                          Generate a single-use URL for an agent operator to auto-configure their key + SKILL.md.
                         </p>
                       </div>
                     </div>
                   </button>
-                </div>
-
-                {agentError && (
-                  <p className="mt-3 text-xs text-red-400">{agentError}</p>
+                ) : (
+                  <div className="p-4 rounded-lg border border-accent-border bg-accent-muted">
+                    <p className="text-xs text-amber-400 font-medium">Single-use — expires in 7 days</p>
+                    <p className="mt-2 font-mono text-xs text-zinc-300 break-all select-all">{inviteUrl}</p>
+                    <button
+                      onClick={handleCopyInviteUrl}
+                      className="mt-3 btn-secondary inline-flex items-center gap-2 text-sm"
+                    >
+                      {copiedInvite ? (
+                        <><Check size={14} strokeWidth={1.5} /> Copied!</>
+                      ) : (
+                        <><Copy size={14} strokeWidth={1.5} /> Copy URL</>
+                      )}
+                    </button>
+                  </div>
                 )}
               </div>
+
+              {agentError && (
+                <p className="mt-3 text-xs text-red-400">{agentError}</p>
+              )}
+
+              <p className="mt-6 text-xs text-zinc-500">
+                You can always set this up later in Settings.
+              </p>
             </div>
           )}
 
@@ -415,7 +422,7 @@ export default function SetupWizard({ onComplete }) {
               </div>
             </div>
             <div>
-              {step < 2 ? (
+              {step < 3 ? (
                 <button
                   onClick={() => setStep(step + 1)}
                   disabled={!canProceed()}
