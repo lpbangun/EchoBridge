@@ -39,6 +39,9 @@ class Settings(BaseSettings):
     # Agent API
     echobridge_agent_api_key: str = ""
 
+    # Frontend URL (for constructing shareable join links)
+    frontend_base_url: str = "http://localhost:5173"
+
     # Cloud Storage (S3-compatible)
     cloud_storage_enabled: bool = False
     s3_endpoint_url: str = ""  # For R2, B2, MinIO — leave empty for AWS S3

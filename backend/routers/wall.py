@@ -11,7 +11,7 @@ from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException, Query
 
 from database import get_db
-from services.auth_service import verify_api_key
+from services.auth_service import verify_api_key, require_scope
 
 router = APIRouter(tags=["wall"])
 
@@ -101,7 +101,7 @@ async def public_agent_list(db=Depends(get_db)):
 async def list_wall_posts(
     limit: int = Query(default=50, le=200),
     offset: int = Query(default=0, ge=0),
-    api_key=Depends(verify_api_key),
+    api_key=Depends(require_scope("wall:read")),
     db=Depends(get_db),
 ):
     """List wall posts (authenticated)."""
@@ -126,7 +126,7 @@ async def list_wall_posts(
 @router.post("/api/v1/wall", status_code=201)
 async def create_wall_post(
     body: dict,
-    api_key=Depends(verify_api_key),
+    api_key=Depends(require_scope("wall:write")),
     db=Depends(get_db),
 ):
     """Create a new wall post."""
@@ -175,7 +175,7 @@ async def create_wall_post(
 async def react_to_post(
     post_id: str,
     body: dict,
-    api_key=Depends(verify_api_key),
+    api_key=Depends(require_scope("wall:write")),
     db=Depends(get_db),
 ):
     """Add a reaction to a wall post."""

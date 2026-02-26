@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import PlainTextResponse
 
 from database import get_db
-from services.auth_service import verify_api_key
+from services.auth_service import verify_api_key, require_scope
 from services.interpret_service import (
     interpret_with_custom,
     interpret_with_lens,
@@ -94,7 +94,7 @@ async def list_sessions(
     series_id: str | None = None,
     limit: int = Query(default=20, le=100),
     offset: int = Query(default=0, ge=0),
-    api_key=Depends(verify_api_key),
+    api_key=Depends(require_scope("sessions:read")),
     db=Depends(get_db),
 ):
     query = "SELECT s.*, sr.name as series_name FROM sessions s LEFT JOIN series sr ON s.series_id = sr.id"
@@ -129,7 +129,7 @@ async def list_sessions(
 @router.get("/sessions/{session_id}")
 async def get_session(
     session_id: str,
-    api_key=Depends(verify_api_key),
+    api_key=Depends(require_scope("sessions:read")),
     db=Depends(get_db),
 ):
     cursor = await db.execute("SELECT * FROM sessions WHERE id = ?", (session_id,))
@@ -145,7 +145,7 @@ async def get_session(
 @router.get("/sessions/{session_id}/transcript")
 async def get_transcript(
     session_id: str,
-    api_key=Depends(verify_api_key),
+    api_key=Depends(require_scope("sessions:read")),
     db=Depends(get_db),
 ):
     cursor = await db.execute(
@@ -161,7 +161,7 @@ async def get_transcript(
 async def interpret_session(
     session_id: str,
     body: dict,
-    api_key=Depends(verify_api_key),
+    api_key=Depends(require_scope("sessions:write")),
     db=Depends(get_db),
 ):
     cursor = await db.execute("SELECT * FROM sessions WHERE id = ?", (session_id,))
@@ -210,7 +210,7 @@ async def interpret_session(
 @router.get("/sessions/{session_id}/interpretations")
 async def list_interpretations(
     session_id: str,
-    api_key=Depends(verify_api_key),
+    api_key=Depends(require_scope("sessions:read")),
     db=Depends(get_db),
 ):
     cursor = await db.execute(
@@ -250,7 +250,7 @@ async def socket_interpret(
     session_id: str,
     socket_id: str,
     body: dict | None = None,
-    api_key=Depends(verify_api_key),
+    api_key=Depends(require_scope("sessions:write")),
     db=Depends(get_db),
 ):
     cursor = await db.execute("SELECT * FROM sessions WHERE id = ?", (session_id,))
@@ -289,7 +289,7 @@ async def socket_interpret(
 @router.get("/rooms/{code}")
 async def get_room(
     code: str,
-    api_key=Depends(verify_api_key),
+    api_key=Depends(require_scope("rooms:write")),
     db=Depends(get_db),
 ):
     from services.room_service import get_room as _get_room
@@ -301,7 +301,7 @@ async def get_room(
 
 @router.get("/series")
 async def list_series(
-    api_key=Depends(verify_api_key),
+    api_key=Depends(require_scope("sessions:read")),
     db=Depends(get_db),
 ):
     cursor = await db.execute(
@@ -315,7 +315,7 @@ async def list_series(
 @router.get("/series/{series_id}")
 async def get_series(
     series_id: str,
-    api_key=Depends(verify_api_key),
+    api_key=Depends(require_scope("sessions:read")),
     db=Depends(get_db),
 ):
     cursor = await db.execute("SELECT * FROM series WHERE id = ?", (series_id,))
@@ -328,7 +328,7 @@ async def get_series(
 @router.get("/series/{series_id}/memory")
 async def get_series_memory(
     series_id: str,
-    api_key=Depends(verify_api_key),
+    api_key=Depends(require_scope("sessions:read")),
     db=Depends(get_db),
 ):
     cursor = await db.execute("SELECT * FROM series WHERE id = ?", (series_id,))
@@ -340,6 +340,7 @@ async def get_series_memory(
         "series_id": data["id"],
         "series_name": data["name"],
         "memory_document": data["memory_document"] or "",
+        "memory_error": data.get("memory_error"),
         "updated_at": data["updated_at"],
         "session_count": data["session_count"],
     }
@@ -348,7 +349,7 @@ async def get_series_memory(
 @router.get("/search")
 async def search_endpoint(
     q: str,
-    api_key=Depends(verify_api_key),
+    api_key=Depends(require_scope("sessions:read")),
     db=Depends(get_db),
 ):
     results = await search(db, q)
@@ -363,7 +364,7 @@ async def list_events(
     since: str | None = None,
     context: str | None = None,
     limit: int = Query(default=50, le=200),
-    api_key=Depends(verify_api_key),
+    api_key=Depends(require_scope("sessions:read")),
     db=Depends(get_db),
 ):
     """Poll for session events newer than `since` timestamp."""
@@ -398,7 +399,7 @@ async def list_events(
 async def agent_analyze(
     session_id: str,
     body: dict | None = None,
-    api_key=Depends(verify_api_key),
+    api_key=Depends(require_scope("sessions:write")),
     db=Depends(get_db),
 ):
     """Run sockets on demand for a completed session. Also inserts a session.complete event."""
@@ -523,7 +524,7 @@ async def agent_send_message(
 @router.get("/meetings")
 async def agent_list_meetings(
     status: str = Query(default=None, description="Filter by status: waiting, active, paused"),
-    api_key=Depends(verify_api_key),
+    api_key=Depends(require_scope("rooms:write")),
     db=Depends(get_db),
 ):
     """List open/active agent meetings that can be joined."""
@@ -561,7 +562,7 @@ async def agent_list_meetings(
 @router.get("/meetings/{code}")
 async def agent_get_meeting(
     code: str,
-    api_key=Depends(verify_api_key),
+    api_key=Depends(require_scope("rooms:write")),
     db=Depends(get_db),
 ):
     """Get details about a specific meeting."""
@@ -596,7 +597,7 @@ async def agent_get_meeting(
 @router.post("/meetings")
 async def agent_create_meeting(
     body: dict,
-    api_key=Depends(verify_api_key),
+    api_key=Depends(require_scope("rooms:write")),
     db=Depends(get_db),
 ):
     """External agent creates a meeting room.
@@ -632,6 +633,10 @@ async def agent_create_meeting(
         title=body.get("title"),
     )
 
+    # Construct join URL
+    from config import settings
+    result["join_url"] = f"{settings.frontend_base_url}/meeting/{result['code']}"
+
     # Auto-post to the agent wall so other agents discover this meeting
     import uuid as _uuid
     from datetime import datetime as _dt, timezone as _tz
@@ -643,7 +648,8 @@ async def agent_create_meeting(
     )
     if body.get("task_description"):
         wall_content += f"Task: {body['task_description']}\n"
-    wall_content += f"\nJoin: `POST /api/v1/meetings/{result['code']}/join`"
+    wall_content += f"\nJoin: {result['join_url']}"
+    wall_content += f"\nAPI: `POST /api/v1/meetings/{result['code']}/join`"
 
     await db.execute(
         """INSERT INTO wall_posts (id, agent_name, agent_key_id, content, post_type, parent_id, reactions, created_at)
@@ -686,7 +692,7 @@ async def agent_create_meeting(
 async def agent_join_meeting(
     code: str,
     body: dict = None,
-    api_key=Depends(verify_api_key),
+    api_key=Depends(require_scope("rooms:write")),
     db=Depends(get_db),
 ):
     """Join an existing agent meeting as an external participant.
@@ -756,7 +762,7 @@ async def agent_join_meeting(
 @router.post("/meetings/{code}/start")
 async def agent_start_meeting(
     code: str,
-    api_key=Depends(verify_api_key),
+    api_key=Depends(require_scope("rooms:write")),
     db=Depends(get_db),
 ):
     """Start an agent meeting orchestrator (authenticated)."""
@@ -798,7 +804,7 @@ async def agent_start_meeting(
 async def agent_meeting_respond(
     code: str,
     body: dict,
-    api_key=Depends(verify_api_key),
+    api_key=Depends(require_scope("rooms:write")),
 ):
     """External agent submits their turn response."""
     from services.orchestrator_service import get_orchestrator
@@ -823,7 +829,7 @@ async def agent_meeting_respond(
 @router.get("/meetings/{code}/context")
 async def agent_meeting_context(
     code: str,
-    api_key=Depends(verify_api_key),
+    api_key=Depends(require_scope("rooms:write")),
 ):
     """External agent fetches conversation context (polling alternative to WebSocket)."""
     from services.orchestrator_service import get_orchestrator

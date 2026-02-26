@@ -162,9 +162,11 @@ async def create_api_key(body: ApiKeyCreate, db=Depends(get_db)):
     key_hash = hashlib.sha256(raw_key.encode()).hexdigest()
     now = datetime.now(timezone.utc).isoformat()
 
+    scopes_str = ",".join(body.scopes) if body.scopes is not None else None
+
     await db.execute(
-        "INSERT INTO api_keys (id, name, key_hash, created_at) VALUES (?, ?, ?, ?)",
-        (key_id, body.name, key_hash, now),
+        "INSERT INTO api_keys (id, name, key_hash, scopes, created_at) VALUES (?, ?, ?, ?, ?)",
+        (key_id, body.name, key_hash, scopes_str, now),
     )
     await db.commit()
 
@@ -172,6 +174,7 @@ async def create_api_key(body: ApiKeyCreate, db=Depends(get_db)):
         id=key_id,
         name=body.name,
         key=raw_key,
+        scopes=body.scopes,
         created_at=now,
     )
 
@@ -180,9 +183,15 @@ async def create_api_key(body: ApiKeyCreate, db=Depends(get_db)):
 async def list_api_keys(db=Depends(get_db)):
     """List all agent API keys (no secret data exposed)."""
     cursor = await db.execute(
-        "SELECT id, name, created_at, last_used_at FROM api_keys ORDER BY created_at DESC"
+        "SELECT id, name, scopes, created_at, last_used_at FROM api_keys ORDER BY created_at DESC"
     )
-    return [dict(row) for row in await cursor.fetchall()]
+    rows = []
+    for row in await cursor.fetchall():
+        d = dict(row)
+        raw = d.pop("scopes", None)
+        d["scopes"] = [s.strip() for s in raw.split(",") if s.strip()] if raw else None
+        rows.append(d)
+    return rows
 
 
 @router.delete("/settings/api-keys/{key_id}", status_code=204)

@@ -10,6 +10,7 @@ import aiosqlite
 
 
 INVITE_EXPIRY_DAYS = 7
+DEFAULT_INVITE_SCOPES = "rooms:write,wall:read,wall:write"
 
 _SKILL_MD_CANDIDATES = [
     Path(__file__).resolve().parent.parent / "SKILL.md",  # Docker: /app/SKILL.md
@@ -136,8 +137,8 @@ async def claim_invite(
     now = datetime.now(timezone.utc).isoformat()
 
     await db.execute(
-        "INSERT INTO api_keys (id, name, key_hash, created_at) VALUES (?, ?, ?, ?)",
-        (key_id, agent_name, key_hash, now),
+        "INSERT INTO api_keys (id, name, key_hash, scopes, created_at) VALUES (?, ?, ?, ?, ?)",
+        (key_id, agent_name, key_hash, DEFAULT_INVITE_SCOPES, now),
     )
 
     # Mark invite as claimed
