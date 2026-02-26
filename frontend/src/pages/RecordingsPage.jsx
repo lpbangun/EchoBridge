@@ -31,7 +31,7 @@ export default function RecordingsPage() {
       if (searchQuery?.trim()) {
         result = await searchSessions(searchQuery.trim());
       } else {
-        result = await listSessions({ context: contextFilter });
+        result = await listSessions({ context: contextFilter, exclude_agent_meetings: true });
       }
       setSessions(Array.isArray(result) ? result : result?.sessions || []);
     } catch (err) {

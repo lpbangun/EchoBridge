@@ -75,6 +75,7 @@ async def list_sessions(
     context: str | None = None,
     series_id: str | None = None,
     q: str | None = None,
+    exclude_agent_meetings: bool = Query(default=False),
     limit: int = Query(default=50, le=100),
     offset: int = Query(default=0, ge=0),
     db=Depends(get_db),
@@ -83,7 +84,8 @@ async def list_sessions(
     SUBSTR(i.output_markdown, 1, 200) as summary_snippet
     FROM sessions s
     LEFT JOIN series sr ON s.series_id = sr.id
-    LEFT JOIN interpretations i ON i.session_id = s.id AND i.is_primary = 1"""
+    LEFT JOIN interpretations i ON i.session_id = s.id AND i.is_primary = 1
+    LEFT JOIN rooms r ON s.room_id = r.id"""
     params: list = []
     conditions = []
 
@@ -94,6 +96,9 @@ async def list_sessions(
     if series_id:
         conditions.append("s.series_id = ?")
         params.append(series_id)
+
+    if exclude_agent_meetings:
+        conditions.append("(r.mode IS NULL OR r.mode != 'agent_meeting')")
 
     if conditions:
         query += " WHERE " + " AND ".join(conditions)

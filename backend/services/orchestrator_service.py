@@ -2,12 +2,15 @@
 
 import asyncio
 import json
+import logging
 import uuid
 from datetime import datetime, timezone
 
 from config import settings
 from services.ai_service import call_ai
 from services.stream_manager import stream_manager
+
+logger = logging.getLogger(__name__)
 
 
 # Global registry of active meetings
@@ -237,86 +240,94 @@ class MeetingOrchestrator:
 
     async def _run_loop(self, db):
         """Main orchestration loop."""
-        self.status = "active"
-        await self._update_room_status(db, "active")
+        try:
+            self.status = "active"
+            await self._update_room_status(db, "active")
 
-        await self._add_message(
-            "System", "system", "status",
-            f"Meeting started. Topic: {self.topic}",
-            db=db,
-        )
-        if self.task_description:
             await self._add_message(
                 "System", "system", "status",
-                f"Task: {self.task_description}",
+                f"Meeting started. Topic: {self.topic}",
                 db=db,
             )
-
-        consecutive_passes = 0
-        max_consecutive_passes = len(self.agents) * 2  # 2 full rounds of all passing
-
-        while self.current_round < self.max_rounds and not self._stop_requested:
-            # Check pause
-            await self._pause_event.wait()
-            if self._stop_requested:
-                break
-
-            self.current_round += 1
-
-            # Process any queued human messages first
-            while self.human_message_queue:
-                hm = self.human_message_queue.pop(0)
+            if self.task_description:
                 await self._add_message(
-                    hm["from_name"], "human", "message", hm["text"], db=db
+                    "System", "system", "status",
+                    f"Task: {self.task_description}",
+                    db=db,
                 )
-                consecutive_passes = 0  # Reset idle counter
 
-            round_had_response = False
-            for agent in self.agents:
-                if self._stop_requested:
-                    break
+            consecutive_passes = 0
+            max_consecutive_passes = len(self.agents) * 2  # 2 full rounds of all passing
+
+            while self.current_round < self.max_rounds and not self._stop_requested:
+                # Check pause
                 await self._pause_event.wait()
                 if self._stop_requested:
                     break
 
-                response = await self._run_agent_turn(agent, db)
-                if response:
+                self.current_round += 1
+
+                # Process any queued human messages first
+                while self.human_message_queue:
+                    hm = self.human_message_queue.pop(0)
                     await self._add_message(
-                        agent["name"], "agent", "message", response, db=db
+                        hm["from_name"], "human", "message", hm["text"], db=db
                     )
-                    round_had_response = True
-                    consecutive_passes = 0
-                else:
-                    consecutive_passes += 1
+                    consecutive_passes = 0  # Reset idle counter
 
-                # Cooldown between turns
-                if self.cooldown_seconds > 0 and not self._stop_requested:
-                    await asyncio.sleep(self.cooldown_seconds)
+                round_had_response = False
+                for agent in self.agents:
+                    if self._stop_requested:
+                        break
+                    await self._pause_event.wait()
+                    if self._stop_requested:
+                        break
 
-            if not round_had_response:
-                if consecutive_passes >= max_consecutive_passes:
-                    await self._add_message(
-                        "System", "system", "status",
-                        "All agents have passed. Meeting ending due to idle.",
-                        db=db,
-                    )
-                    break
+                    response = await self._run_agent_turn(agent, db)
+                    if response:
+                        await self._add_message(
+                            agent["name"], "agent", "message", response, db=db
+                        )
+                        round_had_response = True
+                        consecutive_passes = 0
+                    else:
+                        consecutive_passes += 1
 
-        # Finalize
-        await self._finalize(db)
+                    # Cooldown between turns
+                    if self.cooldown_seconds > 0 and not self._stop_requested:
+                        await asyncio.sleep(self.cooldown_seconds)
+
+                if not round_had_response:
+                    if consecutive_passes >= max_consecutive_passes:
+                        await self._add_message(
+                            "System", "system", "status",
+                            "All agents have passed. Meeting ending due to idle.",
+                            db=db,
+                        )
+                        break
+        except Exception:
+            logger.exception("Meeting loop crashed for %s", self.room_code)
+        finally:
+            await self._finalize(db)
 
     async def _finalize(self, db):
         """End the meeting: build transcript, update session, trigger auto_interpret."""
         self.status = "processing"
-        await self._update_room_status(db, "processing")
+        try:
+            await self._update_room_status(db, "processing")
+        except Exception:
+            logger.exception("Failed to update room status to processing")
 
-        await self._add_message(
-            "System", "system", "status",
-            f"Meeting ended after {self.current_round} rounds.",
-            db=db,
-        )
+        try:
+            await self._add_message(
+                "System", "system", "status",
+                f"Meeting ended after {self.current_round} rounds.",
+                db=db,
+            )
+        except Exception:
+            logger.exception("Failed to add meeting-ended message")
 
-        # Build speaker-attributed transcript
+        # Build speaker-attributed transcript (in-memory, can't fail)
         transcript_lines = []
         for msg in self.messages:
             if msg["message_type"] == "status":
@@ -327,17 +338,19 @@ class MeetingOrchestrator:
                 transcript_lines.append(f"[{msg['sender_name']}]: {msg['content']}")
         transcript = "\n".join(transcript_lines)
 
-        # Update session with transcript
-        await db.execute(
-            "UPDATE sessions SET transcript = ?, status = 'complete' WHERE id = ?",
-            (transcript, self.session_id),
-        )
-        # Update room transcript_log
-        await db.execute(
-            "UPDATE rooms SET transcript_log = ? WHERE id = ?",
-            (transcript, self.room_id),
-        )
-        await db.commit()
+        # Save transcript to session and room
+        try:
+            await db.execute(
+                "UPDATE sessions SET transcript = ?, status = 'complete' WHERE id = ?",
+                (transcript, self.session_id),
+            )
+            await db.execute(
+                "UPDATE rooms SET transcript_log = ? WHERE id = ?",
+                (transcript, self.room_id),
+            )
+            await db.commit()
+        except Exception:
+            logger.exception("Failed to save transcript for session %s", self.session_id)
 
         # Auto-interpret if enabled
         if settings.auto_interpret:
@@ -345,19 +358,52 @@ class MeetingOrchestrator:
                 from services.interpret_service import auto_interpret
                 await auto_interpret(self.session_id, db)
             except Exception:
-                pass  # Don't fail finalization on interpret error
+                logger.exception("auto_interpret failed for session %s", self.session_id)
+
+        # Fire session.complete event
+        try:
+            cursor = await db.execute(
+                "SELECT COUNT(*) as cnt FROM interpretations WHERE session_id = ?",
+                (self.session_id,),
+            )
+            interp_count = (await cursor.fetchone())["cnt"]
+            cursor = await db.execute(
+                "SELECT context, title FROM sessions WHERE id = ?",
+                (self.session_id,),
+            )
+            session_row = await cursor.fetchone()
+
+            event_id = str(uuid.uuid4())
+            now = datetime.now(timezone.utc).isoformat()
+            await db.execute(
+                """INSERT INTO session_events (id, event_type, session_id, context, title, interpretations_count, created_at)
+                VALUES (?, 'session.complete', ?, ?, ?, ?, ?)""",
+                (event_id, self.session_id,
+                 session_row["context"] if session_row else "working_session",
+                 session_row["title"] if session_row else self.topic,
+                 interp_count, now),
+            )
+            await db.commit()
+        except Exception:
+            logger.exception("Failed to insert session.complete event for %s", self.session_id)
 
         # Close room
-        self.status = "closed"
-        await self._update_room_status(db, "closed")
+        try:
+            self.status = "closed"
+            await self._update_room_status(db, "closed")
+        except Exception:
+            logger.exception("Failed to close room %s", self.room_code)
 
         # Broadcast meeting ended
-        await stream_manager.broadcast(self._ws_key, {
-            "type": "meeting_ended",
-            "session_id": self.session_id,
-            "rounds": self.current_round,
-            "message_count": len(self.messages),
-        })
+        try:
+            await stream_manager.broadcast(self._ws_key, {
+                "type": "meeting_ended",
+                "session_id": self.session_id,
+                "rounds": self.current_round,
+                "message_count": len(self.messages),
+            })
+        except Exception:
+            logger.exception("Failed to broadcast meeting_ended")
 
         # Cleanup registry
         _active_meetings.pop(self.room_code, None)

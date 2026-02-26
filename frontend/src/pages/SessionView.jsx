@@ -188,14 +188,21 @@ export default function SessionView() {
     setAgentAnalyzeError(null);
     try {
       const result = await runAgentAnalysis(id);
-      // Refresh interpretations to show new results
-      const interps = await getInterpretations(id);
-      setInterpretations(Array.isArray(interps) ? interps : []);
-    } catch (err) {
-      if (err.message && err.message.includes('401')) {
-        setAgentAnalyzeError('API key required for agent analysis.');
+      if (result && result.count === 0) {
+        setAgentAnalyzeError('No analysis sockets ran. Check that sockets are configured correctly.');
       } else {
-        setAgentAnalyzeError(err.message || 'Agent analysis failed.');
+        // Refresh interpretations to show new results
+        const interps = await getInterpretations(id);
+        setInterpretations(Array.isArray(interps) ? interps : []);
+      }
+    } catch (err) {
+      const msg = err.message || '';
+      if (msg.includes('401')) {
+        setAgentAnalyzeError('API key required for agent analysis.');
+      } else if (msg.includes('No socket_ids') || msg.includes('no auto_sockets')) {
+        setAgentAnalyzeError('No analysis sockets configured. Set auto_sockets in Settings.');
+      } else {
+        setAgentAnalyzeError(msg || 'Agent analysis failed.');
       }
     } finally {
       setAnalyzingAgent(false);

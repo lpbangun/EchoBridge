@@ -652,6 +652,33 @@ async def agent_create_meeting(
     )
     await db.commit()
 
+    # Auto-start the meeting unless explicitly disabled
+    auto_start = body.get("auto_start", True)
+    if auto_start:
+        from services.room_service import get_room
+        from services.orchestrator_service import MeetingOrchestrator
+        from database import get_db_connection
+
+        room = await get_room(db, result["code"])
+        config_data = room.get("meeting_config", "{}")
+        if isinstance(config_data, str):
+            config_data = json.loads(config_data)
+
+        orchestrator = MeetingOrchestrator(
+            room_id=result["room_id"],
+            room_code=result["code"],
+            session_id=result["session_id"],
+            topic=config_data.get("topic", ""),
+            task_description=config_data.get("task_description", ""),
+            agents=config_data.get("agents", []),
+            cooldown_seconds=config_data.get("cooldown_seconds", 3.0),
+            max_rounds=config_data.get("max_rounds", 20),
+            host_name=agent_name,
+        )
+        bg_db = await get_db_connection()
+        await orchestrator.start(bg_db)
+        result["status"] = "active"
+
     return result
 
 

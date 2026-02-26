@@ -49,10 +49,11 @@ export async function createSession(data) {
   });
 }
 
-export async function listSessions({ context, series_id, limit, offset } = {}) {
+export async function listSessions({ context, series_id, exclude_agent_meetings, limit, offset } = {}) {
   const params = new URLSearchParams();
   if (context) params.set('context', context);
   if (series_id) params.set('series_id', series_id);
+  if (exclude_agent_meetings) params.set('exclude_agent_meetings', 'true');
   if (limit != null) params.set('limit', String(limit));
   if (offset != null) params.set('offset', String(offset));
   const qs = params.toString();

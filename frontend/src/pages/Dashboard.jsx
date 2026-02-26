@@ -78,6 +78,7 @@ export default function Dashboard() {
         result = await listSessions({
           context: contextFilter,
           series_id: seriesFilter,
+          exclude_agent_meetings: true,
         });
       }
       setSessions(Array.isArray(result) ? result : result?.sessions || []);
