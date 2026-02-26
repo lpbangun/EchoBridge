@@ -59,6 +59,7 @@ async def get_room_endpoint(code: str, db=Depends(get_db)):
             {"name": p["name"], "type": p["participant_type"]}
             for p in room.get("participants", [])
         ],
+        mode=room.get("mode"),
     )
 
 

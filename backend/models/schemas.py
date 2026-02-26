@@ -147,6 +147,7 @@ class RoomResponse(BaseModel):
     host_name: str
     created_at: str
     participants: list[dict] = Field(default_factory=list)
+    mode: str | None = None
 
 
 # --- Socket schemas ---

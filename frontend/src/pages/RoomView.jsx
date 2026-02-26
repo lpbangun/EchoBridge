@@ -31,6 +31,11 @@ export default function RoomView() {
       setError(null);
       try {
         const data = await getRoom(code);
+        // Redirect agent meetings to the proper meeting view
+        if (data.mode === 'agent_meeting') {
+          navigate(`/meeting/${code}`, { replace: true });
+          return;
+        }
         setRoom(data);
         setParticipants(data.participants || []);
       } catch (err) {
@@ -68,7 +73,8 @@ export default function RoomView() {
   useEffect(() => {
     if (!room || room.status !== 'recording') return;
 
-    const wsUrl = `ws://localhost:8000/api/stream/room/${code}`;
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const wsUrl = `${protocol}//${window.location.host}/api/stream/room/${code}`;
     const ws = createWebSocket(wsUrl, {
       onOpen: () => {
         ws.send({

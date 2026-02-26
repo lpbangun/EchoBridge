@@ -9,6 +9,7 @@ import {
   resumeAgentMeeting,
   sendDirective,
   sendMeetingMessage,
+  getMeetingMessages,
   getSettings,
 } from '../lib/api';
 import MeetingTranscript from '../components/MeetingTranscript';
@@ -29,12 +30,23 @@ export default function AgentMeetingView() {
   const wsRef = useRef(null);
   const reconnectRef = useRef(null);
 
-  // Load meeting info
+  // Load meeting info and existing messages
   useEffect(() => {
     getAgentMeeting(code)
-      .then((m) => {
+      .then(async (m) => {
         setMeeting(m);
         setStatus(m.status);
+        // Load existing messages if meeting is already running
+        if (m.status === 'active' || m.status === 'paused' || m.status === 'processing') {
+          try {
+            const existing = await getMeetingMessages(code);
+            if (Array.isArray(existing) && existing.length > 0) {
+              setMessages(existing.map((msg) => ({ type: 'meeting_message', ...msg })));
+            }
+          } catch {
+            // OK if meeting messages endpoint fails
+          }
+        }
       })
       .catch((err) => setError(err.message || 'Failed to load meeting'));
 
@@ -62,7 +74,11 @@ export default function AgentMeetingView() {
       try {
         const data = JSON.parse(event.data);
         if (data.type === 'meeting_message') {
-          setMessages((prev) => [...prev, data]);
+          setMessages((prev) => {
+            // Deduplicate by id
+            if (data.id && prev.some((m) => m.id === data.id)) return prev;
+            return [...prev, data];
+          });
         } else if (data.type === 'meeting_ended') {
           setStatus('closed');
           // Navigate to session view after a brief delay
