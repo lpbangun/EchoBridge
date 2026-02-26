@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Mic, Cpu, FolderOpen, ChevronRight, Check, ExternalLink, Link, FileText, Copy } from 'lucide-react';
-import { updateSettings, createInvite, getSkillMd } from '../lib/api';
+import { getSettings, updateSettings, createInvite, getSkillMd } from '../lib/api';
 
 const STT_OPTIONS = [
   { id: 'local', name: 'Local (Whisper)', description: 'Runs on your machine. No API key needed. Moderate accuracy.', recommended: false },
@@ -25,6 +25,20 @@ export default function SetupWizard({ onComplete }) {
   const [outputDir, setOutputDir] = useState('~/Downloads/EchoBridge');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
+
+  // Track if an AI key is already configured (e.g. via env var)
+  const [existingKeySet, setExistingKeySet] = useState(false);
+
+  useEffect(() => {
+    getSettings().then((s) => {
+      const hasKey = s.openrouter_api_key_set || s.openai_api_key_set || s.anthropic_api_key_set || s.google_api_key_set || s.xai_api_key_set;
+      setExistingKeySet(hasKey);
+      if (s.ai_provider) setAiProvider(s.ai_provider);
+      if (s.default_model) setDefaultModel(s.default_model);
+      if (s.stt_provider) setSttProvider(s.stt_provider);
+      if (s.output_dir) setOutputDir(s.output_dir);
+    }).catch(() => {});
+  }, []);
 
   // Agent setup state
   const [creatingInvite, setCreatingInvite] = useState(false);
@@ -127,7 +141,7 @@ export default function SetupWizard({ onComplete }) {
 
   function canProceed() {
     if (step === 0) return true; // STT step — local doesn't need a key
-    if (step === 1) return aiKey.trim().length > 0; // Must enter AI key
+    if (step === 1) return existingKeySet || aiKey.trim().length > 0; // Key already set via env or entered
     return true;
   }
 
@@ -271,25 +285,33 @@ export default function SetupWizard({ onComplete }) {
                 <span className="section-label">
                   {AI_PROVIDERS.find(p => p.id === aiProvider)?.name} API Key
                 </span>
+                {existingKeySet ? (
+                  <div className="mt-2 flex items-center gap-2 text-sm text-green-400">
+                    <Check size={14} />
+                    <span>API key is already configured. You can proceed or enter a new one to override.</span>
+                  </div>
+                ) : null}
                 <input
                   type="password"
                   value={aiKey}
                   onChange={(e) => setAiKey(e.target.value)}
-                  placeholder={`${AI_PROVIDERS.find(p => p.id === aiProvider)?.keyPrefix || ''}...`}
+                  placeholder={existingKeySet ? '••••••••' : `${AI_PROVIDERS.find(p => p.id === aiProvider)?.keyPrefix || ''}...`}
                   className="eb-input w-full text-sm px-4 py-2.5 rounded-lg mt-2"
                 />
-                <p className="text-xs text-zinc-400 mt-1">
-                  Get your key at{' '}
-                  <a
-                    href={AI_PROVIDERS.find(p => p.id === aiProvider)?.docsUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-accent hover:text-accent-hover inline-flex items-center gap-1"
-                  >
-                    {AI_PROVIDERS.find(p => p.id === aiProvider)?.docsUrl.replace('https://', '').split('/')[0]}
-                    <ExternalLink size={10} />
-                  </a>
-                </p>
+                {!existingKeySet && (
+                  <p className="text-xs text-zinc-400 mt-1">
+                    Get your key at{' '}
+                    <a
+                      href={AI_PROVIDERS.find(p => p.id === aiProvider)?.docsUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-accent hover:text-accent-hover inline-flex items-center gap-1"
+                    >
+                      {AI_PROVIDERS.find(p => p.id === aiProvider)?.docsUrl.replace('https://', '').split('/')[0]}
+                      <ExternalLink size={10} />
+                    </a>
+                  </p>
+                )}
               </label>
             </div>
           )}

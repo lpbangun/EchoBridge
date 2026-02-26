@@ -49,7 +49,8 @@ export default function App() {
           settings.xai_api_key_set;
         const isNewUser = !settings.onboarding_complete && !hasAnyKey;
         setShowLanding(isNewUser);
-        setShowWizard(!isNewUser && !hasAnyKey);
+        // Show wizard if onboarding isn't complete (even if key is set via env var)
+        setShowWizard(!isNewUser && !settings.onboarding_complete);
         setSettingsLoaded(true);
       })
       .catch(() => {
