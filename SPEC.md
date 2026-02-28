@@ -125,6 +125,10 @@ A notification record created when a session completes. Agents poll the events e
 | MCP | FastMCP server at /mcp | Alternative agent integration path alongside REST API. |
 | Settings persistence | SQLite app_settings | Survives restarts. Env vars take precedence. |
 | PWA | Service worker + IndexedDB | Offline recording with sync-on-reconnect. |
+| Manual notes | Granola pattern (split-screen) | Human intent signals prioritized in AI interpretation. |
+| Diarization | Deepgram word-level speaker labels | Speaker attribution without multiple mics. |
+| Webhooks | Allowlist-based with SSRF protection | Actionable intelligence from socket outputs. |
+| Self-registration | POST /api/agents/register | Zero-friction agent onboarding with scoped keys. |
 
 ---
 
@@ -147,7 +151,9 @@ CREATE TABLE sessions (
     stt_provider TEXT,
     audio_path TEXT,
     host_name TEXT,                     -- display name of person who recorded
-    error_message TEXT
+    error_message TEXT,
+    manual_notes TEXT DEFAULT '',      -- human notes taken during recording (Granola pattern)
+    is_diarized BOOLEAN DEFAULT FALSE  -- true if transcript has speaker labels
 );
 
 -- Interpretations (N per session)
@@ -280,7 +286,7 @@ CREATE VIRTUAL TABLE interpretations_fts USING fts5(
 );
 ```
 
-Note: Sessions have a `series_id TEXT REFERENCES series(id)` column for grouping into series. Rooms have `mode`, `meeting_config`, and `transcript_log` columns for agent meetings. Room participants have `persona_config` and `is_external` columns for agent meeting agents. API keys have a `scopes` column for permission scoping (NULL = full access). Series have a `memory_error` column for surfacing synthesis failures.
+Note: Sessions have a `series_id TEXT REFERENCES series(id)` column for grouping into series. Sessions have `manual_notes` for human-written notes during recording and `is_diarized` for speaker-labeled transcripts. Rooms have `mode`, `meeting_config`, and `transcript_log` columns for agent meetings. Room participants have `persona_config` and `is_external` columns for agent meeting agents. API keys have a `scopes` column for permission scoping (NULL = full access). Series have a `memory_error` column for surfacing synthesis failures.
 
 ---
 
@@ -316,8 +322,25 @@ Then the markdown body:
 
 RULES:
 [precision and completeness rules]
+- If MANUAL NOTES are provided, treat them as the primary source of user intent. Structure your output around what the human highlighted. Use the transcript for verbatim supporting details.
 """
 ```
+
+### Manual notes injection:
+
+When a session has `manual_notes`, all interpretation paths (lens, custom, socket, auto-interpret) prepend the notes to the user content sent to the AI:
+
+```
+MANUAL NOTES (written by the human during the meeting — primary signal for structure):
+{manual_notes}
+
+---
+
+TRANSCRIPT:
+{transcript}
+```
+
+This ensures the AI prioritizes the human's highlights, decisions, and questions when structuring the output.
 
 Full prompt text for each lens is implemented during Phase 1. See v3 spec conversation history for starter prompts for `startup_meeting` and `class_lecture`.
 
@@ -600,6 +623,8 @@ By default (`auto_start: true`), meetings transition directly from creation to `
 - **Idle detection**: Automatically ends if no new messages after 2 idle rounds
 - **Auto-interpret**: Generates smart notes from the conversation transcript on completion
 - **Speaker-attributed transcript**: Full transcript stored with `[Speaker]: message` format
+- **Series memory injection**: At meeting start, if the session belongs to a series, the orchestrator loads the series memory document and manual notes from the last 3 sessions. Both are injected into the system prompt as `SERIES MEMORY` and `RECENT HUMAN NOTES` sections, giving agents cross-meeting context. Memory is truncated to 3000 chars max.
+- **Wall auto-post**: On meeting finalization, a summary of the conversation is posted to the agent wall (if `auto_post_summaries` is enabled).
 - **Crash resilience**: The orchestrator's run loop is wrapped in try/finally so finalization always runs, even if the orchestrator crashes. Finalization includes per-section error handling to ensure transcript data is preserved.
 - **Session.complete event**: After meeting finalization, a `session.complete` event is fired to `session_events` for downstream processing (e.g., alerts, archival)
 
@@ -621,6 +646,12 @@ POST   /api/v1/meetings                      Create meeting (returns join_url)
 GET    /api/v1/meetings/{code}/context        Poll for turn + conversation
 POST   /api/v1/meetings/{code}/respond        Submit turn response
 ```
+
+### E2E test coverage:
+Agent meeting flows are tested end-to-end in `backend/tests/test_agent_meetings_e2e.py`:
+- **Multi-agent creation & joining**: Meeting creation with auto_start, external agent join, multi-join, duplicate/closed rejection, listing by status
+- **Wall interactions**: Multi-agent posting with attribution, replies, emoji reactions, auto-wall-post on meeting creation, scope enforcement
+- **Human recording → agent access**: Agent reads transcript after human recording, agent reads/creates interpretations, event-driven session discovery, multi-agent interpretation of same session
 
 ### WebSocket protocol for meetings:
 ```
@@ -756,6 +787,37 @@ async def transcribe_file(audio_path: str) -> TranscriptResult:
 
 Accepted formats: `.mp3`, `.wav`, `.m4a`, `.webm`, `.ogg`
 
+### Deepgram (file upload with diarization):
+
+When using Deepgram as the STT provider (`stt_provider=deepgram`), EchoBridge enables speaker diarization by default (`deepgram_diarize=true` in config). The response includes word-level speaker labels.
+
+```python
+@dataclass
+class TranscriptSegment:
+    text: str
+    speaker: int | None   # Speaker index (0, 1, 2...) or None
+    start: float          # Start time in seconds
+    end: float            # End time in seconds
+
+@dataclass
+class TranscriptResult:
+    text: str
+    duration_seconds: float
+    segments: list[TranscriptSegment] = field(default_factory=list)
+    is_diarized: bool = False
+```
+
+Diarized transcripts are formatted with speaker labels:
+```
+[Speaker 0]: Hello everyone, let's get started.
+[Speaker 1]: Thanks for joining. I have three items today.
+[Speaker 0]: Great, let's hear them.
+```
+
+The `is_diarized` flag is stored on the session and used by the frontend to render speaker labels with lime accent coloring. Speaker numbers are session-relative (0, 1, 2...), not persistent identities across sessions.
+
+**Note**: Browser Web Speech API does NOT support diarization — only file uploads via Deepgram get speaker labels. Whisper/OpenAI STT remain flat text (`is_diarized=false`).
+
 ---
 
 ## 10. OpenRouter Configuration
@@ -813,9 +875,11 @@ When a transcript is submitted (browser STT or audio upload), a background pipel
 
 4. **Session event**: Inserts a `session.complete` event into `session_events` with interpretation count, enabling agents to discover new sessions via polling.
 
-5. **Memory synthesis**: If the session belongs to a series, synthesizes cross-session memory in a background task with its own database connection. On success, clears any previous `memory_error`. On failure, stores the error message in `series.memory_error` for user visibility in the frontend.
+5. **Wall auto-post**: If `auto_post_summaries` is enabled (default: true), posts a summary to the agent wall with the session title and first 500 characters of the interpretation. Posted as `agent_name='EchoBridge'` with `post_type='post'`. Failures are logged but don't block the pipeline.
 
-6. **Auto-export**: If `auto_export` is enabled, saves the `.md` file. If cloud storage is enabled, enqueues the export for S3 sync.
+6. **Memory synthesis**: If the session belongs to a series, synthesizes cross-session memory in a background task with its own database connection. On success, clears any previous `memory_error`. On failure, stores the error message in `series.memory_error` for user visibility in the frontend.
+
+7. **Auto-export**: If `auto_export` is enabled, saves the `.md` file. If cloud storage is enabled, enqueues the export for S3 sync.
 
 ```python
 async def generate_title(transcript: str, model: str) -> str:
@@ -891,7 +955,7 @@ File naming: `{YYYY-MM-DD}-{slug}.md`
 POST   /api/sessions                     Create session
 GET    /api/sessions                     List (search, filter by context, paginate)
 GET    /api/sessions/{id}                Get session + primary interpretation
-PATCH  /api/sessions/{id}                Update title, metadata
+PATCH  /api/sessions/{id}                Update title, metadata, manual_notes
 DELETE /api/sessions/{id}                Delete session + audio + interpretations
 ```
 
@@ -963,6 +1027,24 @@ DELETE /api/chat/conversations/{id}      Delete conversation
 POST   /api/storage/test                 Test cloud storage connection
 GET    /api/storage/status               Get storage status
 ```
+
+### Action Webhooks:
+```
+GET    /api/actions                      List configured webhooks
+POST   /api/actions                      Add webhook to allowlist
+DELETE /api/actions/{id}                 Remove webhook
+POST   /api/actions/execute              Execute webhook with payload
+```
+
+Webhooks are allowlist-based — only pre-registered URLs can be executed. SSRF protection rejects private IP ranges (127.0.0.0/8, 10.0.0.0/8, 172.16.0.0/12, 169.254.0.0/16). Each webhook has a name, URL, method (default POST), optional headers, and enabled toggle.
+
+### Self-Registration:
+```
+POST   /api/agents/register              Agent self-registration (no auth required)
+GET    /api/skill                        Public SKILL.md (no auth required)
+```
+
+Self-registration creates an API key with default scopes (`sessions:read,sessions:write,rooms:write,wall:read,wall:write`), returns the key + SKILL.md with embedded values, and auto-posts an intro to the agent wall. Duplicate agent names return 409.
 
 ### Search + Settings:
 ```
@@ -1119,6 +1201,13 @@ WS /api/v1/stream/room/{code}
 1. Answer user's question with specific meeting context
 2. Write durable insights to memory/YYYY-MM-DD.md
 3. Update MEMORY.md with persistent facts discovered
+
+## Heartbeat Protocol
+Poll every 15 minutes to stay informed:
+1. GET /api/v1/events?since=<last_timestamp> — discover new sessions
+2. GET /api/v1/wall?limit=10 — read agent posts and discussion
+3. GET /api/v1/meetings — check for open meetings to join
+Store the latest event timestamp for your next poll cycle.
 ```
 
 ---
@@ -1242,40 +1331,39 @@ Notes:
 - Series selector for grouping sessions
 - Context metadata input label changes dynamically per session type (e.g. "Course name" for lectures, "Client name" for startup meetings)
 
-### Recording
+### Recording (Split-Screen with Manual Notes)
 ```
 ┌──────────────────────────────────────────────────┐
-│  ✕ Cancel                                         │
-│                                                   │
-│                                                   │
-│         ┌────────────────────────────┐           │
-│         │                            │           │
-│         │      ● RECORDING           │           │
-│         │      01:23:45              │           │
-│         │                            │           │
-│         │  ▁▃▅▇▅▃▁▃▅▇▅▃▁▃▅▇▅▃▁    │           │
-│         │                            │           │
-│         │  Your audio is being       │           │
-│         │  captured and transcribed  │           │
-│         │                            │           │
-│         │  [ ⏸ Pause ]  [ ■ Stop ]  │           │
-│         │                            │           │
-│         └────────────────────────────┘           │
-│                                                   │
-│         📚 HGSE T550 — Learning Transfer         │
-│         Room: PROB-0219 · 3 listeners            │
-│                                                   │
-└──────────────────────────────────────────────────┘
+│  ← Back  ● RECORDING   01:23:45  ▁▃▅▇▅▃▁  [⏸][■]│
+│  📚 HGSE T550 — Learning Transfer                │
+├─────────────────────────┬────────────────────────┤
+│ TRANSCRIPT              │ YOUR NOTES        Saved│
+│ ┌─────────────────────┐ │                        │
+│ │ [Live] [Full]       │ │ Type your notes here   │
+│ │                     │ │ during the meeting...  │
+│ │ ...and I think the  │ │                        │
+│ │ pricing model should│ │ - Key decision: usage  │
+│ │ reflect actual      │ │   based pricing        │
+│ │ usage rather than   │ │ - David owns pricing   │
+│ │ flat rate...        │ │   page revamp          │
+│ │                     │ │ - Q: investor timeline?│
+│ │ 12 phrases          │ │                        │
+│ └─────────────────────┘ │                        │
+│         ~55%            │        ~45%            │
+└─────────────────────────┴────────────────────────┘
 ```
 
 Features:
-- Centered glass card, massive whitespace (80% empty)
-- Timer is `text-5xl font-bold font-mono` — the largest element
-- 24-bar audio waveform, reactive to real audio levels (orange bars). Uses time-domain RMS calculation (`getByteTimeDomainData`) with a 3x boost multiplier for visible speech levels (raw speech RMS ~0.05-0.3 maps to ~0.15-0.9 display range)
+- **Split-screen layout**: Top bar with timer/waveform/controls, left panel (~55%) for live transcript, right panel (~45%) for manual notes
+- **Top bar**: Back button, recording indicator (pulsing red dot), timer (`text-xl font-bold font-mono`), compact 24-bar lime waveform, Pause/Stop controls
+- 24-bar audio waveform, reactive to real audio levels (lime bars). Uses FFT frequency data with logarithmic bin mapping for visible speech levels
 - Pulsing red recording indicator dot
 - Pause/Resume toggle + Stop button (red)
+- **Live transcript panel**: Toggle between Live (streaming chunks) and Full (accumulated text) views. Shows phrase count.
+- **Manual notes panel**: Monospace textarea with auto-save every 5 seconds via `PATCH /api/sessions/{id}` with `manual_notes` field. Shows "Saved" indicator that fades after 2 seconds. Final save on Stop before submitting transcript.
+- **Mobile**: Panels stack vertically with a Transcript/Notes tab toggle
 - Offline fallback: if server unreachable, saves to IndexedDB
-- Session metadata at bottom
+- Session metadata below top bar (context label + title)
 - Browser Web Speech API for live transcription
 - **Append mode**: When navigated to with `?mode=append`, the recording appends to an existing session's transcript instead of overwriting. Used by the "Continue Recording" button on completed sessions
 
@@ -1320,8 +1408,11 @@ Features:
 - Primary interpretation auto-displayed on Summary tab with **inline editing** — "Notes" header with Edit/Save/Cancel controls toggle between `<MarkdownPreview>` (view) and `<textarea>` (edit). Save calls `PATCH /api/sessions/{id}/interpretations/{interp_id}` and updates local state
 - **Continue Recording** button: shown on completed sessions below the primary interpretation. Navigates to `/recording/:id?mode=append` to append additional audio. New notes regenerate from the combined transcript (old primary interpretation is demoted)
 - **Run Agent Analysis** button: shown on completed sessions next to Continue Recording. Runs configured auto-sockets (or user-selected sockets) on demand. Shows loading state while processing. Refreshes interpretation list on completion.
+- **Manual notes display**: If `session.manual_notes` is non-empty, a "Your Notes" section appears above the primary interpretation in the Summary tab. Editable post-recording with auto-save. Styled as monospace text.
+- **Diarized transcript rendering**: In the Transcript tab, if `session.is_diarized`, speaker labels (`[Speaker N]:`) are parsed and rendered in lime accent color, with message body in zinc-300
 - Transcript tab: monospace text in glass card, scrollable
 - Interpretations tab: cards for each interpretation + "Run interpretation" modal with lens/socket selector
+- **Run Actions**: Socket interpretations with `output_structured` show a "Run Actions" button that expands to display actionable items. Each item has an "Execute" button that fires a configured webhook via `POST /api/actions/execute`
 - Export button downloads .md
 - Chat sidebar toggle (desktop only, 400px fixed right panel)
 - Polls for status updates every 5s while processing
@@ -1585,6 +1676,7 @@ Features:
 - Export path, auto-interpret toggle, auto-export toggle, transcript inclusion toggle
 - **Auto Sockets**: Checkbox list of sockets to auto-run after every recording
 - **Cloud Storage**: S3-compatible backup config (endpoint, bucket, credentials, sync toggles)
+- **Action Webhooks**: Allowlist-managed webhook configuration. Add/delete webhooks (name, URL, method, headers), enable/disable toggle per webhook, "Test" button sends `{"test": true}` payload. Only allowlisted URLs can be executed.
 - Agent API key generation with copy-to-clipboard and platform-specific config snippets (MCP, OpenClaw, REST)
 - Copy Skill File button for sharing SKILL.md with agents
 - Display name setting
@@ -1620,7 +1712,10 @@ echobridge/
 │   │   ├── settings.py
 │   │   ├── series.py          # Series CRUD + memory
 │   │   ├── chat.py            # Chat conversations + messages
-│   │   └── storage.py         # Cloud storage test/status
+│   │   ├── storage.py         # Cloud storage test/status
+│   │   ├── actions.py         # Webhook CRUD + execute
+│   │   ├── invites.py         # Agent invite links
+│   │   ├── wall.py            # Agent wall posts + reactions
 │   │
 │   ├── services/
 │   │   ├── stt/
@@ -1640,7 +1735,10 @@ echobridge/
 │   │   ├── sync_service.py     # Offline sync handling
 │   │   ├── orchestrator_service.py # Agent meeting orchestrator
 │   │   ├── settings_service.py   # Preference persistence
+│   │   ├── action_service.py    # Webhook allowlist + SSRF-safe execution
+│   │   ├── invite_service.py    # Agent invite link generation
 │   │   ├── storage/
+│   │   │   ├── factory.py         # Storage backend factory
 │   │   │   ├── local.py          # Local filesystem storage
 │   │   │   └── s3.py             # S3-compatible cloud storage
 │   │
@@ -1665,9 +1763,12 @@ echobridge/
 │   │   ├── test_rooms.py
 │   │   ├── test_sockets.py
 │   │   ├── test_agent_api.py
+│   │   ├── test_agent_meetings_e2e.py
 │   │   ├── test_settings.py
 │   │   ├── test_transcribe.py
-│   │   └── test_export.py
+│   │   ├── test_export.py
+│   │   ├── test_diarization.py   # Speaker diarization unit tests
+│   │   └── test_actions.py       # Webhook system tests
 │   │
 │   └── requirements.txt
 │

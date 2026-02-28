@@ -405,6 +405,149 @@ input[type="checkbox"] {
 
 ---
 
+## Speaker Diarization (Transcript View)
+
+### Speaker Labels
+```css
+/* Speaker label in diarized transcript */
+.speaker-label {
+  text-lime-400 font-mono text-sm font-medium
+}
+
+/* Speaker message body */
+.speaker-body {
+  text-zinc-300 text-sm
+}
+```
+
+Each line of a diarized transcript follows the pattern `[Speaker N]: message text`. The `[Speaker N]:` prefix renders in lime-400, the message body in zinc-300. Non-diarized transcripts render as plain monospace text unchanged.
+
+---
+
+## Split-Screen Recording
+
+### Layout
+```css
+/* Top bar */
+.recording-topbar {
+  border-b border-zinc-800 px-4 md:px-6 py-4
+}
+
+/* Split panels container */
+.recording-panels {
+  flex-1 flex flex-col md:flex-row overflow-hidden
+}
+
+/* Left panel: live transcript (~55%) */
+.panel-transcript {
+  md:w-[55%] md:border-r border-zinc-800 flex flex-col
+}
+
+/* Right panel: manual notes (~45%) */
+.panel-notes {
+  md:w-[45%] flex flex-col
+}
+
+/* Panel headers */
+.panel-header {
+  px-4 md:px-6 py-3 border-b border-zinc-800
+  text-xs font-medium tracking-widest uppercase text-zinc-400
+}
+
+/* Notes textarea */
+.notes-textarea {
+  w-full h-full bg-transparent text-zinc-300 font-mono text-sm
+  leading-relaxed resize-none focus:outline-none
+  placeholder:text-zinc-600
+}
+
+/* Saved indicator */
+.notes-saved {
+  text-xs text-zinc-500 transition-opacity duration-500
+}
+
+/* Mobile panel toggle */
+.mobile-panel-toggle {
+  md:hidden border-b border-zinc-800 px-4 py-2
+}
+.mobile-panel-tab-active {
+  bg-zinc-600 text-white px-4 py-1.5 text-xs
+}
+.mobile-panel-tab-inactive {
+  text-zinc-400 hover:text-zinc-300 px-4 py-1.5 text-xs
+}
+```
+
+### Manual Notes (Session View — Summary Tab)
+```css
+/* Your Notes section above primary interpretation */
+.manual-notes-section {
+  card p-4 md:p-6 mb-6
+}
+.manual-notes-label {
+  text-xs font-medium tracking-widest uppercase text-zinc-400
+}
+.manual-notes-content {
+  font-mono text-sm text-zinc-300 whitespace-pre-wrap mt-3
+}
+/* Edit toggle: pencil icon → textarea, check icon → save */
+```
+
+---
+
+## Action Webhooks (Settings + InterpretationCard)
+
+### Webhook Settings Section
+```css
+/* Settings section using standard settings-section card */
+/* Webhook list item */
+.webhook-item {
+  flex items-center justify-between py-3 border-b border-border
+}
+.webhook-name {
+  text-sm font-medium text-zinc-200
+}
+.webhook-url {
+  text-xs text-zinc-500 font-mono truncate
+}
+.webhook-toggle {
+  /* Standard checkbox with accent-lime-400 */
+}
+
+/* Add webhook form */
+.webhook-form {
+  grid grid-cols-1 md:grid-cols-3 gap-3 mt-4
+}
+```
+
+### Run Actions (InterpretationCard)
+```css
+/* Button on socket interpretation cards with output_structured */
+.btn-run-actions {
+  btn-secondary text-xs inline-flex items-center gap-1.5
+}
+
+/* Expanded action items panel */
+.action-panel {
+  mt-3 border-t border-border pt-3 space-y-2
+}
+.action-item {
+  flex items-center justify-between py-1.5
+}
+.action-item-text {
+  text-sm text-zinc-300
+}
+.action-item-owner {
+  text-xs text-zinc-500
+}
+.btn-execute {
+  text-xs btn-secondary px-2 py-1
+}
+/* States: idle, loading (spinner), success (green check), error (red text) */
+```
+
+---
+
 ## Anti-Patterns (DO NOT)
 
 - **No glass/blur.** No `backdrop-filter`, no translucent backgrounds, no `rgba(255,255,255,0.08)`.

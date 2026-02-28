@@ -91,15 +91,16 @@ Most features should go through the loop **2-3 times** before presenting. If you
 
 ```
 tests/
-├── test_sessions.py        # Session CRUD
-├── test_transcribe.py      # STT endpoints
-├── test_interpret.py       # Lens interpretation
-├── test_rooms.py           # Meeting rooms
-├── test_sockets.py         # Socket registry
-├── test_agent_api.py       # Agent API endpoints
-├── test_export.py          # .md export
-├── test_websocket.py       # Live stream
-└── conftest.py             # Fixtures (test DB, test client, sample audio)
+├── test_sessions.py              # Session CRUD
+├── test_transcribe.py            # STT endpoints
+├── test_interpret.py             # Lens interpretation
+├── test_rooms.py                 # Meeting rooms
+├── test_sockets.py               # Socket registry
+├── test_agent_api.py             # Agent API endpoints
+├── test_agent_meetings_e2e.py    # E2E: multi-agent meetings, wall, transcript access
+├── test_export.py                # .md export
+├── test_websocket.py             # Live stream
+└── conftest.py                   # Fixtures (test DB, test client, sample audio)
 ```
 
 Every endpoint gets:
