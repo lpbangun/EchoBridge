@@ -11,6 +11,30 @@ import asyncio
 from unittest.mock import AsyncMock, patch
 
 import pytest
+import pytest_asyncio
+
+
+# ---------------------------------------------------------------------------
+# Fixtures
+# ---------------------------------------------------------------------------
+
+
+@pytest_asyncio.fixture(autouse=True)
+async def _cleanup_active_meetings():
+    """Ensure no zombie orchestrator tasks leak between tests."""
+    from services.orchestrator_service import _active_meetings
+
+    yield
+
+    # Cancel any still-running orchestrator background tasks
+    for code, orch in list(_active_meetings.items()):
+        if orch._task and not orch._task.done():
+            orch._task.cancel()
+            try:
+                await orch._task
+            except (asyncio.CancelledError, Exception):
+                pass
+    _active_meetings.clear()
 
 
 # ---------------------------------------------------------------------------
@@ -40,7 +64,16 @@ async def _create_api_key(client, name: str = "test-agent") -> str:
 
 
 def _mock_get_db_connection(db):
-    """Create an async function that returns the test db (for patching get_db_connection)."""
+    """Create an async function that returns the test db (for patching get_db_connection).
+
+    IMPORTANT: This patches ``database.get_db_connection`` at the module level.
+    It works because ``routers/agent.py`` uses local imports inside function bodies
+    (lines 666, 749, 796).  Python re-resolves local imports on each call, so
+    patching the module attribute is sufficient.  If those imports are ever moved
+    to top-level, this patch will silently stop intercepting — tests will pass but
+    hit the real DB.  If that happens, add ``routers.agent.get_db_connection`` as
+    an additional patch target.
+    """
     async def _get_test_db():
         return db
     return _get_test_db
@@ -106,6 +139,21 @@ async def _start_meeting_and_wait(client, db, key, code, fake_ai=None, timeout=2
             await asyncio.wait_for(orch._task, timeout=timeout)
 
     return orch
+
+
+async def _wait_for_status(code: str, target: str, timeout: float = 5.0):
+    """Poll until orchestrator reaches the target status or timeout."""
+    from services.orchestrator_service import get_orchestrator
+
+    deadline = asyncio.get_event_loop().time() + timeout
+    while asyncio.get_event_loop().time() < deadline:
+        orch = get_orchestrator(code)
+        if orch and orch.status == target:
+            return orch
+        await asyncio.sleep(0.05)
+    raise TimeoutError(
+        f"Orchestrator for {code} never reached status '{target}' within {timeout}s"
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -446,8 +494,6 @@ async def test_meeting_start_creates_orchestrator(client, db):
 @pytest.mark.asyncio
 async def test_meeting_context_available(client, db):
     """Polling /meetings/{code}/context returns topic and conversation while running."""
-    from services.orchestrator_service import get_orchestrator
-
     key = await _create_api_key(client, "context-tester")
     meeting = await _agent_create_meeting(client, key, db, auto_start=False)
     code = meeting["code"]
@@ -470,28 +516,25 @@ async def test_meeting_context_available(client, db):
             headers=_auth(key),
         )
 
-        await asyncio.sleep(0.2)
+        # Poll until orchestrator is active instead of brittle sleep
+        orch = await _wait_for_status(code, "active", timeout=5.0)
 
-        orch = get_orchestrator(code)
-        if orch and orch.status == "active":
-            resp = await client.get(
-                f"/api/v1/meetings/{code}/context",
-                headers=_auth(key),
-            )
-            assert resp.status_code == 200
-            data = resp.json()
-            assert data["topic"] == "Test Discussion"
-            assert "state" in data
+        resp = await client.get(
+            f"/api/v1/meetings/{code}/context",
+            headers=_auth(key),
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["topic"] == "Test Discussion"
+        assert "state" in data
 
-        if orch and orch._task and not orch._task.done():
+        if orch._task and not orch._task.done():
             await asyncio.wait_for(orch._task, timeout=15.0)
 
 
 @pytest.mark.asyncio
 async def test_meeting_with_mocked_ai_completes(client, db):
     """Full meeting lifecycle: create → start → AI converses → finalize."""
-    from services.orchestrator_service import get_orchestrator
-
     key = await _create_api_key(client, "full-lifecycle")
     meeting = await _agent_create_meeting(client, key, db, auto_start=False)
     code = meeting["code"]
@@ -506,7 +549,7 @@ async def test_meeting_with_mocked_ai_completes(client, db):
             return "I disagree — we need more evidence."
         return "[PASS]"
 
-    orch = await _start_meeting_and_wait(client, db, key, code, fake_ai=fake_ai)
+    await _start_meeting_and_wait(client, db, key, code, fake_ai=fake_ai)
 
     # Session should have transcript
     cursor = await db.execute(
@@ -600,6 +643,51 @@ async def test_external_agent_responds_to_turn(client, db):
     )
     transcript = (await cursor.fetchone())["transcript"]
     assert "[ext-host]" in transcript
+
+
+@pytest.mark.asyncio
+async def test_self_registered_agent_creates_and_runs_meeting(client, db):
+    """Self-registered agent (via /api/agents/register) can create and complete a meeting.
+
+    This covers the 'seamless onboarding' E2E path: register -> create meeting
+    -> start -> finish.  Previous tests use _create_api_key (settings-level keys)
+    which bypass self-registration.
+    """
+    # Self-register (the onboarding path)
+    reg = await _register_agent(client, "OnboardAgent")
+    key = reg["api_key"]
+
+    # Create meeting using the self-registration key (internal agents only —
+    # external agent flow is covered by test_external_agent_responds_to_turn)
+    meeting = await _agent_create_meeting(
+        client, key, db, auto_start=False,
+        topic="Onboarding Test",
+        agents=[
+            {"name": "Reviewer", "type": "internal"},
+            {"name": "Summarizer", "type": "internal"},
+        ],
+        max_rounds=2,
+    )
+    code = meeting["code"]
+
+    async def fake_ai(model, system_prompt, user_content, **kwargs):
+        if "Reviewer" in system_prompt:
+            return "Reviewed and approved."
+        if "Summarizer" in system_prompt:
+            return "Summary complete."
+        return "[PASS]"
+
+    await _start_meeting_and_wait(client, db, key, code, fake_ai=fake_ai)
+
+    # Verify meeting completed with self-registration key
+    cursor = await db.execute(
+        "SELECT transcript, status FROM sessions WHERE id = ?",
+        (meeting["session_id"],),
+    )
+    session = dict(await cursor.fetchone())
+    assert session["status"] == "complete"
+    assert session["transcript"]
+    assert "[Reviewer]" in session["transcript"]
 
 
 # ---------------------------------------------------------------------------
