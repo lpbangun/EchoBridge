@@ -3,6 +3,7 @@
 import asyncio
 import json
 import logging
+import re
 import uuid
 from datetime import datetime, timezone
 
@@ -153,6 +154,7 @@ class MeetingOrchestrator:
         parts.append("Respond naturally as your character. Keep responses concise (2-4 sentences).")
         parts.append("If you have nothing meaningful to add, respond with exactly: [PASS]")
         parts.append("Do not repeat what others have said. Build on the conversation.")
+        parts.append("To share structured content (summaries, code, research), prefix with [ARTIFACT] — it will render as markdown.")
 
         return "\n".join(parts)
 
@@ -170,6 +172,25 @@ class MeetingOrchestrator:
             lines.append(f"{prefix}: {msg['content']}")
         return "\n".join(lines)
 
+    def _parse_mentions(self, text: str) -> list[str]:
+        """Find @AgentName patterns in text matching known agent names."""
+        agent_names = {a["name"] for a in self.agents}
+        mentioned = []
+        for match in re.finditer(r"@([\w-]+)", text):
+            name = match.group(1)
+            if name in agent_names:
+                mentioned.append(name)
+        return mentioned
+
+    def _build_agent_order(self, mentioned: list[str]) -> list[dict]:
+        """Reorder agents so mentioned ones go first, preserving relative order."""
+        if not mentioned:
+            return list(self.agents)
+        mentioned_set = set(mentioned)
+        prioritized = [a for a in self.agents if a["name"] in mentioned_set]
+        rest = [a for a in self.agents if a["name"] not in mentioned_set]
+        return prioritized + rest
+
     async def _add_message(
         self,
         sender_name: str,
@@ -177,6 +198,7 @@ class MeetingOrchestrator:
         message_type: str,
         content: str,
         db=None,
+        content_type: str = "text/plain",
     ) -> dict:
         """Add a message to the meeting log and broadcast it."""
         self.sequence += 1
@@ -190,6 +212,7 @@ class MeetingOrchestrator:
             "sender_type": sender_type,
             "message_type": message_type,
             "content": content,
+            "content_type": content_type,
             "sequence_number": self.sequence,
             "created_at": now,
         }
@@ -199,9 +222,9 @@ class MeetingOrchestrator:
         if db:
             await db.execute(
                 """INSERT INTO meeting_messages
-                (id, room_id, sender_name, sender_type, message_type, content, sequence_number, created_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
-                (msg_id, self.room_id, sender_name, sender_type, message_type, content, self.sequence, now),
+                (id, room_id, sender_name, sender_type, message_type, content, content_type, sequence_number, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                (msg_id, self.room_id, sender_name, sender_type, message_type, content, content_type, self.sequence, now),
             )
             await db.commit()
 
@@ -314,34 +337,61 @@ class MeetingOrchestrator:
 
                 self.current_round += 1
 
-                # Process any queued human messages first
-                while self.human_message_queue:
-                    hm = self.human_message_queue.pop(0)
-                    await self._add_message(
-                        hm["from_name"], "human", "message", hm["text"], db=db
-                    )
-                    consecutive_passes = 0  # Reset idle counter
+                # Check recent messages for @mentions → prioritize mentioned agents
+                mentioned = []
+                for msg in self.messages[-5:]:
+                    mentioned.extend(self._parse_mentions(msg["content"]))
+                agent_order = self._build_agent_order(mentioned)
 
                 round_had_response = False
-                for agent in self.agents:
+                for agent in agent_order:
                     if self._stop_requested:
                         break
                     await self._pause_event.wait()
                     if self._stop_requested:
                         break
 
-                    response = await self._run_agent_turn(agent, db)
-                    if response:
+                    # Drain human messages between agent turns (not just between rounds)
+                    while self.human_message_queue:
+                        hm = self.human_message_queue.pop(0)
                         await self._add_message(
-                            agent["name"], "agent", "message", response, db=db
+                            hm["from_name"], "human", "message", hm["text"], db=db
                         )
+                        consecutive_passes = 0  # Reset idle counter
+
+                    # Broadcast thinking indicator
+                    await stream_manager.broadcast(self._ws_key, {
+                        "type": "agent_thinking",
+                        "agent_name": agent["name"],
+                    })
+
+                    response = await self._run_agent_turn(agent, db)
+
+                    # Clear thinking indicator
+                    await stream_manager.broadcast(self._ws_key, {
+                        "type": "agent_done",
+                        "agent_name": agent["name"],
+                    })
+
+                    if response:
+                        # Detect artifact prefix: [ARTIFACT] → markdown artifact
+                        if response.startswith("[ARTIFACT]"):
+                            artifact_content = response[len("[ARTIFACT]"):].strip()
+                            await self._add_message(
+                                agent["name"], "agent", "artifact", artifact_content,
+                                db=db, content_type="text/markdown",
+                            )
+                        else:
+                            await self._add_message(
+                                agent["name"], "agent", "message", response, db=db
+                            )
                         round_had_response = True
                         consecutive_passes = 0
                     else:
                         consecutive_passes += 1
 
-                    # Cooldown between turns
-                    if self.cooldown_seconds > 0 and not self._stop_requested:
+                    # Cooldown between turns (skip if agent passed)
+                    if response and self.cooldown_seconds > 0 and not self._stop_requested:
                         await asyncio.sleep(self.cooldown_seconds)
 
                 if not round_had_response:
@@ -381,6 +431,8 @@ class MeetingOrchestrator:
                 transcript_lines.append(f"[System]: {msg['content']}")
             elif msg["message_type"] == "directive":
                 transcript_lines.append(f"[Directive from {msg['sender_name']}]: {msg['content']}")
+            elif msg["message_type"] == "artifact":
+                transcript_lines.append(f"[{msg['sender_name']} — artifact]:\n{msg['content']}")
             else:
                 transcript_lines.append(f"[{msg['sender_name']}]: {msg['content']}")
         transcript = "\n".join(transcript_lines)

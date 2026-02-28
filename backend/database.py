@@ -81,6 +81,7 @@ CREATE TABLE IF NOT EXISTS meeting_messages (
     sender_type TEXT NOT NULL,
     message_type TEXT NOT NULL,
     content TEXT NOT NULL,
+    content_type TEXT DEFAULT 'text/plain',
     sequence_number INTEGER NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -226,127 +227,36 @@ async def get_db() -> aiosqlite.Connection:
         await _db.execute("PRAGMA foreign_keys=ON")
         await _db.executescript(SCHEMA)
         await _db.commit()
-        # Migration: add series_id to sessions if not present
-        try:
-            await _db.execute(
-                "ALTER TABLE sessions ADD COLUMN series_id TEXT REFERENCES series(id)"
-            )
-            await _db.commit()
-        except Exception:
-            pass  # Column already exists
-        # Migration: add agent meeting columns to rooms
-        for col, default in [
-            ("mode TEXT DEFAULT 'standard'", None),
-            ("meeting_config JSON DEFAULT '{}'", None),
-            ("transcript_log TEXT DEFAULT ''", None),
-        ]:
-            try:
-                await _db.execute(f"ALTER TABLE rooms ADD COLUMN {col}")
-                await _db.commit()
-            except Exception:
-                pass
-        # Migration: add agent meeting columns to room_participants
-        for col in [
-            "persona_config JSON DEFAULT '{}'",
-            "is_external BOOLEAN DEFAULT FALSE",
-        ]:
-            try:
-                await _db.execute(f"ALTER TABLE room_participants ADD COLUMN {col}")
-                await _db.commit()
-            except Exception:
-                pass
-        # Migration: create session_events table
-        await _db.execute("""
-            CREATE TABLE IF NOT EXISTS session_events (
-                id TEXT PRIMARY KEY,
-                event_type TEXT NOT NULL,
-                session_id TEXT NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
-                context TEXT,
-                title TEXT,
-                interpretations_count INTEGER DEFAULT 0,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-        """)
-        await _db.execute("""
-            CREATE INDEX IF NOT EXISTS idx_session_events_created
-                ON session_events(created_at)
-        """)
-        await _db.commit()
-        # Migration: create invites table
-        await _db.execute("""
-            CREATE TABLE IF NOT EXISTS invites (
-                id TEXT PRIMARY KEY,
-                token TEXT NOT NULL UNIQUE,
-                label TEXT NOT NULL DEFAULT '',
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                expires_at TIMESTAMP,
-                claimed_at TIMESTAMP,
-                api_key_id TEXT REFERENCES api_keys(id) ON DELETE SET NULL
-            )
-        """)
-        await _db.execute("""
-            CREATE INDEX IF NOT EXISTS idx_invites_token ON invites(token)
-        """)
-        await _db.commit()
-        # Migration: create meeting_messages table
-        await _db.execute("""
-            CREATE TABLE IF NOT EXISTS meeting_messages (
-                id TEXT PRIMARY KEY,
-                room_id TEXT NOT NULL REFERENCES rooms(id) ON DELETE CASCADE,
-                sender_name TEXT NOT NULL,
-                sender_type TEXT NOT NULL,
-                message_type TEXT NOT NULL,
-                content TEXT NOT NULL,
-                sequence_number INTEGER NOT NULL,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-        """)
-        await _db.execute("""
-            CREATE INDEX IF NOT EXISTS idx_meeting_messages_room
-                ON meeting_messages(room_id, sequence_number)
-        """)
-        await _db.commit()
-        # Migration: create wall_posts table
-        await _db.execute("""
-            CREATE TABLE IF NOT EXISTS wall_posts (
-                id TEXT PRIMARY KEY,
-                agent_name TEXT NOT NULL,
-                agent_key_id TEXT REFERENCES api_keys(id),
-                content TEXT NOT NULL,
-                post_type TEXT DEFAULT 'post',
-                parent_id TEXT REFERENCES wall_posts(id),
-                reactions JSON DEFAULT '{}',
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-        """)
-        await _db.execute("""
-            CREATE INDEX IF NOT EXISTS idx_wall_posts_created
-                ON wall_posts(created_at)
-        """)
-        await _db.commit()
-        # Migration: add scopes column to api_keys
-        try:
-            await _db.execute("ALTER TABLE api_keys ADD COLUMN scopes TEXT DEFAULT NULL")
-            await _db.commit()
-        except Exception:
-            pass  # Column already exists
-        # Migration: add memory_error column to series
-        try:
-            await _db.execute("ALTER TABLE series ADD COLUMN memory_error TEXT DEFAULT NULL")
-            await _db.commit()
-        except Exception:
-            pass  # Column already exists
-        # Migration: add manual_notes and is_diarized columns to sessions
-        for col in [
-            "manual_notes TEXT DEFAULT ''",
-            "is_diarized BOOLEAN DEFAULT FALSE",
-        ]:
-            try:
-                await _db.execute(f"ALTER TABLE sessions ADD COLUMN {col}")
-                await _db.commit()
-            except Exception:
-                pass  # Column already exists
+        await _run_migrations(_db)
     return _db
+
+
+async def _run_migrations(db: aiosqlite.Connection) -> None:
+    """Run ALTER TABLE migrations for databases created before columns were added to SCHEMA.
+
+    New databases get all columns from SCHEMA directly. These migrations
+    only apply to pre-existing databases upgraded from earlier versions.
+    Each migration is idempotent (silently ignored if column already exists).
+    """
+    alter_migrations = [
+        "ALTER TABLE sessions ADD COLUMN series_id TEXT REFERENCES series(id)",
+        "ALTER TABLE sessions ADD COLUMN manual_notes TEXT DEFAULT ''",
+        "ALTER TABLE sessions ADD COLUMN is_diarized BOOLEAN DEFAULT FALSE",
+        "ALTER TABLE rooms ADD COLUMN mode TEXT DEFAULT 'standard'",
+        "ALTER TABLE rooms ADD COLUMN meeting_config JSON DEFAULT '{}'",
+        "ALTER TABLE rooms ADD COLUMN transcript_log TEXT DEFAULT ''",
+        "ALTER TABLE room_participants ADD COLUMN persona_config JSON DEFAULT '{}'",
+        "ALTER TABLE room_participants ADD COLUMN is_external BOOLEAN DEFAULT FALSE",
+        "ALTER TABLE api_keys ADD COLUMN scopes TEXT DEFAULT NULL",
+        "ALTER TABLE series ADD COLUMN memory_error TEXT DEFAULT NULL",
+        "ALTER TABLE meeting_messages ADD COLUMN content_type TEXT DEFAULT 'text/plain'",
+    ]
+    for sql in alter_migrations:
+        try:
+            await db.execute(sql)
+            await db.commit()
+        except Exception:
+            pass  # Column already exists
 
 
 async def get_db_connection() -> aiosqlite.Connection:

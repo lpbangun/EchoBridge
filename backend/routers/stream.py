@@ -157,17 +157,27 @@ async def stream_meeting(websocket: WebSocket, code: str):
             await websocket.close(code=4001, reason="unauthorized")
             return
 
-    await stream_manager.subscribe(room_key, websocket)
+    # Build connection metadata for meeting participants
+    meeting_conn_info = ConnectionInfo(
+        name=None,
+        participant_type="human",
+        agent_name=None,
+    )
+    await stream_manager.subscribe(room_key, websocket, meeting_conn_info)
     try:
         while True:
             data = await websocket.receive_json()
             msg_type = data.get("type")
 
             if msg_type == "identify":
+                name = data.get("name", "Unknown")
+                participant_type = data.get("participant_type", "human")
+                meeting_conn_info.name = name
+                meeting_conn_info.participant_type = participant_type
                 await stream_manager.broadcast(room_key, {
                     "type": "participant_joined",
-                    "name": data.get("name", "Unknown"),
-                    "participant_type": data.get("participant_type", "human"),
+                    "name": name,
+                    "participant_type": participant_type,
                 })
 
             elif msg_type == "directive":
@@ -200,4 +210,10 @@ async def stream_meeting(websocket: WebSocket, code: str):
                     )
 
     except WebSocketDisconnect:
+        if meeting_conn_info.name:
+            await stream_manager.broadcast(room_key, {
+                "type": "participant_left",
+                "name": meeting_conn_info.name,
+                "participant_type": meeting_conn_info.participant_type,
+            })
         await stream_manager.unsubscribe(room_key, websocket)

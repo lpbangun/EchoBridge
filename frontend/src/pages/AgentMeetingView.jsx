@@ -27,6 +27,7 @@ export default function AgentMeetingView() {
   const [inputText, setInputText] = useState('');
   const [inputMode, setInputMode] = useState('message'); // 'message' | 'directive'
   const [actionLoading, setActionLoading] = useState(false);
+  const [thinkingAgent, setThinkingAgent] = useState(null);
   const wsRef = useRef(null);
   const reconnectRef = useRef(null);
 
@@ -79,6 +80,10 @@ export default function AgentMeetingView() {
             if (data.id && prev.some((m) => m.id === data.id)) return prev;
             return [...prev, data];
           });
+        } else if (data.type === 'agent_thinking') {
+          setThinkingAgent(data.agent_name);
+        } else if (data.type === 'agent_done') {
+          setThinkingAgent(null);
         } else if (data.type === 'meeting_ended') {
           setStatus('closed');
           // Navigate to session view after a brief delay
@@ -314,7 +319,7 @@ export default function AgentMeetingView() {
       )}
 
       {/* Transcript */}
-      <MeetingTranscript messages={messages} agents={agents} />
+      <MeetingTranscript messages={messages} agents={agents} thinkingAgent={thinkingAgent} />
 
       {/* Input bar */}
       {isRunning && (

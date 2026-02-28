@@ -420,7 +420,7 @@ async def test_agent_sees_transcript_after_recording(client, db):
 
 
 @pytest.mark.asyncio
-@patch("services.interpret_service.call_openrouter", new_callable=AsyncMock)
+@patch("services.interpret_service.call_ai", new_callable=AsyncMock)
 async def test_agent_sees_interpretations_after_recording(mock_ai, client, db):
     """Agent can list interpretations created after a human recording."""
     mock_ai.return_value = "## Meeting Notes\n- Discussed pricing model"
@@ -448,7 +448,7 @@ async def test_agent_sees_interpretations_after_recording(mock_ai, client, db):
 
 
 @pytest.mark.asyncio
-@patch("services.interpret_service.call_openrouter", new_callable=AsyncMock)
+@patch("services.interpret_service.call_ai", new_callable=AsyncMock)
 async def test_agent_creates_own_interpretation(mock_ai, client, db):
     """An agent can create its own interpretation with a custom prompt."""
     mock_ai.return_value = "## Agent Analysis\n- Revenue model looks promising"
@@ -504,7 +504,7 @@ async def test_agent_discovers_session_via_events(client, db):
 
 
 @pytest.mark.asyncio
-@patch("services.interpret_service.call_openrouter", new_callable=AsyncMock)
+@patch("services.interpret_service.call_ai", new_callable=AsyncMock)
 async def test_multiple_agents_interpret_same_session(mock_ai, client, db):
     """Two different agents can each create their own interpretation of the same session."""
     session_id = await _create_session_with_transcript(client, db)
@@ -544,3 +544,166 @@ async def test_multiple_agents_interpret_same_session(mock_ai, client, db):
     assert "agent-a" in source_names
     assert "agent-b" in source_names
     assert len(interps) >= 2
+
+
+# ---------------------------------------------------------------------------
+# Group D: Orchestrator Improvements (Human Interrupt, @Mention Priority)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_human_interrupt_between_agent_turns(client, db):
+    """Human messages injected mid-round appear between agent turns, not just between rounds."""
+    from services.orchestrator_service import MeetingOrchestrator
+
+    orch = MeetingOrchestrator(
+        room_id="r1",
+        room_code="test-interrupt",
+        session_id="s1",
+        topic="Interrupt Test",
+        task_description="",
+        agents=[
+            {"name": "AgentA", "type": "internal"},
+            {"name": "AgentB", "type": "internal"},
+        ],
+        cooldown_seconds=0,
+        max_rounds=1,
+    )
+
+    # Record the order messages are added (override _add_message to track)
+    message_log = []
+    original_add = orch._add_message
+
+    async def tracking_add(sender_name, sender_type, message_type, content, db=None, content_type="text/plain"):
+        msg = await original_add(sender_name, sender_type, message_type, content, db=db, content_type=content_type)
+        message_log.append((sender_name, message_type, content))
+        return msg
+
+    orch._add_message = tracking_add
+
+    # Mock _run_agent_turn: AgentA responds, then we'll have a human message queued, then AgentB responds
+    call_count = 0
+
+    async def mock_agent_turn(agent, db):
+        nonlocal call_count
+        call_count += 1
+        if agent["name"] == "AgentA":
+            # Queue a human message after AgentA's turn resolves
+            orch.add_human_message("Hey agents!", "Human")
+            return "AgentA says hello"
+        return "AgentB responds"
+
+    orch._run_agent_turn = mock_agent_turn
+
+    # Mock stream_manager to avoid broadcast errors
+    with patch("services.orchestrator_service.stream_manager") as mock_sm:
+        mock_sm.broadcast = AsyncMock()
+
+        # Manually run one round of the loop logic
+        orch.current_round = 0
+        orch.status = "active"
+        orch._pause_event.set()
+
+        consecutive_passes = 0
+        mentioned = []
+        for msg in orch.messages[-5:]:
+            mentioned.extend(orch._parse_mentions(msg["content"]))
+        agent_order = orch._build_agent_order(mentioned)
+
+        for agent in agent_order:
+            while orch.human_message_queue:
+                hm = orch.human_message_queue.pop(0)
+                await orch._add_message(hm["from_name"], "human", "message", hm["text"])
+                consecutive_passes = 0
+
+            await mock_sm.broadcast(orch._ws_key, {"type": "agent_thinking", "agent_name": agent["name"]})
+            response = await mock_agent_turn(agent, None)
+            await mock_sm.broadcast(orch._ws_key, {"type": "agent_done", "agent_name": agent["name"]})
+
+            if response:
+                await orch._add_message(agent["name"], "agent", "message", response)
+
+    # Verify order: AgentA speaks → Human message drained → AgentB speaks
+    non_status = [(name, content) for name, mtype, content in message_log if mtype == "message"]
+    assert len(non_status) == 3
+    assert non_status[0] == ("AgentA", "AgentA says hello")
+    assert non_status[1] == ("Human", "Hey agents!")
+    assert non_status[2] == ("AgentB", "AgentB responds")
+
+
+@pytest.mark.asyncio
+async def test_mention_priority_reorders_agents():
+    """@AgentName in a message moves that agent to the front of the next round."""
+    from services.orchestrator_service import MeetingOrchestrator
+
+    orch = MeetingOrchestrator(
+        room_id="r2",
+        room_code="test-mention",
+        session_id="s2",
+        topic="Mention Test",
+        task_description="",
+        agents=[
+            {"name": "Alpha", "type": "internal"},
+            {"name": "Beta", "type": "internal"},
+            {"name": "Gamma", "type": "internal"},
+        ],
+        cooldown_seconds=0,
+        max_rounds=1,
+    )
+
+    # Test _parse_mentions
+    mentions = orch._parse_mentions("Hey @Gamma and @Alpha, what do you think?")
+    assert "Gamma" in mentions
+    assert "Alpha" in mentions
+    assert "Beta" not in mentions
+
+    # Test _build_agent_order — mentioned agents go first
+    order = orch._build_agent_order(["Gamma"])
+    assert order[0]["name"] == "Gamma"
+    assert len(order) == 3
+
+    # Multiple mentions preserve agent-list order among mentioned
+    order2 = orch._build_agent_order(["Gamma", "Alpha"])
+    assert order2[0]["name"] == "Alpha"  # Alpha comes first in agents list
+    assert order2[1]["name"] == "Gamma"
+    assert order2[2]["name"] == "Beta"
+
+    # No mentions → default order
+    order3 = orch._build_agent_order([])
+    assert [a["name"] for a in order3] == ["Alpha", "Beta", "Gamma"]
+
+
+@pytest.mark.asyncio
+async def test_artifact_detection():
+    """Messages starting with [ARTIFACT] are stored as artifact type with text/markdown."""
+    from services.orchestrator_service import MeetingOrchestrator
+
+    orch = MeetingOrchestrator(
+        room_id="r3",
+        room_code="test-artifact",
+        session_id="s3",
+        topic="Artifact Test",
+        task_description="",
+        agents=[{"name": "Researcher", "type": "internal"}],
+        cooldown_seconds=0,
+        max_rounds=1,
+    )
+
+    # Simulate artifact response detection
+    response = "[ARTIFACT] ## Research Summary\n- Key finding 1\n- Key finding 2"
+    assert response.startswith("[ARTIFACT]")
+    artifact_content = response[len("[ARTIFACT]"):].strip()
+    assert artifact_content.startswith("## Research Summary")
+
+    # Add as artifact message
+    msg = await orch._add_message(
+        "Researcher", "agent", "artifact", artifact_content,
+        content_type="text/markdown",
+    )
+    assert msg["message_type"] == "artifact"
+    assert msg["content_type"] == "text/markdown"
+    assert "Research Summary" in msg["content"]
+
+    # Regular message has default content_type
+    msg2 = await orch._add_message("Researcher", "agent", "message", "Hello")
+    assert msg2["content_type"] == "text/plain"

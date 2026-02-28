@@ -1,8 +1,9 @@
 import { useEffect, useRef } from 'react';
+import Markdown from 'react-markdown';
 
 const AGENT_COLORS = ['#C4F82A', '#F59E0B', '#38BDF8', '#A78BFA'];
 
-export default function MeetingTranscript({ messages = [], agents = [] }) {
+export default function MeetingTranscript({ messages = [], agents = [], thinkingAgent = null }) {
   const bottomRef = useRef(null);
 
   useEffect(() => {
@@ -51,6 +52,28 @@ export default function MeetingTranscript({ messages = [], agents = [] }) {
           );
         }
 
+        if (msg.message_type === 'artifact') {
+          const agentColor = colorMap[msg.sender_name] || '#71717A';
+          return (
+            <div
+              key={msg.id || msg.sequence_number}
+              className="mx-4 px-4 py-3 border-l-2 bg-zinc-800/40"
+              style={{ borderLeftColor: agentColor }}
+            >
+              <div className="flex items-center gap-1.5 mb-2">
+                <div className="w-2 h-2" style={{ backgroundColor: agentColor }} />
+                <span className="text-xs font-semibold" style={{ color: agentColor }}>
+                  {msg.sender_name}
+                </span>
+                <span className="text-[10px] text-zinc-600 ml-1">artifact</span>
+              </div>
+              <div className="prose prose-invert prose-sm max-w-none text-zinc-200">
+                <Markdown>{msg.content}</Markdown>
+              </div>
+            </div>
+          );
+        }
+
         const isHuman = msg.sender_type === 'human';
         const agentColor = colorMap[msg.sender_name] || '#71717A';
 
@@ -86,6 +109,20 @@ export default function MeetingTranscript({ messages = [], agents = [] }) {
           </div>
         );
       })}
+      {thinkingAgent && (
+        <div className="px-4 py-2 flex items-center gap-2">
+          <div
+            className="w-2 h-2 animate-pulse"
+            style={{ backgroundColor: colorMap[thinkingAgent] || '#71717A' }}
+          />
+          <span
+            className="text-xs animate-pulse"
+            style={{ color: colorMap[thinkingAgent] || '#71717A' }}
+          >
+            {thinkingAgent} is thinking...
+          </span>
+        </div>
+      )}
       <div ref={bottomRef} />
     </div>
   );
