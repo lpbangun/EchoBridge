@@ -324,7 +324,7 @@ async def test_list_series_sessions_not_found(client):
 # --- Interpretation with memory context (mocked AI) ---
 
 @pytest.mark.asyncio
-@patch("services.interpret_service.call_openrouter")
+@patch("services.interpret_service.call_ai")
 async def test_interpret_with_memory_context(mock_ai, client, db):
     mock_ai.return_value = "# Meeting Notes\n\nSummary of the meeting."
 

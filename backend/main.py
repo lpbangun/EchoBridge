@@ -173,8 +173,8 @@ async def register_agent(body: dict, request: Request, db=Depends(get_db)):
 @app.get("/api/skill")
 async def public_skill():
     """Return SKILL.md content — no auth required for discovery."""
-    from routers.agent import _find_skill_md
-    path = _find_skill_md()
+    from services.skill_md import find_skill_md
+    path = find_skill_md()
     if not path:
         raise HTTPException(404, "SKILL.md not found")
     from fastapi.responses import PlainTextResponse
@@ -208,6 +208,6 @@ if _static_dir.is_dir():
         if full_path:
             file_path = (_static_dir / full_path).resolve()
             # Serve exact file if it exists and is within static dir
-            if file_path.is_file() and str(file_path).startswith(str(_static_dir)):
+            if file_path.is_file() and file_path.is_relative_to(_static_dir):
                 return FileResponse(str(file_path))
         return FileResponse(str(_static_dir / "index.html"))

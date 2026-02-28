@@ -4,7 +4,7 @@ import logging
 from datetime import datetime, timezone
 
 from config import settings
-from services.ai_service import call_openrouter
+from services.ai_service import call_ai
 
 logger = logging.getLogger(__name__)
 
@@ -98,7 +98,7 @@ Produce the complete updated memory document."""
 
     prompt = MEMORY_SYNTHESIS_PROMPT.replace("{series_name}", series_name)
 
-    return await call_openrouter(
+    return await call_ai(
         model=model,
         system_prompt=prompt,
         user_content=user_content,
@@ -217,7 +217,7 @@ async def refresh_memory_from_scratch(
 
     prompt = MEMORY_REFRESH_PROMPT.replace("{series_name}", series_name)
 
-    updated_memory = await call_openrouter(
+    updated_memory = await call_ai(
         model=model,
         system_prompt=prompt,
         user_content=user_content,

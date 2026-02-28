@@ -2,13 +2,13 @@
 
 import json
 from datetime import datetime
-from pathlib import Path
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import PlainTextResponse
 
 from database import get_db
 from services.auth_service import verify_api_key, require_scope
+from services.skill_md import find_skill_md
 from services.interpret_service import (
     interpret_with_custom,
     interpret_with_lens,
@@ -22,19 +22,6 @@ from services.chat_service import (
 from services.search_service import search
 
 router = APIRouter(prefix="/api/v1", tags=["agent-api"])
-
-# Path candidates: Docker (/app/SKILL.md) first, dev layout second
-_SKILL_MD_CANDIDATES = [
-    Path(__file__).resolve().parent.parent / "SKILL.md",  # Docker: /app/SKILL.md
-    Path(__file__).resolve().parent.parent / "openclaw-skill" / "echobridge" / "SKILL.md",  # Dev
-]
-
-
-def _find_skill_md() -> Path | None:
-    for p in _SKILL_MD_CANDIDATES:
-        if p.exists():
-            return p
-    return None
 
 _AVAILABLE_ENDPOINTS = [
     "/api/v1/sessions",
@@ -82,7 +69,7 @@ async def ping(api_key=Depends(verify_api_key)):
 @router.get("/skill", response_class=PlainTextResponse)
 async def get_skill(api_key=Depends(verify_api_key)):
     """Return SKILL.md content so agents can self-discover EchoBridge capabilities."""
-    path = _find_skill_md()
+    path = find_skill_md()
     if not path:
         raise HTTPException(404, "SKILL.md not found")
     return path.read_text(encoding="utf-8")

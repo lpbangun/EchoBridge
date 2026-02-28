@@ -4,14 +4,13 @@ import hashlib
 import secrets
 import uuid
 from datetime import datetime, timezone
-from pathlib import Path
 
 from fastapi import APIRouter, Depends, HTTPException
-from fastapi.responses import PlainTextResponse
-from starlette.responses import Response
+from fastapi.responses import PlainTextResponse, Response
 
 from config import settings
 from database import get_db
+from services.skill_md import find_skill_md
 from models.schemas import (
     ApiKeyCreate,
     ApiKeyResponse,
@@ -204,23 +203,10 @@ async def delete_api_key(key_id: str, db=Depends(get_db)):
     return Response(status_code=204)
 
 
-_SKILL_MD_CANDIDATES = [
-    Path(__file__).resolve().parent.parent / "SKILL.md",  # Docker: /app/SKILL.md
-    Path(__file__).resolve().parent.parent / "openclaw-skill" / "echobridge" / "SKILL.md",  # Dev
-]
-
-
-def _find_skill_md() -> Path | None:
-    for p in _SKILL_MD_CANDIDATES:
-        if p.exists():
-            return p
-    return None
-
-
 @router.get("/skill", response_class=PlainTextResponse)
 async def get_skill_file():
     """Return SKILL.md content (unauthenticated) for the Settings UI."""
-    path = _find_skill_md()
+    path = find_skill_md()
     if not path:
         raise HTTPException(404, "SKILL.md not found")
     return path.read_text(encoding="utf-8")

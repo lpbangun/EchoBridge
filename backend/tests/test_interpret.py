@@ -100,7 +100,7 @@ async def test_interpret_socket_with_missing_socket(client, sample_session):
 
 
 @pytest.mark.asyncio
-@patch("services.interpret_service.call_openrouter", new_callable=AsyncMock)
+@patch("services.interpret_service.call_ai", new_callable=AsyncMock)
 async def test_interpret_preset_happy_path(mock_ai, client, sample_session):
     """Preset lens interpretation succeeds when AI is mocked."""
     mock_ai.return_value = "## Meeting Summary\n\nKey decisions were made."
@@ -126,7 +126,7 @@ async def test_interpret_preset_happy_path(mock_ai, client, sample_session):
 
 
 @pytest.mark.asyncio
-@patch("services.interpret_service.call_openrouter", new_callable=AsyncMock)
+@patch("services.interpret_service.call_ai", new_callable=AsyncMock)
 async def test_interpret_preset_defaults_to_context(mock_ai, client, sample_session):
     """Preset lens without lens_id defaults to session context."""
     mock_ai.return_value = "## Notes\n\nSome notes."
@@ -144,7 +144,7 @@ async def test_interpret_preset_defaults_to_context(mock_ai, client, sample_sess
 
 
 @pytest.mark.asyncio
-@patch("services.interpret_service.call_openrouter", new_callable=AsyncMock)
+@patch("services.interpret_service.call_ai", new_callable=AsyncMock)
 async def test_interpret_custom_happy_path(mock_ai, client, sample_session):
     """Custom lens interpretation succeeds when AI is mocked."""
     mock_ai.return_value = "Custom summary output."
@@ -166,7 +166,7 @@ async def test_interpret_custom_happy_path(mock_ai, client, sample_session):
 
 
 @pytest.mark.asyncio
-@patch("services.interpret_service.call_openrouter", new_callable=AsyncMock)
+@patch("services.interpret_service.call_ai", new_callable=AsyncMock)
 async def test_interpret_updates_session_status(mock_ai, client, sample_session):
     """After interpretation the session status changes to 'complete'."""
     mock_ai.return_value = "Done."
@@ -206,7 +206,7 @@ async def test_list_interpretations_not_found(client):
 
 
 @pytest.mark.asyncio
-@patch("services.interpret_service.call_openrouter", new_callable=AsyncMock)
+@patch("services.interpret_service.call_ai", new_callable=AsyncMock)
 async def test_list_interpretations_after_creating(mock_ai, client, sample_session):
     """After running interpretations they appear in the list."""
     mock_ai.return_value = "Interpretation output."

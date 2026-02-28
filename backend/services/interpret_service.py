@@ -8,7 +8,7 @@ import jsonschema
 
 from config import settings
 from lenses.base import get_lens
-from services.ai_service import call_openrouter
+from services.ai_service import call_ai
 
 
 async def get_socket_data(db, socket_id: str) -> dict | None:
@@ -81,7 +81,7 @@ async def interpret_with_lens(
     manual_notes = await _fetch_manual_notes(session_id, db)
     user_content = _build_user_content(transcript, memory_context, manual_notes)
 
-    output = await call_openrouter(
+    output = await call_ai(
         model=model,
         system_prompt=prompt,
         user_content=user_content,
@@ -136,7 +136,7 @@ async def interpret_with_custom(
     manual_notes = await _fetch_manual_notes(session_id, db)
     user_content = _build_user_content(transcript, memory_context, manual_notes)
 
-    output = await call_openrouter(
+    output = await call_ai(
         model=model,
         system_prompt=system_prompt,
         user_content=user_content,
@@ -201,7 +201,7 @@ SECTION 2: A JSON object conforming exactly to this schema:
     manual_notes = await _fetch_manual_notes(session_id, db)
     user_content = _build_user_content(transcript, memory_context, manual_notes)
 
-    output = await call_openrouter(
+    output = await call_ai(
         model=model,
         system_prompt=prompt,
         user_content=user_content,
@@ -289,7 +289,7 @@ async def auto_interpret(session_id: str, db) -> dict | None:
     manual_notes = await _fetch_manual_notes(session_id, db)
     user_content = _build_user_content(transcript, memory_context, manual_notes)
 
-    output = await call_openrouter(
+    output = await call_ai(
         model=model,
         system_prompt=prompt,
         user_content=user_content,

@@ -4,25 +4,14 @@ import hashlib
 import secrets
 import uuid
 from datetime import datetime, timedelta, timezone
-from pathlib import Path
 
 import aiosqlite
+
+from services.skill_md import find_skill_md
 
 
 INVITE_EXPIRY_DAYS = 7
 DEFAULT_INVITE_SCOPES = "rooms:write,wall:read,wall:write"
-
-_SKILL_MD_CANDIDATES = [
-    Path(__file__).resolve().parent.parent / "SKILL.md",  # Docker: /app/SKILL.md
-    Path(__file__).resolve().parent.parent / "openclaw-skill" / "echobridge" / "SKILL.md",  # Dev
-]
-
-
-def _find_skill_md() -> Path | None:
-    for p in _SKILL_MD_CANDIDATES:
-        if p.exists():
-            return p
-    return None
 
 
 def generate_token() -> str:
@@ -161,7 +150,7 @@ async def claim_invite(
 
 def _build_skill_content(base_url: str, raw_key: str) -> str:
     """Read SKILL.md template and replace placeholders with actual values."""
-    path = _find_skill_md()
+    path = find_skill_md()
     if not path:
         return f"# EchoBridge Skill\n\nBase URL: {base_url}\nAPI Key: {raw_key}\n\nSKILL.md template not found on server."
 

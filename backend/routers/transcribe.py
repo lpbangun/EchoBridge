@@ -210,6 +210,7 @@ async def _run_auto_pipeline(session_id: str):
 router = APIRouter(prefix="/api/sessions", tags=["transcription"])
 
 ACCEPTED_FORMATS = {".mp3", ".wav", ".m4a", ".webm", ".ogg"}
+MAX_AUDIO_SIZE = 500 * 1024 * 1024  # 500MB
 
 
 @router.post("/{session_id}/audio")
@@ -240,6 +241,8 @@ async def upload_audio(
     audio_path = os.path.join(audio_dir, f"{file_id}{ext}")
 
     content = await audio.read()
+    if len(content) > MAX_AUDIO_SIZE:
+        raise HTTPException(413, f"Audio file too large. Maximum size: {MAX_AUDIO_SIZE // (1024*1024)}MB")
     with open(audio_path, "wb") as f:
         f.write(content)
 
@@ -300,12 +303,14 @@ async def upload_audio(
             "status": "processing",
         }
     except Exception as e:
+        error_msg = str(e)[:200]  # Truncate to prevent excessive storage
+        logger.exception("Transcription failed for session %s", session_id)
         await db.execute(
             "UPDATE sessions SET status = 'error', error_message = ? WHERE id = ?",
-            (str(e), session_id),
+            (error_msg, session_id),
         )
         await db.commit()
-        raise HTTPException(500, f"Transcription failed: {e}")
+        raise HTTPException(500, "Transcription failed")
 
 
 @router.post("/{session_id}/transcript")

@@ -29,6 +29,8 @@ SETTINGS_KEY = "action_webhooks"
 def _is_private_url(url: str) -> bool:
     """Check whether a URL resolves to a private/reserved IP range."""
     parsed = urlparse(url)
+    if parsed.scheme not in ("http", "https"):
+        return True
     hostname = parsed.hostname
     if not hostname:
         return True
@@ -40,6 +42,19 @@ def _is_private_url(url: str) -> bool:
         lower = hostname.lower()
         if lower in ("localhost", "localhost.localdomain"):
             return True
+        # Resolve DNS to check for private IPs
+        import socket
+        try:
+            addrinfos = socket.getaddrinfo(hostname, None)
+            for family, _, _, _, sockaddr in addrinfos:
+                try:
+                    resolved = ipaddress.ip_address(sockaddr[0])
+                    if any(resolved in network for network in _PRIVATE_NETWORKS):
+                        return True
+                except ValueError:
+                    continue
+        except socket.gaierror:
+            return True  # Can't resolve = reject
     return False
 
 
@@ -122,7 +137,7 @@ async def execute_webhook(db, webhook_id: str, payload: dict) -> dict:
     method = webhook.get("method", "POST").upper()
     headers = webhook.get("headers", {})
 
-    async with httpx.AsyncClient(timeout=10.0) as client:
+    async with httpx.AsyncClient(timeout=10.0, follow_redirects=False) as client:
         response = await client.request(
             method=method,
             url=url,

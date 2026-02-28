@@ -32,7 +32,7 @@ async def _create_session_no_transcript(client, sample_session):
 
 
 @pytest.mark.asyncio
-@patch("services.interpret_service.call_openrouter", new_callable=AsyncMock)
+@patch("services.interpret_service.call_ai", new_callable=AsyncMock)
 async def test_auto_interpret_happy_path(mock_ai, client, db, sample_session):
     """auto_interpret creates a primary interpretation using smart_notes lens."""
     mock_ai.return_value = "## Summary\n\nKey decisions were discussed.\n\n## Action Items\n\n- [ ] Follow up on Q3 plan"

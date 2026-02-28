@@ -147,20 +147,3 @@ async def generate_title(transcript: str, model: str) -> str:
     except Exception:
         return ""
 
-
-# Backward-compatible alias
-async def call_openrouter(
-    model: str,
-    system_prompt: str,
-    user_content: str,
-    temperature: float = 0.3,
-    max_tokens: int = 4096,
-) -> str:
-    """Backward-compatible wrapper — routes to the active provider."""
-    return await call_ai(
-        model=model,
-        system_prompt=system_prompt,
-        user_content=user_content,
-        temperature=temperature,
-        max_tokens=max_tokens,
-    )

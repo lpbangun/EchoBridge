@@ -29,7 +29,7 @@ async def _create_session_with_interpretation(client, sample_session):
     """Create a session, transcript, and a mocked interpretation."""
     sid = await _create_session_with_transcript(client, sample_session)
     with patch(
-        "services.interpret_service.call_openrouter",
+        "services.interpret_service.call_ai",
         new_callable=AsyncMock,
         return_value="## Summary\n\nKey decisions were discussed.",
     ):
