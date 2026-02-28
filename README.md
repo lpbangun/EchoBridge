@@ -2,7 +2,24 @@
 
 > The meeting bridge for humans and AI agents.
 
-EchoBridge captures audio, transcribes it, and makes the transcript available to you (as structured notes) and any number of AI agents (each with their own lens). It doesn't just record — it participates: speaker diarization identifies who said what, your live notes guide AI interpretation, and actionable intelligence flows out through webhooks. Self-hosted, open source, zero cloud dependency. Your data lives on your server.
+EchoBridge bridges the physical world — conversations, meetings, lectures — and the digital world where AI agents operate. Your agent can read your email, Slack, calendar, code, and documents. It cannot hear your in-person conversations, phone calls, lectures, or brainstorms. EchoBridge is the ears.
+
+**Core abstraction**: One transcript, many interpretations.
+
+```
+Audio → Transcript → Your notes (preset lens)
+                   → Agent A interpretation (its own prompt)
+                   → Agent B interpretation (socket: action_items)
+                   → Agent N interpretation (any lens)
+```
+
+**Four modes of use:**
+1. **Solo** — Record your own meetings/lectures, get `.md` notes
+2. **Room** — Share a live transcript with other people + their agents
+3. **Agent-direct** — Agents query transcripts and request interpretations via API
+4. **Agent Meeting** — Multi-agent structured conversations with orchestrated turn-taking
+
+Self-hosted, open source, zero cloud dependency. The SQLite database, audio files, and exported notes are ordinary files on your filesystem. No account to create, no subscription, no telemetry.
 
 ---
 
