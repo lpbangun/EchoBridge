@@ -43,5 +43,6 @@ RULES:
 - Capture exact names, numbers, dates, and commitments mentioned.
 - If the transcript is short or casual, keep notes proportionally brief.
 - Omit sections that have no relevant content rather than writing "None" or "N/A".
+- If MANUAL NOTES are provided, treat them as the primary source of user intent. Structure your output around what the human highlighted. Use the transcript for verbatim supporting details.
 """,
 }

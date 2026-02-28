@@ -30,7 +30,9 @@ CREATE TABLE IF NOT EXISTS sessions (
     stt_provider TEXT,
     audio_path TEXT,
     host_name TEXT,
-    error_message TEXT
+    error_message TEXT,
+    manual_notes TEXT DEFAULT '',
+    is_diarized BOOLEAN DEFAULT FALSE
 );
 
 CREATE TABLE IF NOT EXISTS interpretations (
@@ -334,6 +336,16 @@ async def get_db() -> aiosqlite.Connection:
             await _db.commit()
         except Exception:
             pass  # Column already exists
+        # Migration: add manual_notes and is_diarized columns to sessions
+        for col in [
+            "manual_notes TEXT DEFAULT ''",
+            "is_diarized BOOLEAN DEFAULT FALSE",
+        ]:
+            try:
+                await _db.execute(f"ALTER TABLE sessions ADD COLUMN {col}")
+                await _db.commit()
+            except Exception:
+                pass  # Column already exists
     return _db
 
 

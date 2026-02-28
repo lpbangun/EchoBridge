@@ -141,6 +141,9 @@ async def update_session(session_id: str, body: SessionUpdate, db=Depends(get_db
     if body.context_metadata is not None:
         updates.append("context_metadata = ?")
         params.append(json.dumps(body.context_metadata))
+    if body.manual_notes is not None:
+        updates.append("manual_notes = ?")
+        params.append(body.manual_notes)
 
     if not updates:
         raise HTTPException(400, "No fields to update")

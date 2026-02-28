@@ -51,5 +51,6 @@ RULES:
 - Distinguish between convergence (genuine agreement) and acquiescence (going along to move on).
 - If energy or enthusiasm shifted during the session, note when and why.
 - Preserve specific examples, analogies, or metaphors used to explain ideas.
+- If MANUAL NOTES are provided, treat them as the primary source of user intent. Structure your output around what the human highlighted. Use the transcript for verbatim supporting details.
 """,
 }

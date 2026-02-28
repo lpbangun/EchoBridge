@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Pencil, Download, MessageSquare, X, Mic, Check, Bot } from 'lucide-react';
 import {
@@ -23,6 +23,7 @@ import MarkdownPreview from '../components/MarkdownPreview';
 import InterpretationCard from '../components/InterpretationCard';
 import SocketSelector from '../components/SocketSelector';
 import ChatPanel from '../components/ChatPanel';
+import { parseSpeakerLine } from '../components/LiveTranscript';
 
 const TABS = ['Summary', 'Transcript', 'Interpretations'];
 
@@ -75,6 +76,32 @@ export default function SessionView() {
   const [analyzingAgent, setAnalyzingAgent] = useState(false);
   const [agentAnalyzeError, setAgentAnalyzeError] = useState(null);
 
+  // Manual notes state
+  const [sessionNotes, setSessionNotes] = useState('');
+  const [editingNotes, setEditingNotes] = useState(false);
+  const [notesSaved, setNotesSaved] = useState(false);
+  const lastSavedNotesRef = useRef('');
+  const notesRef = useRef('');
+
+  const saveSessionNotes = useCallback(async () => {
+    const current = notesRef.current;
+    if (current === lastSavedNotesRef.current) return;
+    try {
+      await updateSession(id, { manual_notes: current });
+      lastSavedNotesRef.current = current;
+      setNotesSaved(true);
+      setTimeout(() => setNotesSaved(false), 2000);
+    } catch {
+      // Silent fail — will retry
+    }
+  }, [id]);
+
+  useEffect(() => {
+    if (!editingNotes) return;
+    const interval = setInterval(saveSessionNotes, 5000);
+    return () => clearInterval(interval);
+  }, [editingNotes, saveSessionNotes]);
+
   useEffect(() => {
     async function load() {
       setLoading(true);
@@ -87,6 +114,11 @@ export default function SessionView() {
         setSession(sess);
         setInterpretations(Array.isArray(interps) ? interps : []);
         setTitleDraft(sess.title || '');
+        if (sess.manual_notes) {
+          setSessionNotes(sess.manual_notes);
+          lastSavedNotesRef.current = sess.manual_notes;
+          notesRef.current = sess.manual_notes;
+        }
       } catch (err) {
         setError(err.message || 'Failed to load session.');
       } finally {
@@ -411,6 +443,57 @@ export default function SessionView() {
               </p>
             )}
 
+            {/* Manual notes section */}
+            {(sessionNotes || editingNotes) && (
+              <div className="mt-8">
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-xs font-medium tracking-widest uppercase text-zinc-400">Your Notes</span>
+                  <div className="flex items-center gap-2">
+                    <span className={`text-xs transition-opacity duration-500 ${notesSaved ? 'text-zinc-500 opacity-100' : 'opacity-0'}`}>
+                      Saved
+                    </span>
+                    {!editingNotes ? (
+                      <button
+                        onClick={() => {
+                          notesRef.current = sessionNotes;
+                          setEditingNotes(true);
+                        }}
+                        className="text-sm text-zinc-400 hover:text-accent transition-colors inline-flex items-center gap-1 touch-target"
+                      >
+                        <Pencil size={14} strokeWidth={1.5} />
+                        Edit
+                      </button>
+                    ) : (
+                      <button
+                        onClick={async () => {
+                          await saveSessionNotes();
+                          setEditingNotes(false);
+                        }}
+                        className="text-sm text-green-400 hover:text-green-300 transition-colors inline-flex items-center gap-1 touch-target"
+                      >
+                        <Check size={14} strokeWidth={1.5} />
+                        Done
+                      </button>
+                    )}
+                  </div>
+                </div>
+                {editingNotes ? (
+                  <textarea
+                    value={sessionNotes}
+                    onChange={(e) => {
+                      setSessionNotes(e.target.value);
+                      notesRef.current = e.target.value;
+                    }}
+                    className="card w-full font-mono text-sm text-zinc-300 leading-relaxed p-4 min-h-[200px] resize-y bg-transparent focus:outline-none"
+                  />
+                ) : (
+                  <div className="card p-4">
+                    <p className="font-mono text-sm text-zinc-300 leading-relaxed whitespace-pre-wrap">{sessionNotes}</p>
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* Primary interpretation content */}
             <div className="mt-8">
               {primaryInterpretation ? (
@@ -575,10 +658,31 @@ export default function SessionView() {
         {activeTab === 'Transcript' && (
           <div>
             {session.transcript ? (
-              <div className="card p-4 md:p-6 max-h-[600px] overflow-y-auto">
-                <p className="font-mono text-sm text-zinc-300 leading-relaxed whitespace-pre-wrap">
-                  {session.transcript}
-                </p>
+              <div className="card p-4 md:p-6 max-h-[600px] overflow-y-auto eb-scrollbar">
+                {session.is_diarized ? (
+                  <div className="font-mono text-sm leading-relaxed whitespace-pre-wrap">
+                    {session.transcript.split('\n').map((line, i) => {
+                      const parsed = parseSpeakerLine(line);
+                      if (!parsed) {
+                        return (
+                          <div key={i}>
+                            <span className="text-zinc-300">{line}</span>
+                          </div>
+                        );
+                      }
+                      return (
+                        <div key={i}>
+                          <span className="text-lime-400 font-medium">{parsed.label}</span>
+                          <span className="text-zinc-300"> {parsed.body}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <p className="font-mono text-sm text-zinc-300 leading-relaxed whitespace-pre-wrap">
+                    {session.transcript}
+                  </p>
+                )}
               </div>
             ) : (
               <p className="text-sm text-zinc-400">

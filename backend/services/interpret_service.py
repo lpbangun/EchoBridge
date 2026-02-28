@@ -25,6 +25,33 @@ async def get_socket_data(db, socket_id: str) -> dict | None:
     return data
 
 
+async def _fetch_manual_notes(session_id: str, db) -> str:
+    """Fetch manual_notes for a session. Returns empty string if none."""
+    if not db:
+        return ""
+    try:
+        cursor = await db.execute(
+            "SELECT manual_notes FROM sessions WHERE id = ?", (session_id,)
+        )
+        row = await cursor.fetchone()
+        return (row["manual_notes"] or "") if row else ""
+    except Exception:
+        return ""
+
+
+def _build_user_content(transcript: str, memory_context: str | None, manual_notes: str) -> str:
+    """Build the user content string with optional manual notes and memory context."""
+    parts = []
+    if manual_notes:
+        parts.append(f"MANUAL NOTES (written by the human during the meeting — primary signal for structure):\n{manual_notes}")
+        parts.append("---")
+    if memory_context:
+        parts.append(f"MEETING MEMORY (context from previous meetings):\n{memory_context}")
+        parts.append("---")
+    parts.append(f"TRANSCRIPT:\n{transcript}")
+    return "\n\n".join(parts)
+
+
 async def interpret_with_lens(
     session_id: str,
     transcript: str,
@@ -51,10 +78,8 @@ async def interpret_with_lens(
     if memory_context:
         prompt += "\n\nYou have access to a Meeting Memory document from previous sessions in this series. Use it for context — reference prior decisions, note action item progress, and connect themes across meetings."
 
-    user_content = ""
-    if memory_context:
-        user_content += f"MEETING MEMORY (context from previous meetings):\n{memory_context}\n\n---\n\n"
-    user_content += f"TRANSCRIPT:\n{transcript}"
+    manual_notes = await _fetch_manual_notes(session_id, db)
+    user_content = _build_user_content(transcript, memory_context, manual_notes)
 
     output = await call_openrouter(
         model=model,
@@ -108,10 +133,8 @@ async def interpret_with_custom(
     if memory_context:
         system_prompt += "\n\nYou have access to a Meeting Memory document from previous sessions in this series. Use it for context — reference prior decisions, note action item progress, and connect themes across meetings."
 
-    user_content = ""
-    if memory_context:
-        user_content += f"MEETING MEMORY (context from previous meetings):\n{memory_context}\n\n---\n\n"
-    user_content += f"TRANSCRIPT:\n{transcript}"
+    manual_notes = await _fetch_manual_notes(session_id, db)
+    user_content = _build_user_content(transcript, memory_context, manual_notes)
 
     output = await call_openrouter(
         model=model,
@@ -175,10 +198,8 @@ SECTION 2: A JSON object conforming exactly to this schema:
     if memory_context:
         prompt += "\n\nYou have access to a Meeting Memory document from previous sessions in this series. Use it for context."
 
-    user_content = ""
-    if memory_context:
-        user_content += f"MEETING MEMORY (context from previous meetings):\n{memory_context}\n\n---\n\n"
-    user_content += f"TRANSCRIPT:\n{transcript}"
+    manual_notes = await _fetch_manual_notes(session_id, db)
+    user_content = _build_user_content(transcript, memory_context, manual_notes)
 
     output = await call_openrouter(
         model=model,
@@ -265,10 +286,8 @@ async def auto_interpret(session_id: str, db) -> dict | None:
     if memory_context:
         prompt += "\n\nYou have access to a Meeting Memory document from previous sessions in this series. Use it for context — reference prior decisions, note action item progress, and connect themes across meetings."
 
-    user_content = ""
-    if memory_context:
-        user_content += f"MEETING MEMORY (context from previous meetings):\n{memory_context}\n\n---\n\n"
-    user_content += f"TRANSCRIPT:\n{transcript}"
+    manual_notes = await _fetch_manual_notes(session_id, db)
+    user_content = _build_user_content(transcript, memory_context, manual_notes)
 
     output = await call_openrouter(
         model=model,

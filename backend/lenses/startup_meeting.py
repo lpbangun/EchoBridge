@@ -57,5 +57,6 @@ RULES:
 - Distinguish between decisions (firm) and open items (still being discussed).
 - Don't soften language. If someone said "this is a problem," don't write "there may be a concern."
 - Capture exact numbers, dates, and metrics mentioned.
+- If MANUAL NOTES are provided, treat them as the primary source of user intent. Structure your output around what the human highlighted. Use the transcript for verbatim supporting details.
 """,
 }

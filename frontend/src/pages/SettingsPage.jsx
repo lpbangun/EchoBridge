@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Copy, Key, Check, ExternalLink, Cloud, RefreshCw, FileText, Link, Trash2 } from 'lucide-react';
-import { getSettings, updateSettings, createApiKey, listApiKeys, deleteApiKey, testCloudConnection, getStorageStatus, getSkillMd, listSockets, createInvite, listInvites, revokeInvite } from '../lib/api';
+import { getSettings, updateSettings, createApiKey, listApiKeys, deleteApiKey, testCloudConnection, getStorageStatus, getSkillMd, listSockets, createInvite, listInvites, revokeInvite, listWebhooks, createWebhook, deleteWebhook, executeWebhook } from '../lib/api';
 
 const WHISPER_MODELS = ['tiny', 'base', 'small', 'medium', 'large'];
 
@@ -115,6 +115,17 @@ export default function SettingsPage() {
   const [connectedAgents, setConnectedAgents] = useState([]);
   const [revokingKeyId, setRevokingKeyId] = useState(null);
 
+  // Webhook state
+  const [webhooks, setWebhooks] = useState([]);
+  const [webhookName, setWebhookName] = useState('');
+  const [webhookUrl, setWebhookUrl] = useState('');
+  const [webhookMethod, setWebhookMethod] = useState('POST');
+  const [webhookHeaders, setWebhookHeaders] = useState('');
+  const [addingWebhook, setAddingWebhook] = useState(false);
+  const [webhookError, setWebhookError] = useState(null);
+  const [testingWebhookId, setTestingWebhookId] = useState(null);
+  const [webhookTestResult, setWebhookTestResult] = useState(null);
+
   useEffect(() => {
     async function fetchSettings() {
       setLoading(true);
@@ -192,6 +203,17 @@ export default function SettingsPage() {
       }
     }
     fetchAgentKeys();
+
+    // Fetch webhooks
+    async function fetchWebhooks() {
+      try {
+        const data = await listWebhooks();
+        setWebhooks(data.webhooks || []);
+      } catch {
+        // Silently fail
+      }
+    }
+    fetchWebhooks();
   }, []);
 
   // When provider changes, reset model selection to first available for that provider
@@ -493,6 +515,59 @@ curl -H "Authorization: Bearer $ECHOBRIDGE_API_KEY" \\
       setTimeout(() => setCopiedInvite(false), 2000);
     } catch {
       setInviteError('Failed to copy. Please select and copy manually.');
+    }
+  }
+
+  async function handleAddWebhook() {
+    if (!webhookName.trim() || !webhookUrl.trim()) return;
+    setAddingWebhook(true);
+    setWebhookError(null);
+    try {
+      let parsedHeaders = {};
+      if (webhookHeaders.trim()) {
+        parsedHeaders = JSON.parse(webhookHeaders.trim());
+      }
+      const result = await createWebhook({
+        name: webhookName.trim(),
+        url: webhookUrl.trim(),
+        method: webhookMethod,
+        headers: parsedHeaders,
+      });
+      setWebhooks(prev => [...prev, result]);
+      setWebhookName('');
+      setWebhookUrl('');
+      setWebhookMethod('POST');
+      setWebhookHeaders('');
+    } catch (err) {
+      setWebhookError(err.message || 'Failed to add webhook.');
+    } finally {
+      setAddingWebhook(false);
+    }
+  }
+
+  async function handleDeleteWebhook(id) {
+    try {
+      await deleteWebhook(id);
+      setWebhooks(prev => prev.filter(w => w.id !== id));
+      if (webhookTestResult?.webhookId === id) setWebhookTestResult(null);
+    } catch (err) {
+      setWebhookError(err.message || 'Failed to delete webhook.');
+    }
+  }
+
+  async function handleTestWebhook(id) {
+    setTestingWebhookId(id);
+    setWebhookTestResult(null);
+    try {
+      const result = await executeWebhook({
+        webhook_id: id,
+        payload: { test: true },
+      });
+      setWebhookTestResult({ webhookId: id, ...result });
+    } catch (err) {
+      setWebhookTestResult({ webhookId: id, ok: false, body: err.message || 'Test failed' });
+    } finally {
+      setTestingWebhookId(null);
     }
   }
 
@@ -1093,6 +1168,138 @@ curl -H "Authorization: Bearer $ECHOBRIDGE_API_KEY" \\
             )}
           </>
         )}
+      </div>
+
+      {/* ACTION WEBHOOKS section */}
+      <div className="card-lg p-4 md:p-6 mt-8">
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-semibold text-zinc-200 uppercase tracking-wider">
+            Action Webhooks
+          </span>
+        </div>
+        <p className="text-sm text-zinc-400 mt-1">
+          Pre-register webhook URLs that can be triggered from interpretation action items. Only allowlisted URLs can be executed.
+        </p>
+
+        {webhookError && (
+          <p className="mt-4 text-sm text-red-400">{webhookError}</p>
+        )}
+
+        {/* Existing webhooks */}
+        {webhooks.length > 0 && (
+          <div className="mt-6 space-y-2">
+            {webhooks.map((wh) => (
+              <div
+                key={wh.id}
+                className="flex items-center justify-between p-3 bg-zinc-900/40 border border-zinc-700"
+              >
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm text-zinc-300 font-medium truncate">{wh.name}</p>
+                    <span className={`text-xs px-1.5 py-0.5 ${wh.enabled ? 'text-green-400 bg-green-900/30' : 'text-zinc-500 bg-zinc-800'}`}>
+                      {wh.enabled ? 'ON' : 'OFF'}
+                    </span>
+                    <span className="text-xs text-zinc-500 font-mono">{wh.method}</span>
+                  </div>
+                  <p className="text-xs text-zinc-500 mt-0.5 truncate font-mono">{wh.url}</p>
+                </div>
+                <div className="flex items-center gap-2 ml-3 flex-shrink-0">
+                  <button
+                    onClick={() => handleTestWebhook(wh.id)}
+                    disabled={testingWebhookId === wh.id}
+                    className="px-3 py-1.5 text-xs border border-zinc-600 text-zinc-400 hover:border-zinc-400 hover:text-zinc-200 transition-colors disabled:opacity-50"
+                  >
+                    {testingWebhookId === wh.id ? 'Testing...' : 'Test'}
+                  </button>
+                  <button
+                    onClick={() => handleDeleteWebhook(wh.id)}
+                    className="p-2 text-zinc-500 hover:text-red-400 transition-colors"
+                    title="Remove webhook"
+                  >
+                    <Trash2 size={16} strokeWidth={1.5} />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Test result */}
+        {webhookTestResult && (
+          <p className={`mt-3 text-sm ${webhookTestResult.ok ? 'text-green-400' : 'text-red-400'}`}>
+            {webhookTestResult.ok
+              ? `Test passed (${webhookTestResult.status_code})`
+              : `Test failed: ${typeof webhookTestResult.body === 'string' ? webhookTestResult.body : JSON.stringify(webhookTestResult.body)}`
+            }
+          </p>
+        )}
+
+        {/* Add webhook form */}
+        <div className="mt-6 pt-6 border-t border-zinc-700">
+          <span className="section-label">Add Webhook</span>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+            <label className="block">
+              <span className="text-xs text-zinc-400">Name</span>
+              <input
+                type="text"
+                value={webhookName}
+                onChange={(e) => setWebhookName(e.target.value)}
+                placeholder="e.g. Slack Notification"
+                className="eb-input w-full text-base px-4 py-3 rounded-xl mt-1"
+              />
+            </label>
+            <label className="block">
+              <span className="text-xs text-zinc-400">Method</span>
+              <div className="relative mt-1">
+                <select
+                  value={webhookMethod}
+                  onChange={(e) => setWebhookMethod(e.target.value)}
+                  className="eb-select w-full text-base px-4 py-3 rounded-xl appearance-none"
+                >
+                  <option value="POST">POST</option>
+                  <option value="PUT">PUT</option>
+                  <option value="PATCH">PATCH</option>
+                </select>
+                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-4">
+                  <svg className="h-4 w-4 text-zinc-400" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clipRule="evenodd" />
+                  </svg>
+                </div>
+              </div>
+            </label>
+          </div>
+
+          <label className="block mt-4">
+            <span className="text-xs text-zinc-400">URL</span>
+            <input
+              type="url"
+              value={webhookUrl}
+              onChange={(e) => setWebhookUrl(e.target.value)}
+              placeholder="https://hooks.example.com/webhook"
+              className="eb-input w-full text-base px-4 py-3 rounded-xl mt-1 font-mono text-sm"
+            />
+          </label>
+
+          <label className="block mt-4">
+            <span className="text-xs text-zinc-400">Headers (optional JSON)</span>
+            <input
+              type="text"
+              value={webhookHeaders}
+              onChange={(e) => setWebhookHeaders(e.target.value)}
+              placeholder='{"Authorization": "Bearer ..."}'
+              className="eb-input w-full text-base px-4 py-3 rounded-xl mt-1 font-mono text-sm"
+            />
+          </label>
+
+          <button
+            onClick={handleAddWebhook}
+            disabled={addingWebhook || !webhookName.trim() || !webhookUrl.trim()}
+            className="mt-4 btn-secondary inline-flex items-center gap-2 disabled:opacity-50 touch-target"
+          >
+            {addingWebhook ? 'Adding...' : 'Add Webhook'}
+          </button>
+        </div>
       </div>
 
       {/* Save button + feedback */}

@@ -58,5 +58,6 @@ RULES:
 - Note rhetorical moves (appeals to authority, emotional appeals, etc.) without judgment.
 - If the speaker made a logical leap, flag it clearly.
 - Capture the speaker's specific examples and case studies.
+- If MANUAL NOTES are provided, treat them as the primary source of user intent. Structure your output around what the human highlighted. Use the transcript for verbatim supporting details.
 """,
 }

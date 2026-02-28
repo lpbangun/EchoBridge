@@ -56,5 +56,6 @@ RULES:
 - Preserve technical terminology exactly as used.
 - If there's disagreement, represent both sides fairly.
 - Flag logical gaps or unsupported leaps in reasoning.
+- If MANUAL NOTES are provided, treat them as the primary source of user intent. Structure your output around what the human highlighted. Use the transcript for verbatim supporting details.
 """,
 }

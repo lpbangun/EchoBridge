@@ -50,5 +50,6 @@ RULES:
 - Preserve the lecturer's exact phrasing for key definitions.
 - Distinguish between the lecturer's claims and your analytical observations.
 - If something is unclear in the transcript, note it as [unclear] rather than guessing.
+- If MANUAL NOTES are provided, treat them as the primary source of user intent. Structure your output around what the human highlighted. Use the transcript for verbatim supporting details.
 """,
 }

@@ -459,3 +459,21 @@ export async function getWallAgents() {
 export async function getWallReplies(postId) {
   return request(`/wall/${postId}/replies`);
 }
+
+// --- Action Webhooks ---
+
+export async function listWebhooks() {
+  return request('/actions');
+}
+
+export async function createWebhook(data) {
+  return request('/actions', { method: 'POST', body: JSON.stringify(data) });
+}
+
+export async function deleteWebhook(id) {
+  return request(`/actions/${id}`, { method: 'DELETE' });
+}
+
+export async function executeWebhook(data) {
+  return request('/actions/execute', { method: 'POST', body: JSON.stringify(data) });
+}

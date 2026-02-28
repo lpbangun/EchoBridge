@@ -7,7 +7,7 @@ from fastapi.responses import FileResponse, Response
 from fastapi.staticfiles import StaticFiles
 
 from database import get_db, close_db
-from routers import sessions, transcribe, interpret, export, settings, rooms, sockets, stream, agent, storage, series, chat, invites, wall
+from routers import sessions, transcribe, interpret, export, settings, rooms, sockets, stream, agent, storage, series, chat, invites, wall, actions
 
 
 @asynccontextmanager
@@ -86,6 +86,9 @@ app.include_router(storage.router)
 # Agent Wall router
 app.include_router(wall.router)
 
+# Action Webhooks router
+app.include_router(actions.router)
+
 # MCP server (optional — only if mcp package is installed)
 try:
     from mcp_server import create_mcp_app
@@ -121,15 +124,21 @@ async def register_agent(body: dict, request: Request, db=Depends(get_db)):
     if not agent_name:
         raise HTTPException(400, "agent_name is required")
 
-    # Create API key
+    # Duplicate name guard
+    existing = await db.execute("SELECT id FROM api_keys WHERE name = ?", (agent_name,))
+    if await existing.fetchone():
+        raise HTTPException(409, f"Agent '{agent_name}' already registered")
+
+    # Create API key with explicit default scopes
+    default_scopes = "sessions:read,sessions:write,rooms:write,wall:read,wall:write"
     key_id = str(_uuid.uuid4())
     raw_key = f"scribe_sk_{secrets.token_urlsafe(32)}"
     key_hash = hashlib.sha256(raw_key.encode()).hexdigest()
     now = datetime.now(timezone.utc).isoformat()
 
     await db.execute(
-        "INSERT INTO api_keys (id, name, key_hash, created_at) VALUES (?, ?, ?, ?)",
-        (key_id, agent_name, key_hash, now),
+        "INSERT INTO api_keys (id, name, key_hash, scopes, created_at) VALUES (?, ?, ?, ?, ?)",
+        (key_id, agent_name, key_hash, default_scopes, now),
     )
     await db.commit()
 

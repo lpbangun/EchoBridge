@@ -66,6 +66,10 @@ class Settings(BaseSettings):
     # Deepgram STT
     deepgram_api_key: str = ""
     deepgram_model: str = "nova-3"
+    deepgram_diarize: bool = True
+
+    # Wall auto-posting
+    auto_post_summaries: bool = True
 
     # Models per provider — users can also paste custom model IDs
     provider_models: dict[str, dict[str, str]] = {

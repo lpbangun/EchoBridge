@@ -64,6 +64,10 @@ class MeetingOrchestrator:
         # Socket persona cache (loaded at start)
         self._socket_cache: dict[str, dict] = {}
 
+        # Series memory + recent notes (loaded at start)
+        self._memory_context: str = ""
+        self._recent_notes: list[dict] = []
+
     async def _load_socket_personas(self, db):
         """Pre-load socket data for agents that reference sockets."""
         for agent in self.agents:
@@ -73,6 +77,38 @@ class MeetingOrchestrator:
                 row = await cursor.fetchone()
                 if row:
                     self._socket_cache[sid] = dict(row)
+
+    async def _fetch_recent_notes(self, db) -> list[dict]:
+        """Fetch manual_notes from the last 3 sessions in this session's series."""
+        try:
+            cursor = await db.execute(
+                "SELECT series_id FROM sessions WHERE id = ?", (self.session_id,)
+            )
+            row = await cursor.fetchone()
+            if not row or not row["series_id"]:
+                return []
+            cursor = await db.execute(
+                """SELECT title, manual_notes FROM sessions
+                WHERE series_id = ? AND manual_notes != '' AND id != ?
+                ORDER BY created_at DESC LIMIT 3""",
+                (row["series_id"], self.session_id),
+            )
+            rows = await cursor.fetchall()
+            return [{"title": r["title"] or "Untitled", "notes": r["manual_notes"]} for r in rows]
+        except Exception:
+            return []
+
+    async def _load_meeting_context(self, db):
+        """Load series memory and recent human notes for context injection."""
+        try:
+            from services.memory_service import get_memory_context_for_session
+            memory = await get_memory_context_for_session(self.session_id, db)
+            if memory:
+                self._memory_context = memory[:3000]
+        except Exception:
+            logger.exception("Failed to load memory context for meeting %s", self.room_code)
+
+        self._recent_notes = await self._fetch_recent_notes(db)
 
     def _build_system_prompt(self, agent: dict) -> str:
         """Build the system prompt for an internal agent's turn."""
@@ -94,6 +130,17 @@ class MeetingOrchestrator:
         # Custom persona prompt
         if agent.get("persona_prompt"):
             parts.append(f"\nAdditional instructions: {agent['persona_prompt']}")
+
+        # Series memory context
+        if self._memory_context:
+            parts.append("\n--- SERIES MEMORY (prior meeting context) ---")
+            parts.append(self._memory_context)
+
+        # Recent human notes from prior sessions
+        if self._recent_notes:
+            parts.append("\n--- RECENT HUMAN NOTES ---")
+            for note in self._recent_notes:
+                parts.append(f"From '{note['title']}': {note['notes'][:500]}")
 
         # Active directives
         if self.directives:
@@ -360,6 +407,27 @@ class MeetingOrchestrator:
             except Exception:
                 logger.exception("auto_interpret failed for session %s", self.session_id)
 
+        # Auto-post meeting summary to wall
+        if settings.auto_post_summaries:
+            try:
+                cursor = await db.execute(
+                    "SELECT output_markdown FROM interpretations WHERE session_id = ? AND is_primary = 1",
+                    (self.session_id,),
+                )
+                interp_row = await cursor.fetchone()
+                summary_snippet = (interp_row["output_markdown"][:500] if interp_row else transcript[:500])
+                wall_content = f"**Meeting completed**: {self.topic}\n\n{summary_snippet}...\n\nView: /session/{self.session_id}"
+                post_id = str(uuid.uuid4())
+                now = datetime.now(timezone.utc).isoformat()
+                await db.execute(
+                    """INSERT INTO wall_posts (id, agent_name, content, post_type, reactions, created_at)
+                    VALUES (?, 'EchoBridge', ?, 'post', '{}', ?)""",
+                    (post_id, wall_content, now),
+                )
+                await db.commit()
+            except Exception:
+                logger.exception("Failed to auto-post meeting summary to wall")
+
         # Fire session.complete event
         try:
             cursor = await db.execute(
@@ -422,6 +490,7 @@ class MeetingOrchestrator:
             raise ValueError(f"Cannot start meeting in status '{self.status}'")
 
         await self._load_socket_personas(db)
+        await self._load_meeting_context(db)
         _active_meetings[self.room_code] = self
 
         self._task = asyncio.create_task(self._run_loop(db))

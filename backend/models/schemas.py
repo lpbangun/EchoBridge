@@ -59,6 +59,7 @@ class SessionCreate(BaseModel):
 class SessionUpdate(BaseModel):
     title: str | None = None
     context_metadata: dict | None = None
+    manual_notes: str | None = None
 
 
 class SessionResponse(BaseModel):
@@ -77,6 +78,8 @@ class SessionResponse(BaseModel):
     audio_path: str | None
     host_name: str | None
     error_message: str | None
+    manual_notes: str = ""
+    is_diarized: bool = False
     series_id: str | None = None
     series_name: str | None = None
 
@@ -426,3 +429,20 @@ class InviteClaimResponse(BaseModel):
     api_key_id: str
     agent_name: str
     skill_md: str
+
+
+# --- Action Webhook schemas ---
+
+class WebhookConfig(BaseModel):
+    id: str = ""
+    name: str
+    url: str
+    method: str = "POST"
+    headers: dict[str, str] = {}
+    enabled: bool = True
+
+
+class WebhookExecuteRequest(BaseModel):
+    webhook_id: str
+    payload: dict = {}
+    interpretation_id: str | None = None

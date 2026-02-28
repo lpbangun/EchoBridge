@@ -154,6 +154,27 @@ async def _run_auto_pipeline(session_id: str):
             except Exception:
                 logger.exception("Failed to insert session event for %s", session_id)
 
+            # Auto-post session summary to wall
+            if settings.auto_post_summaries and interpretation:
+                try:
+                    summary_snippet = interpretation.get("output_markdown", "")[:500]
+                    cursor = await db.execute(
+                        "SELECT title FROM sessions WHERE id = ?", (session_id,)
+                    )
+                    title_row2 = await cursor.fetchone()
+                    wall_title = (title_row2["title"] if title_row2 else "Untitled") or "Untitled"
+                    wall_content = f"**Session completed**: {wall_title}\n\n{summary_snippet}...\n\nView: /session/{session_id}"
+                    wall_post_id = str(uuid.uuid4())
+                    wall_now = datetime.now(timezone.utc).isoformat()
+                    await db.execute(
+                        """INSERT INTO wall_posts (id, agent_name, content, post_type, reactions, created_at)
+                        VALUES (?, 'EchoBridge', ?, 'post', '{}', ?)""",
+                        (wall_post_id, wall_content, wall_now),
+                    )
+                    await db.commit()
+                except Exception:
+                    logger.exception("Failed to auto-post session summary to wall for %s", session_id)
+
             # Auto-export if enabled
             if settings.auto_export:
                 cursor = await db.execute(
@@ -255,9 +276,10 @@ async def upload_audio(
         await db.execute(
             """UPDATE sessions
             SET transcript = ?, duration_seconds = ?, status = 'processing',
-                stt_provider = ?
+                stt_provider = ?, is_diarized = ?
             WHERE id = ?""",
-            (result.text, int(result.duration_seconds), provider_name, session_id),
+            (result.text, int(result.duration_seconds), provider_name,
+             result.is_diarized, session_id),
         )
         await db.commit()
         # Enqueue audio for cloud sync if enabled
