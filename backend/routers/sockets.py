@@ -1,7 +1,6 @@
 """Socket CRUD router."""
 
 import json
-import uuid
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException

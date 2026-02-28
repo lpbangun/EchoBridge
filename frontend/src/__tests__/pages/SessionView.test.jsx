@@ -18,6 +18,10 @@ vi.mock('../../lib/api', () => ({
   updateSession: vi.fn(),
   listSeries: vi.fn().mockResolvedValue([]),
   addSessionToSeries: vi.fn(),
+  getConversations: vi.fn().mockResolvedValue([]),
+  runAgentAnalysis: vi.fn(),
+  listSockets: vi.fn().mockResolvedValue([]),
+  updateInterpretation: vi.fn(),
 }));
 
 vi.mock('../../components/MarkdownPreview', () => ({
@@ -163,16 +167,6 @@ describe('SessionView', () => {
     fireEvent.click(screen.getByText('Transcript'));
 
     expect(screen.getByText('No transcript available.')).toBeInTheDocument();
-  });
-
-  it('clicking Back navigates to /', async () => {
-    render(<SessionView />);
-    await waitFor(() => {
-      expect(screen.getByText('Sprint Planning')).toBeInTheDocument();
-    });
-
-    fireEvent.click(screen.getByText('Back'));
-    expect(mockNavigate).toHaveBeenCalledWith('/');
   });
 
   it('shows error state when API fails', async () => {

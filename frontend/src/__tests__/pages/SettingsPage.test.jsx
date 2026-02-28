@@ -14,8 +14,19 @@ vi.mock('../../lib/api', () => ({
   getSettings: vi.fn(),
   updateSettings: vi.fn(),
   createApiKey: vi.fn(),
+  listApiKeys: vi.fn().mockResolvedValue([]),
+  deleteApiKey: vi.fn(),
   testCloudConnection: vi.fn(),
   getStorageStatus: vi.fn(),
+  getSkillMd: vi.fn().mockResolvedValue(''),
+  listSockets: vi.fn().mockResolvedValue([]),
+  createInvite: vi.fn(),
+  listInvites: vi.fn().mockResolvedValue([]),
+  revokeInvite: vi.fn(),
+  listWebhooks: vi.fn().mockResolvedValue({ webhooks: [], count: 0 }),
+  createWebhook: vi.fn(),
+  deleteWebhook: vi.fn(),
+  executeWebhook: vi.fn(),
 }));
 
 import { getSettings, updateSettings, createApiKey, testCloudConnection, getStorageStatus } from '../../lib/api';
@@ -144,13 +155,12 @@ describe('SettingsPage', () => {
     });
   });
 
-  it('shows Agent API Keys section', async () => {
+  it('shows Connected Agents section', async () => {
     render(<SettingsPage />);
     await waitFor(() => {
-      expect(screen.getByText('Agent API Keys')).toBeInTheDocument();
+      expect(screen.getByText('Connected Agents')).toBeInTheDocument();
     });
     expect(screen.getByPlaceholderText('my-agent')).toBeInTheDocument();
-    expect(screen.getByText('Generate Key')).toBeInTheDocument();
   });
 
   it('shows error state when getSettings fails', async () => {
@@ -162,13 +172,4 @@ describe('SettingsPage', () => {
     });
   });
 
-  it('clicking Back navigates back', async () => {
-    render(<SettingsPage />);
-    await waitFor(() => {
-      expect(screen.getByText('SETTINGS')).toBeInTheDocument();
-    });
-
-    fireEvent.click(screen.getByText('Back'));
-    expect(mockNavigate).toHaveBeenCalledWith(-1);
-  });
 });

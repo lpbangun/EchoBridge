@@ -108,7 +108,7 @@ def test_factory_returns_s3_when_configured():
         settings = MagicMock()
         settings.cloud_storage_enabled = True
         settings.s3_bucket_name = "my-bucket"
-        backend = get_storage_backend(settings)
+        get_storage_backend(settings)
         mock_s3.assert_called_once_with(settings)
 
 

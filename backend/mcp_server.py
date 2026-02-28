@@ -8,9 +8,7 @@ from dataclasses import dataclass
 
 import aiosqlite
 from mcp.server.fastmcp import Context, FastMCP
-from mcp.server.session import ServerSession
 
-from config import settings
 from database import get_db
 
 

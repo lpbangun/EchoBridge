@@ -11,7 +11,7 @@ from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException, Query
 
 from database import get_db
-from services.auth_service import verify_api_key, require_scope
+from services.auth_service import require_scope
 
 router = APIRouter(tags=["wall"])
 

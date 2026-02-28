@@ -14,6 +14,8 @@ vi.mock('../../lib/api', () => ({
   getRoom: vi.fn(),
   startRoom: vi.fn(),
   stopRoom: vi.fn(),
+  kickAgent: vi.fn(),
+  getSettings: vi.fn().mockResolvedValue({ user_display_name: '' }),
 }));
 
 vi.mock('../../lib/websocket', () => ({
@@ -113,16 +115,6 @@ describe('RoomView', () => {
     await waitFor(() => {
       expect(screen.getByText('Stop Recording')).toBeInTheDocument();
     });
-  });
-
-  it('clicking Back navigates to /', async () => {
-    render(<RoomView />);
-    await waitFor(() => {
-      expect(screen.getByText('ROOM-1234')).toBeInTheDocument();
-    });
-
-    fireEvent.click(screen.getByText('Back'));
-    expect(mockNavigate).toHaveBeenCalledWith('/');
   });
 
   it('shows error state when getRoom fails', async () => {

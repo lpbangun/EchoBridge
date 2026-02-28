@@ -14,8 +14,6 @@ vi.mock('../../lib/api', () => ({
   getSettings: vi.fn(),
   createRoom: vi.fn(),
   uploadAudio: vi.fn(),
-  listSeries: vi.fn().mockResolvedValue([]),
-  createSeries: vi.fn(),
 }));
 
 vi.mock('../../components/ContextSelector', () => ({
@@ -35,16 +33,23 @@ vi.mock('../../components/FileUploader', () => ({
   ),
 }));
 
+vi.mock('../../components/SeriesSelector', () => ({
+  default: ({ value, onChange }) => (
+    <div data-testid="series-selector" />
+  ),
+}));
+
 import { createSession, getSettings, createRoom } from '../../lib/api';
 
 // --- Helpers ---
 
 const MOCK_SETTINGS = {
-  models: [
-    'anthropic/claude-sonnet-4-20250514',
-    'google/gemini-2.5-flash-preview',
-  ],
   default_model: 'anthropic/claude-sonnet-4-20250514',
+  provider_models: {
+    openrouter: {
+      'anthropic/claude-sonnet-4-20250514': 'Claude Sonnet 4',
+    },
+  },
 };
 
 // --- Tests ---
@@ -57,14 +62,9 @@ describe('NewSession', () => {
     createRoom.mockResolvedValue({ code: 'ROOM-5678' });
   });
 
-  it('renders "NEW SESSION" header', async () => {
+  it('renders "UPLOAD / ROOM" header', async () => {
     render(<NewSession />);
-    expect(screen.getByText('NEW SESSION')).toBeInTheDocument();
-  });
-
-  it('shows Back button', async () => {
-    render(<NewSession />);
-    expect(screen.getByText('Back')).toBeInTheDocument();
+    expect(screen.getByText('UPLOAD / ROOM')).toBeInTheDocument();
   });
 
   it('renders ContextSelector', async () => {
@@ -77,34 +77,19 @@ describe('NewSession', () => {
     expect(screen.getByPlaceholderText('Session title...')).toBeInTheDocument();
   });
 
-  it('shows 3 action buttons (Record Live, Upload File, Create Room)', async () => {
+  it('shows 2 action buttons (Upload File, Create Room)', async () => {
     render(<NewSession />);
-    expect(screen.getByText('Record Live')).toBeInTheDocument();
     expect(screen.getByText('Upload File')).toBeInTheDocument();
     expect(screen.getByText('Create Room')).toBeInTheDocument();
   });
 
-  it('shows model selector with fetched models', async () => {
+  it('clicking Upload File creates session and shows uploader', async () => {
     render(<NewSession />);
-    await waitFor(() => {
-      expect(screen.getByDisplayValue('anthropic/claude-sonnet-4-20250514')).toBeInTheDocument();
-    });
-  });
-
-  it('clicking Back navigates to /', async () => {
-    render(<NewSession />);
-    fireEvent.click(screen.getByText('Back'));
-    expect(mockNavigate).toHaveBeenCalledWith('/');
-  });
-
-  it('clicking Record Live creates session and navigates to /recording/:id', async () => {
-    render(<NewSession />);
-    // Wait for settings to load
     await waitFor(() => {
       expect(getSettings).toHaveBeenCalled();
     });
 
-    fireEvent.click(screen.getByText('Record Live'));
+    fireEvent.click(screen.getByText('Upload File'));
 
     await waitFor(() => {
       expect(createSession).toHaveBeenCalledWith(
@@ -112,7 +97,7 @@ describe('NewSession', () => {
           context: 'startup_meeting',
         })
       );
-      expect(mockNavigate).toHaveBeenCalledWith('/recording/new-sess-1');
+      expect(screen.getByTestId('file-uploader')).toBeInTheDocument();
     });
   });
 
@@ -142,7 +127,7 @@ describe('NewSession', () => {
       expect(getSettings).toHaveBeenCalled();
     });
 
-    fireEvent.click(screen.getByText('Record Live'));
+    fireEvent.click(screen.getByText('Upload File'));
 
     await waitFor(() => {
       expect(screen.getByText('Session creation failed')).toBeInTheDocument();

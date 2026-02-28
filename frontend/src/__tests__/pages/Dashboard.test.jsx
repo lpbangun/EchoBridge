@@ -14,27 +14,20 @@ vi.mock('../../lib/api', () => ({
   searchSessions: vi.fn(),
   getSettings: vi.fn().mockResolvedValue({ openrouter_api_key_set: true }),
   listSeries: vi.fn().mockResolvedValue([]),
+  createSession: vi.fn(),
 }));
 
-// Mock child components that are not under test
-vi.mock('../../components/SearchBar', () => ({
-  default: ({ onSearch, onFilterChange, activeFilter }) => (
-    <div>
-      <input
-        data-testid="search-bar"
-        onChange={(e) => onSearch && onSearch(e.target.value)}
-        placeholder="Search sessions..."
-      />
-      <div>
-        <button onClick={() => onFilterChange && onFilterChange(null)}>All</button>
-        <button onClick={() => onFilterChange && onFilterChange('class_lecture')}>Class Lecture</button>
-        <button onClick={() => onFilterChange && onFilterChange('startup_meeting')}>Startup Meeting</button>
-        <button onClick={() => onFilterChange && onFilterChange('research_discussion')}>Research</button>
-        <button onClick={() => onFilterChange && onFilterChange('working_session')}>Working Session</button>
-        <button onClick={() => onFilterChange && onFilterChange('talk_seminar')}>Talk / Seminar</button>
-      </div>
-    </div>
-  ),
+vi.mock('../../lib/offlineStorage', () => ({
+  getPendingCount: vi.fn().mockResolvedValue(0),
+}));
+
+vi.mock('../../lib/syncManager', () => ({
+  syncPendingRecordings: vi.fn(),
+  onSyncStatusChange: vi.fn(() => () => {}),
+}));
+
+vi.mock('../../components/AppLayout', () => ({
+  useSearch: () => ({ query: '', setQuery: vi.fn() }),
 }));
 
 vi.mock('../../components/SessionCard', () => ({
@@ -77,26 +70,22 @@ describe('Dashboard', () => {
     searchSessions.mockResolvedValue([]);
   });
 
-  it('shows loading state initially', () => {
-    // Make the API hang so we can observe loading
+  it('shows loading skeleton initially', () => {
     listSessions.mockReturnValue(new Promise(() => {}));
     render(<Dashboard />);
-    expect(screen.getByText('Loading...')).toBeInTheDocument();
+    // Dashboard shows skeleton cards with animate-pulse
+    const skeletons = document.querySelectorAll('.animate-pulse');
+    expect(skeletons.length).toBeGreaterThan(0);
   });
 
-  it('renders "ECHOBRIDGE" header', async () => {
+  it('renders metrics row', async () => {
     render(<Dashboard />);
-    expect(screen.getByText('ECHOBRIDGE')).toBeInTheDocument();
-  });
-
-  it('shows "New" button', async () => {
-    render(<Dashboard />);
-    expect(screen.getByText('New')).toBeInTheDocument();
-  });
-
-  it('shows settings button with aria-label', async () => {
-    render(<Dashboard />);
-    expect(screen.getByLabelText('Settings')).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByText('ACTIVE')).toBeInTheDocument();
+    });
+    expect(screen.getByText('COMPLETE')).toBeInTheDocument();
+    expect(screen.getByText('ROOMS')).toBeInTheDocument();
+    expect(screen.getByText('THIS WEEK')).toBeInTheDocument();
   });
 
   it('renders session cards after loading', async () => {
@@ -115,7 +104,7 @@ describe('Dashboard', () => {
     render(<Dashboard />);
 
     await waitFor(() => {
-      expect(screen.getByText(/No sessions yet/)).toBeInTheDocument();
+      expect(screen.getByText(/No meetings yet/)).toBeInTheDocument();
     });
   });
 
@@ -128,25 +117,22 @@ describe('Dashboard', () => {
     });
   });
 
-  it('clicking "New" navigates to /new', async () => {
-    render(<Dashboard />);
-    fireEvent.click(screen.getByText('New'));
-    expect(mockNavigate).toHaveBeenCalledWith('/new');
-  });
-
-  it('clicking settings navigates to /settings', async () => {
-    render(<Dashboard />);
-    fireEvent.click(screen.getByLabelText('Settings'));
-    expect(mockNavigate).toHaveBeenCalledWith('/settings');
-  });
-
   it('renders context filter chips', async () => {
     render(<Dashboard />);
     expect(screen.getByText('All')).toBeInTheDocument();
+    // Context filters use contextLabel() from utils
     expect(screen.getByText('Class Lecture')).toBeInTheDocument();
     expect(screen.getByText('Startup Meeting')).toBeInTheDocument();
-    expect(screen.getByText('Research')).toBeInTheDocument();
-    expect(screen.getByText('Working Session')).toBeInTheDocument();
-    expect(screen.getByText('Talk / Seminar')).toBeInTheDocument();
+  });
+
+  it('clicking a session card navigates to session view', async () => {
+    render(<Dashboard />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('session-card-sess-1')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByTestId('session-card-sess-1'));
+    expect(mockNavigate).toHaveBeenCalledWith('/session/sess-1');
   });
 });

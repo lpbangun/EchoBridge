@@ -8,7 +8,6 @@ from datetime import datetime, timezone
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-import pytest_asyncio
 
 
 # ---------------------------------------------------------------------------
@@ -140,7 +139,7 @@ async def test_ask_meetings_includes_series_memory(db):
         mock_ai.return_value = "React was chosen previously."
 
         from services.ask_service import ask_across_meetings
-        result = await ask_across_meetings("What framework did we choose?", db)
+        await ask_across_meetings("What framework did we choose?", db)
 
         # Verify the AI was called with context that includes memory document
         call_args = mock_ai.call_args
@@ -158,7 +157,7 @@ async def test_ask_meetings_includes_series_memory(db):
 @pytest.mark.asyncio
 async def test_tool_search_sessions(db, mcp_ctx):
     """search_sessions tool returns matching sessions."""
-    sid = await _insert_session(db, title="Architecture Review", transcript="Microservices discussion")
+    await _insert_session(db, title="Architecture Review", transcript="Microservices discussion")
 
     from mcp_server import search_sessions
     result_json = await search_sessions(query="microservices", ctx=mcp_ctx)

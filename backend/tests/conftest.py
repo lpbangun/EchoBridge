@@ -2,7 +2,6 @@
 
 import os
 import sys
-import asyncio
 
 import pytest
 import pytest_asyncio
@@ -18,7 +17,7 @@ os.environ["OPENROUTER_API_KEY"] = "test-key"
 
 from httpx import ASGITransport, AsyncClient
 from main import app
-from database import get_db, close_db, SCHEMA
+from database import get_db, SCHEMA
 
 import aiosqlite
 

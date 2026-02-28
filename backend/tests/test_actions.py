@@ -1,9 +1,29 @@
 """Tests for action webhook CRUD and execution endpoints."""
 
-import json
+import socket
 from unittest.mock import AsyncMock, patch, MagicMock
 
 import pytest
+
+
+# ---------------------------------------------------------------------------
+# Fixtures
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture(autouse=True)
+def _mock_dns():
+    """Mock DNS resolution so SSRF checks don't fail on test hostnames."""
+    _original = socket.getaddrinfo
+
+    def _fake_getaddrinfo(host, port, *args, **kwargs):
+        # Return a public IP for any hostname used in tests
+        if host in ("hooks.example.com",):
+            return [(socket.AF_INET, socket.SOCK_STREAM, 6, "", ("93.184.216.34", 0))]
+        return _original(host, port, *args, **kwargs)
+
+    with patch("socket.getaddrinfo", side_effect=_fake_getaddrinfo):
+        yield
 
 
 # ---------------------------------------------------------------------------

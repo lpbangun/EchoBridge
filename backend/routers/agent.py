@@ -414,8 +414,6 @@ async def agent_analyze(
 
     model = settings.auto_interpret_model or settings.default_model
     memory_context = await get_memory_context_for_session(session_id, db)
-    agent_name = api_key.get("name", "agent")
-
     results = []
     for socket_id in socket_ids:
         socket_data = await get_socket_data(db, socket_id)

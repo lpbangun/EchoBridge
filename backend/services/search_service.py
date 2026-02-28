@@ -1,6 +1,5 @@
 """FTS5 search service across sessions and interpretations."""
 
-import json
 
 
 async def search(db, query: str, limit: int = 20) -> list[dict]:

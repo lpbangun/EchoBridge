@@ -4,7 +4,6 @@ Tests multi-agent meeting creation, joining, wall interactions,
 and human recording → agent access flows.
 """
 
-import json
 import uuid
 from datetime import datetime, timezone
 from unittest.mock import AsyncMock, patch
@@ -604,7 +603,6 @@ async def test_human_interrupt_between_agent_turns(client, db):
         orch.status = "active"
         orch._pause_event.set()
 
-        consecutive_passes = 0
         mentioned = []
         for msg in orch.messages[-5:]:
             mentioned.extend(orch._parse_mentions(msg["content"]))
@@ -614,7 +612,6 @@ async def test_human_interrupt_between_agent_turns(client, db):
             while orch.human_message_queue:
                 hm = orch.human_message_queue.pop(0)
                 await orch._add_message(hm["from_name"], "human", "message", hm["text"])
-                consecutive_passes = 0
 
             await mock_sm.broadcast(orch._ws_key, {"type": "agent_thinking", "agent_name": agent["name"]})
             response = await mock_agent_turn(agent, None)

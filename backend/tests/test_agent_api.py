@@ -1,6 +1,5 @@
 """Tests for agent API endpoints (/api/v1/)."""
 
-import hashlib
 
 import pytest
 

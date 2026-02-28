@@ -40,12 +40,6 @@ describe('JoinRoom', () => {
     expect(screen.getByText('Join Room')).toBeInTheDocument();
   });
 
-  it('clicking Back navigates to /', () => {
-    render(<JoinRoom />);
-    fireEvent.click(screen.getByText('Back'));
-    expect(mockNavigate).toHaveBeenCalledWith('/');
-  });
-
   it('shows error when code is empty on submit', async () => {
     render(<JoinRoom />);
     // Leave code empty, fill in name

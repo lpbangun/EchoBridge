@@ -1,12 +1,11 @@
 """WebSocket streaming router for live transcripts and agent meetings."""
 
-import json
 import uuid
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, WebSocket, WebSocketDisconnect
+from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
-from database import get_db, get_db_connection
+from database import get_db_connection
 from services.auth_service import verify_api_key_token
 from services.stream_manager import ConnectionInfo, stream_manager
 from services.orchestrator_service import get_orchestrator

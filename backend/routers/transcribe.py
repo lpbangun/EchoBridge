@@ -91,7 +91,6 @@ async def _run_auto_pipeline(session_id: str):
             )
             row = await cursor.fetchone()
             if row and row["series_id"]:
-                from services.memory_service import synthesize_and_store_memory
                 cursor2 = await db.execute(
                     "SELECT * FROM sessions WHERE id = ?", (session_id,)
                 )

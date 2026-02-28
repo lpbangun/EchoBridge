@@ -49,7 +49,7 @@ describe('SessionCard', () => {
   it('shows status when not "complete"', () => {
     const session = { ...baseSession, status: 'recording' };
     render(<SessionCard session={session} onClick={onClick} />);
-    expect(screen.getByText('recording')).toBeInTheDocument();
+    expect(screen.getByText('Recording...')).toBeInTheDocument();
   });
 
   it('hides status when status is "complete"', () => {
