@@ -13,16 +13,34 @@ from services.orchestrator_service import get_orchestrator
 router = APIRouter(tags=["stream"])
 
 
+async def _replay_missed(ws: WebSocket, room_key: str, last_seq: int | None):
+    """Send any buffered messages the client missed since last_seq."""
+    if last_seq is None:
+        return
+    for msg in stream_manager.get_messages_since(room_key, last_seq):
+        await ws.send_json(msg)
+
+
 @router.websocket("/api/stream/session/{session_id}")
 async def stream_session(websocket: WebSocket, session_id: str):
     """WebSocket endpoint for streaming a solo session's transcript."""
     await websocket.accept()
     room_key = f"session:{session_id}"
 
+    last_seq_raw = websocket.query_params.get("last_seq")
+    try:
+        last_seq = int(last_seq_raw) if last_seq_raw is not None else None
+    except (ValueError, TypeError):
+        last_seq = None
+
     await stream_manager.subscribe(room_key, websocket)
+    await _replay_missed(websocket, room_key, last_seq)
     try:
         while True:
             data = await websocket.receive_json()
+            # Handle pong (keepalive response) — just ignore
+            if data.get("type") == "pong":
+                continue
             # Browser sends transcript chunks
             if data.get("type") == "transcript_chunk":
                 await stream_manager.broadcast(room_key, data)
@@ -35,6 +53,12 @@ async def stream_room(websocket: WebSocket, code: str):
     """WebSocket endpoint for streaming a room's live transcript."""
     await websocket.accept()
     room_key = f"room:{code}"
+
+    last_seq_raw = websocket.query_params.get("last_seq")
+    try:
+        last_seq = int(last_seq_raw) if last_seq_raw is not None else None
+    except (ValueError, TypeError):
+        last_seq = None
 
     # Token-based auth for agents
     token = websocket.query_params.get("token")
@@ -51,10 +75,14 @@ async def stream_room(websocket: WebSocket, code: str):
             await websocket.close(code=4001, reason="unauthorized")
             return
 
-        # Check if agent was previously kicked
-        if stream_manager.is_kicked(room_key, agent_info["name"]):
-            await websocket.close(code=4003, reason="kicked")
-            return
+        # Check if agent was previously kicked (persistent check)
+        db = await get_db_connection()
+        try:
+            if await stream_manager.is_kicked(room_key, agent_info["name"], db=db):
+                await websocket.close(code=4003, reason="kicked")
+                return
+        finally:
+            await db.close()
 
     # Build connection metadata
     conn_info = ConnectionInfo(
@@ -64,6 +92,7 @@ async def stream_room(websocket: WebSocket, code: str):
     )
 
     await stream_manager.subscribe(room_key, websocket, conn_info)
+    await _replay_missed(websocket, room_key, last_seq)
 
     # Auto-register authenticated agent as room participant
     if agent_info:
@@ -97,7 +126,9 @@ async def stream_room(websocket: WebSocket, code: str):
             data = await websocket.receive_json()
             msg_type = data.get("type")
 
-            if msg_type == "identify":
+            if msg_type == "pong":
+                continue
+            elif msg_type == "identify":
                 if agent_info:
                     # Agent already identified via token — ignore
                     pass
@@ -144,6 +175,12 @@ async def stream_meeting(websocket: WebSocket, code: str):
     await websocket.accept()
     room_key = f"meeting:{code}"
 
+    last_seq_raw = websocket.query_params.get("last_seq")
+    try:
+        last_seq = int(last_seq_raw) if last_seq_raw is not None else None
+    except (ValueError, TypeError):
+        last_seq = None
+
     # Optional token-based auth (mirrors room stream pattern)
     token = websocket.query_params.get("token")
     if token:
@@ -163,12 +200,15 @@ async def stream_meeting(websocket: WebSocket, code: str):
         agent_name=None,
     )
     await stream_manager.subscribe(room_key, websocket, meeting_conn_info)
+    await _replay_missed(websocket, room_key, last_seq)
     try:
         while True:
             data = await websocket.receive_json()
             msg_type = data.get("type")
 
-            if msg_type == "identify":
+            if msg_type == "pong":
+                continue
+            elif msg_type == "identify":
                 name = data.get("name", "Unknown")
                 participant_type = data.get("participant_type", "human")
                 meeting_conn_info.name = name

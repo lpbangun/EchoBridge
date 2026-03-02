@@ -1,11 +1,13 @@
 """Agent API router — all /api/v1/ endpoints with bearer auth."""
 
+import asyncio
 import json
 from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from fastapi.responses import PlainTextResponse
+from fastapi.responses import PlainTextResponse, StreamingResponse
 
+from config import settings
 from database import get_db
 from services.auth_service import verify_api_key, require_scope
 from services.skill_md import find_skill_md
@@ -46,6 +48,7 @@ _AVAILABLE_ENDPOINTS = [
     "/api/v1/chat/conversations/{id}",
     "/api/v1/chat/conversations/{id}/messages",
     "/api/v1/events",
+    "/api/v1/events/stream",
     "/api/v1/sessions/{id}/agent-analyze",
     "/api/v1/wall",
     "/api/v1/wall (POST)",
@@ -377,6 +380,50 @@ async def list_events(
     rows = await cursor.fetchall()
     events = [dict(row) for row in rows]
     return {"events": events, "count": len(events)}
+
+
+@router.get("/events/stream")
+async def event_stream(
+    since: str | None = None,
+    api_key=Depends(require_scope("sessions:read")),
+):
+    """SSE endpoint for push-based event delivery.
+
+    Streams session_events as Server-Sent Events. Optionally accepts a
+    ``since`` ISO-8601 timestamp for initial catchup.  After the catchup
+    batch the endpoint polls every 2 seconds and yields new events until
+    the client disconnects.
+    """
+    from database import get_db_connection
+
+    async def generate():
+        last_ts = since or "1970-01-01T00:00:00"
+        while True:
+            conn = await get_db_connection()
+            try:
+                cursor = await conn.execute(
+                    "SELECT * FROM session_events WHERE created_at > ? ORDER BY created_at ASC LIMIT 50",
+                    (last_ts,),
+                )
+                rows = await cursor.fetchall()
+                for row in rows:
+                    event = dict(row)
+                    last_ts = event["created_at"]
+                    yield f"event: {event['event_type']}\ndata: {json.dumps(event)}\n\n"
+                if not rows:
+                    yield ": keepalive\n\n"
+            finally:
+                await conn.close()
+            try:
+                await asyncio.sleep(2)
+            except asyncio.CancelledError:
+                break
+
+    return StreamingResponse(
+        generate(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
 
 
 # --- Agent Analyze ---

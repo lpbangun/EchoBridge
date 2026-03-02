@@ -1,3 +1,4 @@
+import logging
 from contextlib import asynccontextmanager
 from pathlib import Path
 
@@ -9,6 +10,8 @@ from fastapi.staticfiles import StaticFiles
 from database import get_db, close_db
 from routers import sessions, transcribe, interpret, export, settings, rooms, sockets, stream, agent, storage, series, chat, invites, wall, actions
 
+logger = logging.getLogger(__name__)
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -19,6 +22,10 @@ async def lifespan(app: FastAPI):
     from services.settings_service import load_preferences
     await load_preferences(db)
 
+    # Start WebSocket heartbeat
+    from services.stream_manager import stream_manager as _stream_manager
+    _stream_manager.start_heartbeat()
+
     # Start cloud sync service
     from config import settings as app_settings
     from services.storage.factory import get_storage_backend
@@ -26,6 +33,17 @@ async def lifespan(app: FastAPI):
     backend = get_storage_backend(app_settings)
     sync_svc = init_sync_service(backend)
     sync_svc.start()
+
+    # Detect interrupted meetings (active/paused agent meetings from prior process)
+    cursor = await db.execute(
+        "SELECT code, id FROM rooms WHERE status IN ('active', 'paused') AND mode = 'agent_meeting'"
+    )
+    interrupted = await cursor.fetchall()
+    for room in interrupted:
+        logger.warning("Interrupted meeting detected: %s (marking as interrupted)", room["code"])
+        await db.execute("UPDATE rooms SET status = 'interrupted' WHERE id = ?", (room["id"],))
+    if interrupted:
+        await db.commit()
 
     # Start MCP session manager if available
     mcp_cm = None
@@ -38,7 +56,8 @@ async def lifespan(app: FastAPI):
 
     yield
 
-    # Shutdown: stop MCP, sync, and close DB
+    # Shutdown: stop heartbeat, MCP, sync, and close DB
+    _stream_manager.stop_heartbeat()
     if mcp_cm:
         await mcp_cm.__aexit__(None, None, None)
     sync_svc.stop()

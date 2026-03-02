@@ -1,6 +1,7 @@
 """Meeting Orchestrator — manages agent turn-taking in agent meeting rooms."""
 
 import asyncio
+import json
 import logging
 import re
 import uuid
@@ -312,6 +313,26 @@ class MeetingOrchestrator:
         try:
             self.status = "active"
             await self._update_room_status(db, "active")
+            await self._log_event("meeting.started", {
+                "topic": self.topic,
+                "agent_names": [a["name"] for a in self.agents],
+                "max_rounds": self.max_rounds,
+            }, db)
+
+            # Emit meeting.started event to session_events for SSE consumers
+            event_id = str(uuid.uuid4())
+            now = datetime.now(timezone.utc).isoformat()
+            cursor = await db.execute(
+                "SELECT context FROM sessions WHERE id = ?", (self.session_id,)
+            )
+            ctx_row = await cursor.fetchone()
+            ctx = ctx_row["context"] if ctx_row else "working_session"
+            await db.execute(
+                """INSERT INTO session_events (id, event_type, session_id, context, title, interpretations_count, created_at)
+                VALUES (?, 'meeting.started', ?, ?, ?, 0, ?)""",
+                (event_id, self.session_id, ctx, self.topic, now),
+            )
+            await db.commit()
 
             await self._add_message(
                 "System", "system", "status",
@@ -335,6 +356,9 @@ class MeetingOrchestrator:
                     break
 
                 self.current_round += 1
+                await self._log_event("round.started", {
+                    "round": self.current_round,
+                }, db)
 
                 # Check recent messages for @mentions → prioritize mentioned agents
                 mentioned = []
@@ -393,6 +417,9 @@ class MeetingOrchestrator:
                     if response and self.cooldown_seconds > 0 and not self._stop_requested:
                         await asyncio.sleep(self.cooldown_seconds)
 
+                # Snapshot state at the end of each round
+                await self._snapshot_state(db)
+
                 if not round_had_response:
                     if consecutive_passes >= max_consecutive_passes:
                         await self._add_message(
@@ -413,6 +440,12 @@ class MeetingOrchestrator:
             await self._update_room_status(db, "processing")
         except Exception:
             logger.exception("Failed to update room status to processing")
+
+        await self._log_event("meeting.ended", {
+            "rounds": self.current_round,
+            "message_count": len(self.messages),
+            "reason": "stop_requested" if self._stop_requested else "natural",
+        }, db)
 
         try:
             await self._add_message(
@@ -479,6 +512,27 @@ class MeetingOrchestrator:
             except Exception:
                 logger.exception("Failed to auto-post meeting summary to wall")
 
+        # Emit meeting.ended event to session_events for SSE consumers
+        try:
+            cursor = await db.execute(
+                "SELECT context, title FROM sessions WHERE id = ?",
+                (self.session_id,),
+            )
+            session_row = await cursor.fetchone()
+
+            meeting_ended_id = str(uuid.uuid4())
+            now_ended = datetime.now(timezone.utc).isoformat()
+            await db.execute(
+                """INSERT INTO session_events (id, event_type, session_id, context, title, interpretations_count, created_at)
+                VALUES (?, 'meeting.ended', ?, ?, ?, 0, ?)""",
+                (meeting_ended_id, self.session_id,
+                 session_row["context"] if session_row else "working_session",
+                 session_row["title"] if session_row else self.topic, now_ended),
+            )
+            await db.commit()
+        except Exception:
+            logger.exception("Failed to insert meeting.ended event for %s", self.session_id)
+
         # Fire session.complete event
         try:
             cursor = await db.execute(
@@ -535,6 +589,53 @@ class MeetingOrchestrator:
         )
         await db.commit()
 
+    async def _log_event(self, event_type: str, event_data: dict, db=None):
+        """Insert a meeting event into the meeting_events table.
+
+        When *db* is None (e.g. called from the sync pause/resume methods),
+        a standalone connection is created so the event is still persisted.
+        """
+        from database import get_db_connection
+
+        own_conn = False
+        try:
+            if db is None:
+                db = await get_db_connection()
+                own_conn = True
+            event_id = str(uuid.uuid4())
+            await db.execute(
+                """INSERT INTO meeting_events (id, room_code, event_type, event_data, created_at)
+                VALUES (?, ?, ?, ?, ?)""",
+                (event_id, self.room_code, event_type, json.dumps(event_data),
+                 datetime.now(timezone.utc).isoformat()),
+            )
+            await db.commit()
+        except Exception:
+            logger.exception("Failed to log meeting event %s for %s", event_type, self.room_code)
+        finally:
+            if own_conn and db is not None:
+                await db.close()
+
+    async def _snapshot_state(self, db):
+        """Persist a snapshot of orchestrator runtime state to rooms.orchestrator_state."""
+        state = json.dumps({
+            "current_round": self.current_round,
+            "sequence": self.sequence,
+            "status": self.status,
+            "directives": self.directives,
+            "agent_names": [a["name"] for a in self.agents],
+            "message_count": len(self.messages),
+            "snapshot_at": datetime.now(timezone.utc).isoformat(),
+        })
+        try:
+            await db.execute(
+                "UPDATE rooms SET orchestrator_state = ? WHERE id = ?",
+                (state, self.room_id),
+            )
+            await db.commit()
+        except Exception:
+            logger.exception("Failed to snapshot orchestrator state for %s", self.room_code)
+
     async def start(self, db):
         """Start the orchestrator as a background task."""
         if self.status != "waiting":
@@ -562,12 +663,22 @@ class MeetingOrchestrator:
         if self.status == "active":
             self.status = "paused"
             self._pause_event.clear()
+            # Fire-and-forget: _log_event will create its own db connection
+            task = asyncio.create_task(self._log_event("meeting.paused", {
+                "current_round": self.current_round,
+            }))
+            task.add_done_callback(lambda t: t.exception() if not t.cancelled() else None)
 
     def resume(self):
         """Resume a paused meeting."""
         if self.status == "paused":
             self.status = "active"
             self._pause_event.set()
+            # Fire-and-forget: _log_event will create its own db connection
+            task = asyncio.create_task(self._log_event("meeting.resumed", {
+                "current_round": self.current_round,
+            }))
+            task.add_done_callback(lambda t: t.exception() if not t.cancelled() else None)
 
     async def add_directive(self, text: str, from_name: str, db=None):
         """Add a host directive that gets injected into future agent prompts."""
@@ -584,6 +695,10 @@ class MeetingOrchestrator:
         if any(a["name"] == agent["name"] for a in self.agents):
             return False
         self.agents.append(agent)
+        await self._log_event("agent.joined", {
+            "agent_name": agent["name"],
+            "type": agent.get("type", "internal"),
+        }, db)
         await self._add_message(
             "System", "system", "status",
             f"{agent['name']} has joined the meeting.",

@@ -98,8 +98,8 @@ async def kick_agent(
 
     room_key = f"room:{code}"
 
-    # Add to kicked set and close WebSocket (triggers disconnect handler)
-    await stream_manager.kick_agent(room_key, agent_name)
+    # Persist kick to DB and close WebSocket (triggers disconnect handler)
+    await stream_manager.kick_agent(room_key, agent_name, db=db)
 
     # Remove from DB
     await db.execute(

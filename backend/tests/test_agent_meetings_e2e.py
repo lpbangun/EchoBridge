@@ -490,8 +490,10 @@ async def test_agent_discovers_session_via_events(client, db):
     assert resp.status_code == 200
     events = resp.json()["events"]
     found = [e for e in events if e["session_id"] == session_id]
-    assert len(found) >= 1
-    assert found[0]["event_type"] == "session.complete"
+    assert len(found) >= 2  # session.created + session.complete
+    # session.created fires on creation; session.complete is the one we manually inserted
+    complete_events = [e for e in found if e["event_type"] == "session.complete"]
+    assert len(complete_events) >= 1
 
     # Agent uses the session_id from the event to access the transcript
     transcript_resp = await client.get(

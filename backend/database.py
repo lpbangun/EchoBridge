@@ -89,6 +89,15 @@ CREATE TABLE IF NOT EXISTS meeting_messages (
 CREATE INDEX IF NOT EXISTS idx_meeting_messages_room
     ON meeting_messages(room_id, sequence_number);
 
+CREATE TABLE IF NOT EXISTS meeting_events (
+    id TEXT PRIMARY KEY,
+    room_code TEXT NOT NULL,
+    event_type TEXT NOT NULL,
+    event_data JSON DEFAULT '{}',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_meeting_events_room ON meeting_events(room_code, created_at);
+
 CREATE TABLE IF NOT EXISTS sockets (
     id TEXT PRIMARY KEY,
     name TEXT NOT NULL,
@@ -167,6 +176,16 @@ CREATE TABLE IF NOT EXISTS wall_posts (
 );
 
 CREATE INDEX IF NOT EXISTS idx_wall_posts_created ON wall_posts(created_at);
+
+CREATE TABLE IF NOT EXISTS kicked_agents (
+    id TEXT PRIMARY KEY,
+    room_key TEXT NOT NULL,
+    agent_name TEXT NOT NULL,
+    kicked_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(room_key, agent_name)
+);
+
+CREATE INDEX IF NOT EXISTS idx_kicked_agents_room ON kicked_agents(room_key, agent_name);
 
 CREATE VIRTUAL TABLE IF NOT EXISTS sessions_fts USING fts5(
     title, transcript,
@@ -250,6 +269,7 @@ async def _run_migrations(db: aiosqlite.Connection) -> None:
         "ALTER TABLE api_keys ADD COLUMN scopes TEXT DEFAULT NULL",
         "ALTER TABLE series ADD COLUMN memory_error TEXT DEFAULT NULL",
         "ALTER TABLE meeting_messages ADD COLUMN content_type TEXT DEFAULT 'text/plain'",
+        "ALTER TABLE rooms ADD COLUMN orchestrator_state JSON DEFAULT NULL",
     ]
     for sql in alter_migrations:
         try:

@@ -57,6 +57,14 @@ async def create_session(body: SessionCreate, db=Depends(get_db)):
             (body.series_id,),
         )
 
+    # Emit session.created event
+    event_id = str(uuid.uuid4())
+    await db.execute(
+        """INSERT INTO session_events (id, event_type, session_id, context, title, interpretations_count, created_at)
+        VALUES (?, 'session.created', ?, ?, ?, 0, ?)""",
+        (event_id, session_id, body.context.value, body.title, now),
+    )
+
     await db.commit()
 
     cursor = await db.execute(
